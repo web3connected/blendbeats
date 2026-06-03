@@ -16,6 +16,7 @@
     "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,md}\"",
+    "deploy:prod": "sh scripts/deploy-production.sh",
     "clean": "rm -rf dist node_modules/.vite",
     "reset": "npm run clean && npm install"
   },
