@@ -6,6 +6,7 @@
     "#airo/secrets": "./airo-secrets/src/index.ts"
   },
   "scripts": {
+    "boot": "powershell -ExecutionPolicy Bypass -File scripts/boot-dev.ps1",
     "dev": "vite",
     "build": "vite build && vite build --ssr src/server/entry.ts",
     "preview": "vite preview",
