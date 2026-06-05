@@ -7,6 +7,7 @@ import {
 } from 'react-router-dom';
 
 import CookieBannerErrorBoundary from '@/components/CookieBannerErrorBoundary';
+import { AuthProvider } from '@/components/auth/AuthProvider';
 import RootLayout from './layouts/RootLayout';
 import Spinner from './components/Spinner';
 import { routes } from './routes';
@@ -49,7 +50,9 @@ const router = createBrowserRouter(routeTree);
 export default function App() {
   return (
     <>
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
       {/*
         CookieBanner reads document.cookie and subscribes to browser events.
         App.tsx is client-only (entry-server.tsx renders the route tree

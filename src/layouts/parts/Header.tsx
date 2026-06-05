@@ -2,6 +2,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
+import WhosLoggedIn from './WhosLoggedIn';
+
 export default function Header() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -54,6 +56,7 @@ export default function Header() {
             >
               ENTER BATTLE
             </Link>
+            <WhosLoggedIn />
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden p-2 text-foreground hover:text-primary transition-colors"
@@ -89,6 +92,7 @@ export default function Header() {
               >
                 ENTER BATTLE
               </Link>
+              <WhosLoggedIn variant="mobile" onNavigate={() => setIsMobileMenuOpen(false)} />
             </nav>
           </div>
         )}
