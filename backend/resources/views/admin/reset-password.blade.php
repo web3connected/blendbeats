@@ -1,35 +1,27 @@
 @extends('adminlte::auth.auth-page', ['authType' => 'login'])
 
-@section('title', 'BlendBeats Admin Login')
-@section('auth_header', 'Secure admin access')
+@section('title', 'Set Admin Password')
+@section('auth_header', 'Set admin password')
 
 @section('auth_body')
-    <p class="login-box-msg">Sign in to manage BlendBeats</p>
+    <p class="login-box-msg">Choose a new password for your admin account.</p>
 
     @if ($errors->any())
-        <div class="alert alert-danger">
-            {{ $errors->first() }}
-        </div>
+        <div class="alert alert-danger">{{ $errors->first() }}</div>
     @endif
 
-    @if (session('status'))
-        <div class="alert alert-success">
-            {{ session('status') }}
-        </div>
-    @endif
-
-    <form action="{{ route('admin.login.store') }}" method="post">
+    <form action="{{ route('admin.password.update') }}" method="post">
         @csrf
+        <input type="hidden" name="token" value="{{ $token }}">
 
         <div class="input-group mb-3">
             <input
                 type="email"
                 name="email"
                 class="form-control @error('email') is-invalid @enderror"
-                value="{{ old('email') }}"
+                value="{{ old('email', $email) }}"
                 placeholder="Email"
                 autocomplete="email"
-                autofocus
                 required
             >
             <div class="input-group-append">
@@ -44,8 +36,8 @@
                 type="password"
                 name="password"
                 class="form-control @error('password') is-invalid @enderror"
-                placeholder="Password"
-                autocomplete="current-password"
+                placeholder="New password"
+                autocomplete="new-password"
                 required
             >
             <div class="input-group-append">
@@ -55,33 +47,32 @@
             </div>
         </div>
 
-        <div class="row">
-            <div class="col-7">
-                <div class="form-check">
-                    <input
-                        type="checkbox"
-                        id="remember"
-                        name="remember"
-                        value="1"
-                        class="form-check-input"
-                        {{ old('remember') ? 'checked' : '' }}
-                    >
-                    <label for="remember" class="form-check-label">Remember me</label>
+        <div class="input-group mb-3">
+            <input
+                type="password"
+                name="password_confirmation"
+                class="form-control"
+                placeholder="Confirm new password"
+                autocomplete="new-password"
+                required
+            >
+            <div class="input-group-append">
+                <div class="input-group-text">
+                    <span class="fas fa-lock"></span>
                 </div>
             </div>
-            <div class="col-5">
-                <button type="submit" class="btn btn-danger btn-block">
-                    <span class="fas fa-sign-in-alt"></span>
-                    Sign In
-                </button>
-            </div>
         </div>
+
+        <button type="submit" class="btn btn-danger btn-block">
+            <span class="fas fa-sync-alt"></span>
+            Set Password
+        </button>
     </form>
 @stop
 
 @section('auth_footer')
     <p class="my-0">
-        <a href="{{ route('admin.password.request') }}">Forgot your password?</a>
+        <a href="{{ route('admin.login') }}">Back to login</a>
     </p>
 @stop
 
@@ -112,13 +103,6 @@
             border-color: #334155;
             background: #020617;
             color: #f8fafc;
-        }
-
-        .form-control:focus {
-            border-color: #dc3545;
-            background: #020617;
-            color: #fff;
-            box-shadow: 0 0 0 .2rem rgba(220, 53, 69, .2);
         }
     </style>
 @stop

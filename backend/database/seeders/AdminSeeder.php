@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Admin;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Role;
 
 class AdminSeeder extends Seeder
 {
@@ -12,14 +13,20 @@ class AdminSeeder extends Seeder
      */
     public function run(): void
     {
-        Admin::firstOrCreate(
+        $this->call(AdminRoleSeeder::class);
+
+        $admin = Admin::updateOrCreate(
             ['email' => env('ADMIN_EMAIL', 'admin@blendbeats.local')],
             [
                 'name' => env('ADMIN_NAME', 'BlendBeats Admin'),
                 'password' => env('ADMIN_PASSWORD', 'password'),
-                'role' => 'super_admin',
+                'role' => 'sys-admin',
                 'is_active' => true,
             ],
         );
+
+        if (Role::where('guard_name', 'admin')->where('name', 'sys-admin')->exists()) {
+            $admin->syncRoles(['sys-admin']);
+        }
     }
 }
