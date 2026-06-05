@@ -49,4 +49,12 @@ Avatar behavior is shared through `App\Traits\AvatarTrait` and supports Gravatar
 
 Do not hand-edit live application code. Make changes locally, verify them, commit them, and deploy through scripts/hooks.
 
-The existing frontend deploy script intentionally excludes `backend/` until we define the Laravel backend deployment target and web server config.
+The production deploy script syncs backend source code while excluding server-owned runtime state such as `backend/.env`, `backend/vendor`, `backend/storage`, `backend/public/storage`, and uploaded media under `backend/public/media`.
+
+During deploy the backend step runs:
+
+- `composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction`
+- `php artisan adminlte:install --only=assets --force`
+- `php artisan migrate --force`
+- `php artisan db:seed --class=AdminRoleSeeder --force`
+- Laravel cache refresh commands

@@ -35,16 +35,39 @@ rsync \
   --exclude "coverage/" \
   --exclude ".env" \
   --exclude ".env.*" \
+  --exclude "vendor/" \
+  --exclude "backend/node_modules/" \
+  --exclude "backend/public/build/" \
+  --exclude "backend/public/hot" \
+  --exclude "backend/public/media/" \
+  --exclude "backend/public/storage" \
+  --exclude "backend/storage/" \
   --exclude "_docs/*.log" \
   ./ "${REMOTE_HOST}:${REMOTE_PATH}/"
 
-echo "deploy: installing, building, and restarting ${APP_NAME}"
+echo "deploy: installing frontend, backend, building, migrating, and restarting ${APP_NAME}"
 
 ssh "${REMOTE_HOST}" "
   set -eu
   cd '${REMOTE_PATH}'
+
   npm ci
   npm run build
+
+  if [ -d backend ]; then
+    cd backend
+    composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+    php artisan adminlte:install --only=assets --force
+    php artisan migrate --force
+    php artisan db:seed --class=AdminRoleSeeder --force
+    php artisan storage:link || true
+    php artisan optimize:clear
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
+    cd ..
+  fi
+
   if pm2 describe '${APP_NAME}' >/dev/null 2>&1; then
     PORT='${APP_PORT}' HOST='${APP_HOST}' SITE_URL='${SITE_URL}' pm2 restart '${APP_NAME}' --update-env
   else
