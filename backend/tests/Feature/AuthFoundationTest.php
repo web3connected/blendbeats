@@ -128,8 +128,8 @@ class AuthFoundationTest extends TestCase
         $this->seed(AdminSeeder::class);
 
         $this->assertDatabaseHas('admins', [
-            'name' => 'BlendBeats Admin',
-            'email' => 'admin@blendbeats.local',
+            'name' => 'Richard Clark',
+            'email' => 'richievc@gmail.com',
             'role' => 'sys-admin',
             'is_active' => true,
         ]);
@@ -432,7 +432,7 @@ class AuthFoundationTest extends TestCase
     {
         $this->seed(AdminSeeder::class);
 
-        $admin = Admin::where('email', 'admin@blendbeats.local')->firstOrFail();
+        $admin = Admin::where('email', 'richievc@gmail.com')->firstOrFail();
 
         $this->actingAs($admin, 'admin')
             ->get('/admin/admin-center/role-manager')
