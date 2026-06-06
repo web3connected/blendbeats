@@ -48,6 +48,11 @@ const routeTree: RouteObject[] = [
 ];
 
 const handler = createStaticHandler(routeTree);
+const appRoutePaths = new Set(
+  routes
+    .map((route) => route.path)
+    .filter((path): path is string => typeof path === 'string' && path !== '*'),
+);
 
 export async function render(url: string): Promise<RenderResult> {
   // createStaticHandler works off a WHATWG Request. We only need the pathname +
@@ -104,5 +109,11 @@ export async function render(url: string): Promise<RenderResult> {
         .join('\n')
     : '';
 
-  return { html, head, status: context.statusCode ?? 200 };
+  const pathname = new URL(`http://ssr${url}`).pathname;
+  const hasAppRouteMatch = appRoutePaths.has(pathname);
+  const status = hasAppRouteMatch
+    ? (context.statusCode === 404 ? 200 : context.statusCode ?? 200)
+    : 404;
+
+  return { html, head, status };
 }
