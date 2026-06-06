@@ -40,6 +40,7 @@ const rootElement = (
 // with its default route error UI before our boundary can catch render errors.
 const routeTree: RouteObject[] = [
   {
+    path: '/',
     element: rootElement,
     children: routes,
   },

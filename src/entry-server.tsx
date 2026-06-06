@@ -34,6 +34,7 @@ const SpinnerFallback = () => (
 // evaluated in the SSR bundle.
 const routeTree: RouteObject[] = [
   {
+    path: '/',
     element: (
       <Suspense fallback={<SpinnerFallback />}>
         <RootLayout>
