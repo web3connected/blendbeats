@@ -14,6 +14,7 @@ import {
 import RootLayout from './layouts/RootLayout';
 import Spinner from './components/Spinner';
 import { routes } from './routes';
+import { AuthProvider } from './components/auth/AuthProvider';
 
 export interface RenderResult {
   html: string;
@@ -83,7 +84,9 @@ export async function render(url: string): Promise<RenderResult> {
     <StrictMode>
       <HelmetProvider onServerState={(state) => { helmetState = state; }}>
         <QueryClientProvider client={queryClient}>
-          <StaticRouterProvider router={router} context={context} />
+          <AuthProvider>
+            <StaticRouterProvider router={router} context={context} />
+          </AuthProvider>
         </QueryClientProvider>
       </HelmetProvider>
     </StrictMode>
