@@ -1,5 +1,5 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { LogOut, Settings, User } from 'lucide-react';
+import { LayoutDashboard, LogOut, Settings, Swords } from 'lucide-react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -66,10 +66,17 @@ export default function AccountPage() {
               </div>
               <div className="grid gap-3">
                 <Link
+                  to="/dashboard"
+                  className="inline-flex h-12 items-center gap-3 border border-[#333333] px-4 text-sm text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                >
+                  <LayoutDashboard size={16} />
+                  Go to dashboard
+                </Link>
+                <Link
                   to="/battles"
                   className="inline-flex h-12 items-center gap-3 border border-[#333333] px-4 text-sm text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
                 >
-                  <User size={16} />
+                  <Swords size={16} />
                   Go to battles
                 </Link>
                 <button

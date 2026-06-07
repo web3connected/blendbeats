@@ -1,6 +1,7 @@
-import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Disc3, Headphones, Mic2, ShoppingBag, SlidersHorizontal, Trophy } from 'lucide-react';
+import HeaderTitle from '@/layouts/HeaderTitle';
+import React, { useEffect } from 'react';
 
 type Feature = {
   title: string;
@@ -39,12 +40,19 @@ export default function SectionPage({
   const accentClass = accent === 'gold' ? 'text-[#FFB800]' : 'text-primary';
   const accentBg = accent === 'gold' ? 'bg-[#FFB800] text-[#0a0a0a]' : 'bg-primary text-white';
 
+  const [pageTitle, setPageTitle] = React.useState(title);
+  const [pageDescription, setPageDescription] = React.useState(description);
+
+  useEffect(() => {
+    const title = `BlendBeats`;
+    const description = `Explore the ${title.toLowerCase()} section of BlendBeats, your ultimate DJ culture destination. Discover top-rated mixes, essential gear, exclusive merch drops, and more. Dive into the heart of the DJ community with curated content and real destinations for every beat.`;  
+    setPageTitle(title);
+    setPageDescription(description);
+  }, [title, description]);
+
   return (
     <>
-      <Helmet>
-        <title>{title} | The Blend Battlegrounds</title>
-        <meta name="description" content={description} />
-      </Helmet>
+      <HeaderTitle title={pageTitle} description={pageDescription} />
 
       <main className="bg-[#0a0a0a] text-white">
         <section className="border-b border-[#1f1f1f]">

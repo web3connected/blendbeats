@@ -1,4 +1,4 @@
-import { ChevronDown, LogIn, LogOut, Settings, User, UserPlus } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, LogIn, LogOut, Radio, Settings, User, UserPlus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -75,6 +75,22 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
         </div>
         <div className="grid gap-2">
           <Link
+            to="/dashboard"
+            onClick={onNavigate}
+            className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
+          >
+            <LayoutDashboard size={15} />
+            Dashboard
+          </Link>
+          <Link
+            to="/dj/start"
+            onClick={onNavigate}
+            className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
+          >
+            <Radio size={15} />
+            Start DJ Career
+          </Link>
+          <Link
             to="/account"
             onClick={onNavigate}
             className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
@@ -118,9 +134,27 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
             <p className="truncate text-xs text-[#888888]">{user.email}</p>
           </div>
           <Link
-            to="/account"
+            to="/dashboard"
             onClick={() => setIsOpen(false)}
             className="mt-2 flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
+            role="menuitem"
+          >
+            <LayoutDashboard size={15} />
+            Dashboard
+          </Link>
+          <Link
+            to="/dj/start"
+            onClick={() => setIsOpen(false)}
+            className="flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
+            role="menuitem"
+          >
+            <Radio size={15} />
+            Start DJ Career
+          </Link>
+          <Link
+            to="/account"
+            onClick={() => setIsOpen(false)}
+            className="flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
             role="menuitem"
           >
             <User size={15} />

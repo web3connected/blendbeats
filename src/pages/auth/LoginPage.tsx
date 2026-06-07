@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      navigate('/battles');
+      navigate('/dashboard');
     } catch (submissionError) {
       setError(
         submissionError instanceof ApiAuthError

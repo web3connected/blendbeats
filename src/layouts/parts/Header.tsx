@@ -14,6 +14,7 @@ export default function Header() {
     { href: '/merch', label: 'MERCH' },
     { href: '/gear', label: 'GEAR' },
     { href: '/djs', label: 'DJS' },
+    { href: '/dj-lounge', label: 'DJLOUNGE' },
   ];
 
   return (

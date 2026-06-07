@@ -1,6 +1,8 @@
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import http from "node:http";
+import https from "node:https";
 
 function extractHostname(value: string): string {
 	try {
@@ -14,12 +16,52 @@ function extractHostname(value: string): string {
 }
 
 function apiDevPlugin(): Plugin {
+	const backendOrigin = process.env.VITE_BACKEND_ORIGIN || "http://127.0.0.1:8000";
+
+	function proxyToBackend(req: http.IncomingMessage, res: http.ServerResponse) {
+		const target = new URL(req.url || "/", backendOrigin);
+		const client = target.protocol === "https:" ? https : http;
+		const headers = { ...req.headers, host: target.host };
+
+		const proxyReq = client.request(
+			target,
+			{
+				method: req.method,
+				headers,
+			},
+			(proxyRes) => {
+				res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+				proxyRes.pipe(res);
+			},
+		);
+
+		proxyReq.on("error", (error) => {
+			if (res.headersSent) return;
+			res.statusCode = 502;
+			res.setHeader("Content-Type", "application/json");
+			res.end(
+				JSON.stringify({
+					message: "Laravel backend is not reachable.",
+					target: backendOrigin,
+					error: error.message,
+				}),
+			);
+		});
+
+		req.pipe(proxyReq);
+	}
+
 	return {
 		name: "api-dev",
 		apply: "serve",
 		configureServer(server: ViteDevServer) {
 			server.middlewares.use(async (req, res, next) => {
 				if (!req.url?.startsWith("/api")) return next();
+				if (!req.url.startsWith("/api/health")) {
+					proxyToBackend(req, res);
+					return;
+				}
+
 				try {
 					const mod = await server.ssrLoadModule("/src/server/entry.ts");
 					const handler = mod.default;

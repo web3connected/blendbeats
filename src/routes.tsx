@@ -10,6 +10,9 @@ import AccountPage from './pages/auth/AccountPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import UserDashboardPage from './pages/auth/UserDashboardPage';
+import StartDjCareerPage from './pages/dj/StartDjCareerPage';
+import DjLoungePage from './pages/social/DjLoungePage';
 
 export const routes: RouteObject[] = [
   {
@@ -53,6 +56,18 @@ export const routes: RouteObject[] = [
     element: <AccountPage />,
   },
   {
+    path: '/dashboard',
+    element: <UserDashboardPage />,
+  },
+  {
+    path: '/dj/start',
+    element: <StartDjCareerPage />,
+  },
+  {
+    path: '/dj-lounge',
+    element: <DjLoungePage />,
+  },
+  {
     path: '*',
     element: <ProdNotFoundPage />,
   },
@@ -69,6 +84,9 @@ export type Path =
   | '/login'
   | '/register'
   | '/forgot-password'
-  | '/account';
+  | '/account'
+  | '/dashboard'
+  | '/dj/start'
+  | '/dj-lounge';
 
 export type Params = Record<string, string | undefined>;
