@@ -2,6 +2,8 @@ import express, { type NextFunction, type Request, type Response } from "express
 import { fileURLToPath } from "node:url";
 import { dirname, extname, join } from "node:path";
 import { readFileSync } from "node:fs";
+import http from "node:http";
+import https from "node:https";
 
 // <api-imports>
 import healthGet from "./api/health/GET";
@@ -26,6 +28,46 @@ const app = express();
 // existing trust-proxy config; direct header reads would let a client spoof
 // the sitemap origin in robots.txt.
 app.set("trust proxy", true);
+
+function proxyToLaravel(req: Request, res: Response) {
+	const backendOrigin = process.env.LARAVEL_API_ORIGIN || "http://127.0.0.1:8000";
+	const target = new URL(req.originalUrl || req.url || "/", backendOrigin);
+	const client = target.protocol === "https:" ? https : http;
+	const headers = {
+		...req.headers,
+		host: target.host,
+		"x-forwarded-host": req.hostname,
+		"x-forwarded-proto": req.protocol,
+	};
+
+	const proxyReq = client.request(
+		target,
+		{
+			method: req.method,
+			headers,
+		},
+		(proxyRes) => {
+			res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+			proxyRes.pipe(res);
+		},
+	);
+
+	proxyReq.on("error", (error) => {
+		if (res.headersSent) return;
+		res.status(502).json({
+			message: "Laravel backend is not reachable.",
+			target: backendOrigin,
+			error: error.message,
+		});
+	});
+
+	req.pipe(proxyReq);
+}
+
+app.use("/api", (req, res, next) => {
+	if (req.path === "/health") return next();
+	proxyToLaravel(req, res);
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
