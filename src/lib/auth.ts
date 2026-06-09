@@ -3,8 +3,42 @@ const API_BASE = import.meta.env?.VITE_AUTH_API_BASE || '/api';
 export interface AuthUser {
   id: number;
   name: string;
+  first_name?: string | null;
+  last_name?: string | null;
   email: string;
   avatar?: string | null;
+  avatar_url?: string | null;
+  gravatar_url?: string | null;
+  custom_avatar_url?: string | null;
+  generated_avatar_url?: string | null;
+  avatar_source?: 'gravatar' | 'url' | 'uploaded' | 'generated' | string | null;
+  is_gravatar?: boolean | null;
+  use_gravatar?: boolean | null;
+  media_storage_tier?: string | null;
+  dj_profile?: {
+    id: number;
+    dj_name: string;
+    handle: string;
+    profile_status: string;
+    visibility: string;
+  } | null;
+  profile?: {
+    contact_email?: string | null;
+    phone?: string | null;
+    city?: string | null;
+    state?: string | null;
+    country?: string | null;
+    postal_code?: string | null;
+    timezone?: string | null;
+    website_url?: string | null;
+    instagram_url?: string | null;
+    youtube_url?: string | null;
+    soundcloud_url?: string | null;
+    spotify_url?: string | null;
+    bio?: string | null;
+    birthdate?: string | null;
+    marketing_opt_in?: boolean | null;
+  } | null;
 }
 
 interface AuthResponse {

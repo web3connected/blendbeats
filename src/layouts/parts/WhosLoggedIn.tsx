@@ -14,6 +14,7 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const isMobile = variant === 'mobile';
+  const djProfileLabel = user?.dj_profile ? 'Go To DJ Profile' : 'Start DJ Career';
 
   useEffect(() => {
     if (!isOpen) return;
@@ -88,7 +89,7 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
             className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
           >
             <Radio size={15} />
-            Start DJ Career
+            {djProfileLabel}
           </Link>
           <Link
             to="/account"
@@ -149,7 +150,7 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
             role="menuitem"
           >
             <Radio size={15} />
-            Start DJ Career
+            {djProfileLabel}
           </Link>
           <Link
             to="/account"

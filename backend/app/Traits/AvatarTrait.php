@@ -63,7 +63,7 @@ trait AvatarTrait
 
     public function usesGravatar(): bool
     {
-        return (bool) ($this->use_gravatar ?? false);
+        return (bool) ($this->is_gravatar ?? $this->use_gravatar ?? false);
     }
 
     public function getUploadedAvatarUrl(): ?string

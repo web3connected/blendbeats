@@ -11,6 +11,8 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import UserDashboardPage from './pages/auth/UserDashboardPage';
+import DjPortfolioPage from './pages/dj/DjPortfolioPage';
+import PublicDjProfilePage from './pages/dj/PublicDjProfilePage';
 import StartDjCareerPage from './pages/dj/StartDjCareerPage';
 import DjLoungePage from './pages/social/DjLoungePage';
 
@@ -40,6 +42,10 @@ export const routes: RouteObject[] = [
     element: <DjsPage />,
   },
   {
+    path: '/djs/:handle',
+    element: <PublicDjProfilePage />,
+  },
+  {
     path: '/login',
     element: <LoginPage />,
   },
@@ -64,6 +70,10 @@ export const routes: RouteObject[] = [
     element: <StartDjCareerPage />,
   },
   {
+    path: '/dj/portfolio',
+    element: <DjPortfolioPage />,
+  },
+  {
     path: '/dj-lounge',
     element: <DjLoungePage />,
   },
@@ -81,12 +91,14 @@ export type Path =
   | '/merch'
   | '/gear'
   | '/djs'
+  | '/djs/:handle'
   | '/login'
   | '/register'
   | '/forgot-password'
   | '/account'
   | '/dashboard'
   | '/dj/start'
+  | '/dj/portfolio'
   | '/dj-lounge';
 
 export type Params = Record<string, string | undefined>;

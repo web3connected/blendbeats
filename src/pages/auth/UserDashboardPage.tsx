@@ -1,8 +1,8 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowRight,
-  Headphones,
   ListMusic,
+  Music2,
   Radio,
   Settings,
   ShieldCheck,
@@ -37,10 +37,10 @@ const dashboardActions = [
     accent: 'text-[#FFB800]',
   },
   {
-    title: 'Listen To Mixes',
-    description: 'Find top-rated mixes and start building your taste profile.',
-    href: '/mixes',
-    icon: Headphones,
+    title: 'My DJ Portfolio',
+    description: 'Upload and manage your mixes, tracks, videos, and creator media.',
+    href: '/dj/portfolio',
+    icon: Music2,
     accent: 'text-primary',
   },
   {
@@ -67,6 +67,29 @@ export default function UserDashboardPage() {
 
   if (!user) return <Navigate to="/login" replace />;
 
+  const hasDjProfile = Boolean(user.dj_profile);
+  const djProfileActionLabel = hasDjProfile ? 'Edit DJ Profile' : 'Start DJ Career';
+  const djProfileStatus = hasDjProfile ? 'DJ profile active' : 'DJ profile not started';
+  const actions = dashboardActions.map((action) =>
+    action.href === '/dj/start'
+      ? {
+          ...action,
+          title: djProfileActionLabel,
+          description: hasDjProfile
+            ? 'Update your DJ profile, genres, links, booking status, and public presence.'
+            : action.description,
+        }
+      : action.href === '/dj/portfolio' && !hasDjProfile
+        ? {
+            ...action,
+            title: 'Start DJ Career',
+            description: 'Create your DJ profile before uploading and managing portfolio media.',
+            href: '/dj/start',
+            icon: Radio,
+          }
+      : action,
+  );
+
   return (
     <>
       <Helmet>
@@ -92,7 +115,7 @@ export default function UserDashboardPage() {
                   Welcome, {user.name}
                 </h1>
                 <p className="mt-5 max-w-2xl text-base leading-7 text-[#aaaaaa]">
-                  This is your home base as a fan, listener, and future DJ. Start a DJ career when you are ready to publish mixes, battle, and build your channel.
+                  This is your home base as a fan, listener, and DJ. Build your profile when you are ready to publish mixes, battle, and grow your channel.
                 </p>
               </div>
               <Link
@@ -100,7 +123,7 @@ export default function UserDashboardPage() {
                 className="inline-flex h-12 items-center justify-center gap-2 bg-primary px-5 text-sm font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
                 style={{ fontFamily: 'var(--font-heading)' }}
               >
-                Start DJ Career
+                {djProfileActionLabel}
                 <ArrowRight size={17} />
               </Link>
             </div>
@@ -122,7 +145,7 @@ export default function UserDashboardPage() {
                 </div>
                 <div className="flex items-center gap-3 text-sm text-[#cccccc]">
                   <User size={16} className="text-[#FFB800]" />
-                  DJ profile not started
+                  {djProfileStatus}
                 </div>
               </div>
             </aside>
@@ -136,7 +159,7 @@ export default function UserDashboardPage() {
                   </h2>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {dashboardActions.map((action) => {
+                  {actions.map((action) => {
                     const Icon = action.icon;
                     return (
                       <Link
