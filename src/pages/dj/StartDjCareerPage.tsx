@@ -1,6 +1,6 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, ArrowRight, Save } from 'lucide-react';
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState, useRef } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -106,6 +106,9 @@ export default function StartDjCareerPage() {
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [hasLoadedProfile, setHasLoadedProfile] = useState(false);
   const [hasAvatarChanges, setHasAvatarChanges] = useState(false);
+  const [isAvatarSaving, setIsAvatarSaving] = useState(false);
+  const prevIdentityTabRef = useRef(identityTab);
+  const prevStepRef = useRef(currentStep);
   const [error, setError] = useState('');
   const [form, setForm] = useState<DjProfileFormState>(initialDjProfileForm);
   const [avatarSettings, setAvatarSettings] = useState<AccountAvatarFormState>({
@@ -154,6 +157,57 @@ export default function StartDjCareerPage() {
     });
     setHasAvatarChanges(false);
   }, [user]);
+
+  // Auto-save avatar when leaving the avatar tab or moving away from the identity step
+  useEffect(() => {
+    const prevIdentity = prevIdentityTabRef.current;
+    const prevStep = prevStepRef.current;
+
+    // If we had avatar changes and the user left the avatar tab
+    if (hasAvatarChanges && prevIdentity === 'avatar' && identityTab !== 'avatar') {
+      void (async () => {
+        setIsAvatarSaving(true);
+        try {
+          await saveAccountAvatar({
+            useGravatar: avatarSettings.useGravatar,
+            avatarUrl: avatarSettings.avatarUrl,
+            avatarFile: avatarSettings.avatarFile,
+            removeAvatar: avatarSettings.removeCustomAvatar,
+          });
+          await refreshUser();
+          setHasAvatarChanges(false);
+        } catch (err) {
+          // preserve error UI handled elsewhere
+        } finally {
+          setIsAvatarSaving(false);
+        }
+      })();
+    }
+
+    // If we had avatar changes and user navigated away from step 0 (identity)
+    if (hasAvatarChanges && prevStep === 0 && currentStep !== 0) {
+      void (async () => {
+        setIsAvatarSaving(true);
+        try {
+          await saveAccountAvatar({
+            useGravatar: avatarSettings.useGravatar,
+            avatarUrl: avatarSettings.avatarUrl,
+            avatarFile: avatarSettings.avatarFile,
+            removeAvatar: avatarSettings.removeCustomAvatar,
+          });
+          await refreshUser();
+          setHasAvatarChanges(false);
+        } catch (err) {
+          // ignore here
+        } finally {
+          setIsAvatarSaving(false);
+        }
+      })();
+    }
+
+    prevIdentityTabRef.current = identityTab;
+    prevStepRef.current = currentStep;
+  }, [identityTab, currentStep, hasAvatarChanges, avatarSettings, refreshUser]);
 
   if (isLoading) {
     return (
