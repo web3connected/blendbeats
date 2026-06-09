@@ -15,5 +15,12 @@ if [ "${should_deploy}" -ne 1 ]; then
   exit 0
 fi
 
+# Check if rsync is available (it won't be on Windows)
+if ! command -v rsync >/dev/null 2>&1; then
+  echo "pre-push: rsync not available; skipping local deployment."
+  echo "pre-push: GitHub webhook will trigger Forge deployment after push."
+  exit 0
+fi
+
 echo "pre-push: main push detected; deploying production via rsync."
 sh scripts/deploy-production.sh
