@@ -20,10 +20,12 @@ trait AvatarTrait
                 return $this->avatar;
             }
 
-            if (str_starts_with($this->avatar, 'accounts/avatars/')) {
+            // Support new per-account avatar path: accounts/{account_slug}/avatar/{file}
+            if (str_starts_with($this->avatar, 'accounts/')) {
                 return asset('media/'.$this->avatar);
             }
 
+            // Fallback for legacy avatars stored directly under accounts/avatars/
             return asset('media/accounts/avatars/'.ltrim($this->avatar, '/'));
         }
 
@@ -76,7 +78,7 @@ trait AvatarTrait
             return $this->avatar;
         }
 
-        if (str_starts_with($this->avatar, 'accounts/avatars/')) {
+        if (str_starts_with($this->avatar, 'accounts/')) {
             return asset('media/'.$this->avatar);
         }
 
@@ -106,7 +108,7 @@ trait AvatarTrait
 
     public function setAvatarFromFile(string $filePath): void
     {
-        if (! str_starts_with($filePath, 'accounts/avatars/')) {
+        if (! str_starts_with($filePath, 'accounts/')) {
             $filePath = 'accounts/avatars/'.basename($filePath);
         }
 

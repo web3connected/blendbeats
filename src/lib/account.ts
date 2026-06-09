@@ -20,6 +20,10 @@ export async function saveAccountAvatar(payload: SaveAccountAvatarPayload): Prom
     formData.append('avatar_url', payload.avatarUrl.trim());
   }
 
+  // Indicate that the client intends the uploaded file to be stored under the media accounts path
+  // so the server can place it under media/accounts/{account_slug}/avatar
+  formData.append('store_in_media', '1');
+
   const response = await apiClient.post<{ user: AuthUser }>('/api/auth/avatar', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
