@@ -78,6 +78,7 @@ export default function UserDashboardPage() {
           description: hasDjProfile
             ? 'Update your DJ profile, genres, links, booking status, and public presence.'
             : action.description,
+          href: hasDjProfile ? '/dj/edit' : '/dj/start',
         }
       : action.href === '/dj/portfolio' && !hasDjProfile
         ? {
@@ -119,7 +120,7 @@ export default function UserDashboardPage() {
                 </p>
               </div>
               <Link
-                to="/dj/start"
+                to={hasDjProfile ? '/dj/edit' : '/dj/start'}
                 className="inline-flex h-12 items-center justify-center gap-2 bg-primary px-5 text-sm font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
                 style={{ fontFamily: 'var(--font-heading)' }}
               >

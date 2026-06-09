@@ -84,7 +84,7 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
             Dashboard
           </Link>
           <Link
-            to="/dj/start"
+            to={user?.dj_profile ? '/dj/edit' : '/dj/start'}
             onClick={onNavigate}
             className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
           >
@@ -144,7 +144,7 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
             Dashboard
           </Link>
           <Link
-            to="/dj/start"
+            to={user?.dj_profile ? '/dj/edit' : '/dj/start'}
             onClick={() => setIsOpen(false)}
             className="flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
             role="menuitem"

@@ -41,6 +41,7 @@ import {
   type MediaStorageQuota,
   uploadMediaFile,
 } from '@/lib/media-manager';
+import MediaSetupSection from './comps/MediaSetupSection';
 
 const statusFilters = ['All', 'Published', 'Drafts', 'Unlisted', 'Private', 'Archived'];
 const mediaFilters = ['Mixes', 'Tracks', 'Videos', 'Battle Entries'];
@@ -247,78 +248,8 @@ export default function DjPortfolioPage() {
           <meta name="description" content="Activate media storage for your DJ portfolio." />
         </Helmet>
         <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a]">
-          <section className="border-b border-[#1a1a1a] px-4 py-12 lg:px-8">
-            <div className="container mx-auto max-w-6xl">
-              <p
-                className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary"
-                style={{ fontFamily: 'var(--font-heading)' }}
-              >
-                Media Setup
-              </p>
-              <h1
-                className="max-w-4xl text-white uppercase leading-none"
-                style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(3.75rem, 9vw, 7rem)' }}
-              >
-                Get Started With Your Portfolio
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-7 text-[#aaaaaa]">
-                Create your free media storage workspace for {user.dj_profile.dj_name}. We will use your DJ handle to
-                create a public folder like <span className="text-white">media/accounts/{user.dj_profile.handle}</span>.
-              </p>
-            </div>
-          </section>
+          <MediaSetupSection user={user} />
 
-          <section className="px-4 py-10 lg:px-8">
-            <div className="container mx-auto max-w-6xl">
-              {error && (
-                <div className="mb-5 border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
-                  {error}
-                </div>
-              )}
-
-              <div className="grid gap-5 lg:grid-cols-3">
-                {storageTiers.map((tier) => (
-                  <section
-                    key={tier.key}
-                    className={`border p-5 ${
-                      tier.active ? 'border-primary bg-[#111111]' : 'border-[#2a2a2a] bg-[#0d0d0d] opacity-70'
-                    }`}
-                  >
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center bg-[#080808] text-primary">
-                        {tier.active ? <HardDrive size={22} /> : <Lock size={21} />}
-                      </div>
-                      {tier.active && <CheckCircle2 size={20} className="text-primary" />}
-                    </div>
-                    <h2 className="text-4xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                      {tier.name}
-                    </h2>
-                    <p className="mt-2 text-sm text-[#888888]">{tier.description}</p>
-                    <div className="mt-6 border-t border-[#252525] pt-5">
-                      <p className="text-xs font-bold uppercase tracking-widest text-[#777777]">Storage</p>
-                      <p className="mt-1 text-3xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                        {tier.storage}
-                      </p>
-                      <p className="mt-3 text-sm text-[#aaaaaa]">{tier.price}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={tier.active ? handleActivateMedia : undefined}
-                      disabled={!tier.active || isActivatingSetup}
-                      className={`mt-6 inline-flex h-11 w-full items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest ${
-                        tier.active
-                          ? 'bg-primary text-white hover:bg-primary/90'
-                          : 'border border-[#333333] text-[#777777]'
-                      }`}
-                      style={{ fontFamily: 'var(--font-heading)' }}
-                    >
-                      {tier.active ? (isActivatingSetup ? 'Creating Storage' : 'Start Free') : 'Coming Soon'}
-                    </button>
-                  </section>
-                ))}
-              </div>
-            </div>
-          </section>
         </main>
       </>
     );
@@ -354,7 +285,7 @@ export default function DjPortfolioPage() {
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Link
-                  to="/dj/start"
+                  to="/dj/edit"
                   className="inline-flex h-12 items-center justify-center gap-2 border border-[#444444] px-5 text-sm font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
                   style={{ fontFamily: 'var(--font-heading)' }}
                 >

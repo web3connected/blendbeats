@@ -70,6 +70,10 @@ export const routes: RouteObject[] = [
     element: <StartDjCareerPage />,
   },
   {
+    path: '/dj/edit',
+    element: <StartDjCareerPage />,
+  },
+  {
     path: '/dj/portfolio',
     element: <DjPortfolioPage />,
   },
@@ -98,6 +102,7 @@ export type Path =
   | '/account'
   | '/dashboard'
   | '/dj/start'
+  | '/dj/edit'
   | '/dj/portfolio'
   | '/dj-lounge';
 
