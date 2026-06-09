@@ -74,6 +74,7 @@ class DjHubApiTest extends TestCase
             ->assertJsonPath('djs.0.followers_count', 1)
             ->assertJsonPath('djs.0.featured_statuses.0', 'Featured Artist')
             ->assertJsonPath('djs.0.featured_mix.title', 'Sunday Blend')
+            ->assertJsonPath('featured_djs.0.dj_name', 'DJ SiliconOne')
             ->assertJsonPath('filters.genres.0', 'House');
     }
 

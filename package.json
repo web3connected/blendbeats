@@ -82,7 +82,9 @@
     "tailwind-merge": "^2.6.1",
     "vaul": "^1.1.2",
     "zod": "^3.25.76",
-    "zustand": "^5.0.2"
+    "zustand": "^5.0.2",
+    "@stripe/react-stripe-js": "^2.4.0",
+    "@stripe/stripe-js": "^1.56.0"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",

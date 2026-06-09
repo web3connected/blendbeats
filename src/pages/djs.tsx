@@ -101,6 +101,7 @@ export default function DjsPage() {
   const [query, setQuery] = useState<DjHubQuery>({ sort: 'featured' });
   const [searchInput, setSearchInput] = useState('');
   const [djs, setDjs] = useState<DjHubDj[]>([]);
+  const [featuredDjs, setFeaturedDjs] = useState<DjHubDj[]>([]);
   const [filters, setFilters] = useState<DjHubFilters>({ genres: [], dj_types: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -115,6 +116,7 @@ export default function DjsPage() {
       .then((data) => {
         if (!isMounted) return;
         setDjs(data.djs);
+        setFeaturedDjs(data.featured_djs ?? []);
         setFilters(data.filters);
       })
       .catch(() => {
@@ -178,6 +180,84 @@ export default function DjsPage() {
                   {resultLabel}
                 </p>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-b border-[#1a1a1a] bg-[#090909] px-4 py-10 lg:px-8">
+          <div className="container mx-auto max-w-6xl">
+            <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Featured DJs</p>
+                <h2 className="mt-3 text-4xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                  Top paid placements
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-[#aaaaaa]">
+                  Four premium panel slots reserved for DJs who want their profile seen first.
+                </p>
+              </div>
+              <div className="rounded-3xl border border-[#2a2a2a] bg-[#111111] p-4 text-sm text-[#aaaaaa]">
+                <p className="font-semibold uppercase tracking-widest text-primary">Paid placement</p>
+                <p className="mt-2">Easy to manage in the DJ Hub backend. Keep this basic now and grow the payment flow later.</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => {
+                const slotDj = featuredDjs[index];
+                return (
+                  <article
+                    key={index}
+                    className="group overflow-hidden rounded-[2rem] border border-[#222] bg-[#111111] p-5 transition hover:border-primary"
+                  >
+                    <div className="mb-4 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">
+                          Featured Slot {index + 1}
+                        </p>
+                        <p className="mt-2 text-sm uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                          {slotDj ? 'Sponsored DJ' : 'Available'}
+                        </p>
+                      </div>
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0b0b0b] text-lg font-black uppercase text-white">
+                        {slotDj ? slotDj.dj_name.charAt(0) : '+'}
+                      </div>
+                    </div>
+                    {slotDj ? (
+                      <div className="grid gap-3">
+                        <p className="text-sm text-[#aaaaaa]">{slotDj.featured_statuses[0] ?? 'Paid Spotlight'}</p>
+                        <p className="text-xl font-bold uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                          {slotDj.dj_name}
+                        </p>
+                        <p className="text-sm text-[#888888]">
+                          {slotDj.primary_genre ?? 'Open Format'} · {slotDj.location || 'World'}
+                        </p>
+                        <div className="grid gap-2 rounded-3xl border border-[#222] bg-[#080808] p-4">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Followers</p>
+                          <p className="text-lg font-semibold text-white">{slotDj.followers_count.toLocaleString()}</p>
+                        </div>
+                        <Link
+                          to={`/djs/${slotDj.handle}`}
+                          className="inline-flex h-11 items-center justify-center rounded-xl border border-[#333333] bg-[#0d0d0d] px-4 text-xs font-bold uppercase tracking-widest text-white transition hover:border-primary hover:text-primary"
+                          style={{ fontFamily: 'var(--font-heading)' }}
+                        >
+                          View profile
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="grid gap-3">
+                        <p className="text-sm leading-6 text-[#aaaaaa]">
+                          This slot is open for DJs who want premium visibility on the DJ Hub page.
+                        </p>
+                        <div className="rounded-3xl border border-[#222] bg-[#080808] p-4 text-sm text-[#dddddd]">
+                          <p className="font-semibold uppercase tracking-widest text-primary">Claim now</p>
+                          <p className="mt-1 text-[#888888]">Contact support to reserve this position.</p>
+                        </div>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>

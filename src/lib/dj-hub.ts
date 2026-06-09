@@ -41,6 +41,7 @@ export type DjHubQuery = {
 
 export async function getDjHubDjs(query: DjHubQuery = {}): Promise<{
   djs: DjHubDj[];
+  featured_djs: DjHubDj[];
   filters: DjHubFilters;
 }> {
   const response = await apiClient.get('/dj-hub/djs', {

@@ -81,6 +81,7 @@ class DjHubController extends Controller
                     $featuredStatuses[$profile->id] ?? [],
                 ))
                 ->values(),
+            'featured_djs' => $this->featuredDjs(),
             'filters' => [
                 'genres' => DjGenre::query()->where('is_active', true)->orderBy('name')->pluck('name')->values(),
                 'dj_types' => DjProfile::query()
@@ -182,6 +183,62 @@ class DjHubController extends Controller
             ->get()
             ->groupBy('dj_profile_id')
             ->map(fn ($statuses) => $statuses->pluck('featured_type')->values()->all())
+            ->all();
+    }
+
+    private function featuredDjs(): array
+    {
+        $activeFeaturedStatuses = DjFeaturedStatus::query()
+            ->where('status', 'active')
+            ->where(function (Builder $query): void {
+                $query->whereNull('start_date')->orWhere('start_date', '<=', now());
+            })
+            ->where(function (Builder $query): void {
+                $query->whereNull('end_date')->orWhere('end_date', '>=', now());
+            })
+            ->latest('start_date')
+            ->latest('id')
+            ->limit(16)
+            ->get();
+
+        $profileIds = $activeFeaturedStatuses
+            ->pluck('dj_profile_id')
+            ->unique()
+            ->take(4)
+            ->values()
+            ->all();
+
+        if (empty($profileIds)) {
+            return [];
+        }
+
+        $featuredMixes = $this->featuredMixesFor(
+            DjProfile::query()
+                ->whereIn('id', $profileIds)
+                ->pluck('user_id')
+                ->all()
+        );
+
+        $featuredStatuses = $this->featuredStatusesFor($profileIds);
+
+        $profiles = DjProfile::query()
+            ->with(['user:id,name,email,avatar,is_gravatar,use_gravatar', 'genres', 'bookingSetting'])
+            ->withCount('followers')
+            ->whereIn('id', $profileIds)
+            ->where('visibility', 'public')
+            ->where('profile_status', 'active')
+            ->get()
+            ->keyBy('id');
+
+        return collect($profileIds)
+            ->map(fn (int $profileId) => $profiles->get($profileId))
+            ->filter()
+            ->map(fn (DjProfile $profile): array => $this->directoryPayload(
+                $profile,
+                $featuredMixes[$profile->user_id] ?? null,
+                $featuredStatuses[$profile->id] ?? [],
+            ))
+            ->values()
             ->all();
     }
 
