@@ -5,29 +5,16 @@ protected_branch="refs/heads/main"
 should_deploy=0
 
 while read -r local_ref local_sha remote_ref remote_sha; do
-  if [ "${local_ref}" = "${protected_branch}" ]; then
+  if [ "$local_ref" = "$protected_branch" ]; then
     should_deploy=1
   fi
 done
 
-if [ "${should_deploy}" -ne 1 ]; then
+if [ "$should_deploy" -ne 1 ]; then
   echo "pre-push: no main branch push detected; skipping production deploy."
   exit 0
 fi
 
-# Check if rsync is available (it won't be on Windows)
-if ! command -v rsync >/dev/null 2>&1; then
-  echo "pre-push: rsync not available; skipping local deployment."
-  echo "pre-push: install rsync locally and push again when ready."
-  exit 0
-fi
+echo "pre-push: main branch push detected; deploying production."
 
-* Use rsync replacement for scp to deploy to production on main branch pushes
-if [ -t 1 ]; then
-  echo "pre-push: main branch push detected; deploying production via rsync."
-else
-  echo "pre-push: main branch push detected; deploying production via rsync (non-interactive mode)."
-fi
-
-echo "pre-push: main push detected; deploying production via rsync."
 sh scripts/deploy-production.sh
