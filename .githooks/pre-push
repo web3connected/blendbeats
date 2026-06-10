@@ -5,7 +5,7 @@ protected_branch="refs/heads/main"
 should_deploy=0
 
 while read -r local_ref local_sha remote_ref remote_sha; do
-  if [ "$local_ref" = "$protected_branch" ]; then
+  if [ "$local_ref" = "$protected_branch" ] || [ "$remote_ref" = "$protected_branch" ]; then
     should_deploy=1
   fi
 done
@@ -16,5 +16,10 @@ if [ "$should_deploy" -ne 1 ]; then
 fi
 
 echo "pre-push: main branch push detected; deploying production."
+
+if [ ! -x scripts/deploy-production.sh ]; then
+  echo "pre-push: scripts/deploy-production.sh is missing or not executable." >&2
+  exit 1
+fi
 
 sh scripts/deploy-production.sh

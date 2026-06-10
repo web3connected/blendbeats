@@ -1,0 +1,176 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+:root {
+    --home-background: #ffffff;
+    --home-foreground: #171717;
+    --home-muted-border: rgba(0, 0, 0, 0.08);
+    --home-code-background: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --home-background: #0a0a0a;
+        --home-foreground: #ededed;
+        --home-muted-border: rgba(255, 255, 255, 0.15);
+        --home-code-background: rgba(255, 255, 255, 0.06);
+    }
+}
+
+html,
+body {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+body {
+    background: var(--home-background);
+    color: var(--home-foreground);
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 0;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.next-page {
+    align-items: center;
+    display: grid;
+    grid-template-rows: 1fr auto;
+    justify-items: center;
+    min-height: 100svh;
+    padding: 80px;
+}
+
+.next-main {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    grid-row-start: 1;
+}
+
+.next-logo {
+    font-size: 44px;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.next-steps {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 14px;
+    line-height: 24px;
+    margin: 0;
+    padding-left: 24px;
+}
+
+.next-steps li:not(:last-of-type) {
+    margin-bottom: 8px;
+}
+
+.next-steps code {
+    background: var(--home-code-background);
+    border-radius: 4px;
+    font-family: inherit;
+    font-weight: 600;
+    padding: 2px 4px;
+}
+
+.next-actions {
+    display: flex;
+    gap: 16px;
+}
+
+.next-button {
+    align-items: center;
+    border-radius: 128px;
+    display: flex;
+    font-size: 14px;
+    font-weight: 500;
+    height: 40px;
+    justify-content: center;
+    padding: 0 16px;
+}
+
+.next-button-primary {
+    background: var(--home-foreground);
+    color: var(--home-background);
+}
+
+.next-button-secondary {
+    border: 1px solid var(--home-muted-border);
+}
+
+.next-footer {
+    display: flex;
+    gap: 24px;
+    grid-row-start: 2;
+}
+
+.next-footer a {
+    font-size: 14px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .next-button-primary:hover {
+        background: #383838;
+    }
+
+    .next-button-secondary:hover {
+        background: #f2f2f2;
+        border-color: transparent;
+    }
+
+    .next-footer a:hover {
+        text-decoration: underline;
+        text-underline-offset: 4px;
+    }
+}
+
+@media (prefers-color-scheme: dark) and (hover: hover) and (pointer: fine) {
+    .next-button-primary:hover {
+        background: #cccccc;
+    }
+
+    .next-button-secondary:hover {
+        background: #1a1a1a;
+    }
+}
+
+@media (max-width: 600px) {
+    .next-page {
+        padding: 32px;
+    }
+
+    .next-steps {
+        text-align: center;
+    }
+
+    .next-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .next-button {
+        width: 100%;
+    }
+
+    .next-footer {
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
