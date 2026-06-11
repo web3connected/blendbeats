@@ -1,4 +1,6 @@
 @php($adminUser = $adminUser ?? null)
+@php($currentRole = $currentRole ?? $adminUser?->roles?->first())
+@php($selectedRoleId = old('role_id', $currentRole?->id))
 
 <div class="row">
     <div class="form-group col-md-6">
@@ -22,9 +24,16 @@
     </div>
 
     <div class="form-group col-md-6">
-        <label for="role">Role</label>
-        <input id="role" type="text" name="role" value="{{ old('role', $adminUser?->role ?? 'admin') }}" class="form-control @error('role') is-invalid @enderror" required>
-        @error('role') <span class="invalid-feedback">{{ $message }}</span> @enderror
+        <label for="role_id">Role</label>
+        <select id="role_id" name="role_id" class="form-control @error('role_id') is-invalid @enderror" required>
+            <option value="">Select role</option>
+            @foreach ($roles ?? [] as $role)
+                <option value="{{ $role->id }}" @selected((string) $selectedRoleId === (string) $role->id)>
+                    {{ $role->name }}{{ $role->display_name ? ' - '.$role->display_name : '' }}
+                </option>
+            @endforeach
+        </select>
+        @error('role_id') <span class="invalid-feedback">{{ $message }}</span> @enderror
     </div>
 </div>
 

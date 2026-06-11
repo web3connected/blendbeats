@@ -341,12 +341,12 @@ return [
                 ],
                 [
                     'text' => 'Role Manager',
-                    'url' => 'admin/admin-center/roles',
+                    'url' => 'admin/admincenter/adminroles',
                     'icon' => 'fas fa-fw fa-user-lock',
                 ],
                 [
                     'text' => 'Permissions',
-                    'url' => 'admin/admin-center/permissions',
+                    'url' => 'admin/admincenter/adminpermissions',
                     'icon' => 'fas fa-fw fa-key',
                 ],
             ],

@@ -22,7 +22,7 @@ class AdminAccessTest extends TestCase
             'name' => 'Admin User',
             'email' => 'admin@example.com',
             'password' => 'password',
-            'role' => 'sys-admin',
+            'role' => 'super-admin',
             'is_active' => true,
         ]);
 
@@ -40,7 +40,7 @@ class AdminAccessTest extends TestCase
             'name' => 'Admin User',
             'email' => 'admin@example.com',
             'password' => 'password',
-            'role' => 'sys-admin',
+            'role' => 'super-admin',
             'is_active' => true,
         ]);
 

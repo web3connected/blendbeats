@@ -33,6 +33,8 @@
                     @include('admin.admin-users.partials.profile-tab', [
                         'activeTab' => $activeTab,
                         'adminUser' => $adminUser,
+                        'roles' => $roles,
+                        'currentRole' => $currentRole,
                     ])
                 </div>
 

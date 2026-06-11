@@ -10,7 +10,11 @@
     @csrf
     @method('PUT')
     <input type="hidden" name="_section" value="profile">
-    @include('admin.admin-users.partials.profile-fields', ['adminUser' => $adminUser])
+    @include('admin.admin-users.partials.profile-fields', [
+        'adminUser' => $adminUser,
+        'roles' => $roles,
+        'currentRole' => $currentRole,
+    ])
     <div class="mt-3">
         <button type="submit" class="btn btn-primary">Save Profile</button>
         <a href="{{ route('admin.admincenter.adminusers.show', $adminUser) }}" class="btn btn-secondary">Cancel</a>

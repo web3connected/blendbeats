@@ -3,10 +3,12 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Admin;
+use Database\Seeders\AdminRoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class AdminUserCrudTest extends TestCase
@@ -15,13 +17,16 @@ class AdminUserCrudTest extends TestCase
 
     public function test_admin_user_crud_pages_are_accessible(): void
     {
+        $this->seed(AdminRoleSeeder::class);
+
         $signedInAdmin = Admin::query()->create([
             'name' => 'Signed In Admin',
             'email' => 'signed-in@example.com',
             'password' => 'password',
-            'role' => 'sys-admin',
+            'role' => 'super-admin',
             'is_active' => true,
         ]);
+        $signedInAdmin->syncRoles(['super-admin']);
 
         $adminUser = Admin::query()->create([
             'name' => 'Managed Admin',
@@ -30,6 +35,7 @@ class AdminUserCrudTest extends TestCase
             'role' => 'admin',
             'is_active' => true,
         ]);
+        $adminUser->syncRoles(['admin']);
 
         $this->actingAs($signedInAdmin, 'admin')
             ->get('/admin/admincenter/adminusers')
@@ -67,15 +73,57 @@ class AdminUserCrudTest extends TestCase
             ->assertSee('Avatar Controls');
     }
 
+    public function test_manager_can_view_admin_users_without_mutation_buttons(): void
+    {
+        $this->seed(AdminRoleSeeder::class);
+
+        $manager = Admin::query()->create([
+            'name' => 'Manager Admin',
+            'email' => 'manager@example.com',
+            'password' => 'password',
+            'role' => 'manager',
+            'is_active' => true,
+        ]);
+        $manager->syncRoles(['manager']);
+
+        $adminUser = Admin::query()->create([
+            'name' => 'Managed Admin',
+            'email' => 'managed@example.com',
+            'password' => 'password',
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+        $adminUser->syncRoles(['admin']);
+
+        $this->actingAs($manager, 'admin')
+            ->get('/admin/admincenter/adminusers')
+            ->assertOk()
+            ->assertSee('Managed Admin')
+            ->assertSee('Show')
+            ->assertDontSee(route('admin.admincenter.adminusers.create'))
+            ->assertDontSee('btn-warning')
+            ->assertDontSee('btn-danger');
+
+        $this->actingAs($manager, 'admin')
+            ->get("/admin/admincenter/adminusers/{$adminUser->id}/edit")
+            ->assertForbidden();
+    }
+
     public function test_admin_user_can_be_created_updated_password_reset_and_deleted(): void
     {
+        $this->seed(AdminRoleSeeder::class);
+
         $signedInAdmin = Admin::query()->create([
             'name' => 'Signed In Admin',
             'email' => 'signed-in@example.com',
             'password' => 'password',
-            'role' => 'sys-admin',
+            'role' => 'super-admin',
             'is_active' => true,
         ]);
+        $signedInAdmin->syncRoles(['super-admin']);
+
+        $adminRole = Role::query()->where('name', 'admin')->where('guard_name', 'admin')->firstOrFail();
+        $managerRole = Role::query()->where('name', 'manager')->where('guard_name', 'admin')->firstOrFail();
 
         $this->actingAs($signedInAdmin, 'admin')
             ->post('/admin/admincenter/adminusers', [
@@ -83,7 +131,7 @@ class AdminUserCrudTest extends TestCase
                 'email' => 'created@example.com',
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
-                'role' => 'admin',
+                'role_id' => $adminRole->id,
                 'is_active' => '1',
                 'use_gravatar' => '1',
             ])
@@ -92,13 +140,14 @@ class AdminUserCrudTest extends TestCase
         $adminUser = Admin::query()->where('email', 'created@example.com')->firstOrFail();
 
         $this->assertTrue(Hash::check('password123', $adminUser->password));
+        $this->assertTrue($adminUser->hasRole('admin'));
 
         $this->actingAs($signedInAdmin, 'admin')
             ->put("/admin/admincenter/adminusers/{$adminUser->id}", [
                 '_section' => 'profile',
                 'name' => 'Updated Admin',
                 'email' => 'updated@example.com',
-                'role' => 'support',
+                'role_id' => $managerRole->id,
                 'is_active' => '0',
             ])
             ->assertRedirect(route('admin.admincenter.adminusers.edit', $adminUser).'#profile-info');
@@ -107,7 +156,8 @@ class AdminUserCrudTest extends TestCase
 
         $this->assertSame('Updated Admin', $adminUser->name);
         $this->assertSame('updated@example.com', $adminUser->email);
-        $this->assertSame('support', $adminUser->role);
+        $this->assertSame('manager', $adminUser->role);
+        $this->assertTrue($adminUser->hasRole('manager'));
         $this->assertFalse($adminUser->is_active);
 
         $this->actingAs($signedInAdmin, 'admin')

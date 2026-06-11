@@ -9,7 +9,7 @@
         <form method="POST" action="{{ route('admin.admincenter.adminusers.store') }}">
             @csrf
             <div class="card-body">
-                @include('admin.admin-users.partials.profile-fields')
+                @include('admin.admin-users.partials.profile-fields', ['roles' => $roles])
 
                 <div class="row">
                     <div class="form-group col-md-6">

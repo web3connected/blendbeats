@@ -17,9 +17,11 @@
         <div class="card-header">
             <h3 class="card-title">Admin Users</h3>
             <div class="card-tools">
-                <a href="{{ route('admin.admincenter.adminusers.create') }}" class="btn btn-primary btn-sm">
-                    <i class="fas fa-plus mr-1"></i> Create
-                </a>
+                @can('adminusers.create')
+                    <a href="{{ route('admin.admincenter.adminusers.create') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus mr-1"></i> Create
+                    </a>
+                @endcan
             </div>
         </div>
         <div class="card-body p-0">
@@ -43,7 +45,10 @@
                                 </a>
                             </td>
                             <td>{{ $adminUser->email }}</td>
-                            <td>{{ $adminUser->role }}</td>
+                            <td>
+                                @php($role = $adminUser->roles->first())
+                                {{ $role?->display_name ?: str($role?->name ?? $adminUser->role)->replace('-', ' ')->headline() }}
+                            </td>
                             <td>
                                 <span class="badge badge-{{ $adminUser->is_active ? 'success' : 'secondary' }}">
                                     {{ $adminUser->is_active ? 'Active' : 'Inactive' }}
@@ -54,16 +59,20 @@
                                 <a href="{{ route('admin.admincenter.adminusers.show', $adminUser) }}" class="btn btn-info btn-sm">
                                     <i class="fas fa-eye mr-1"></i> Show
                                 </a>
-                                <a href="{{ route('admin.admincenter.adminusers.edit', $adminUser) }}" class="btn btn-warning btn-sm">
-                                    <i class="fas fa-edit mr-1"></i> Edit
-                                </a>
-                                <form method="POST" action="{{ route('admin.admincenter.adminusers.destroy', $adminUser) }}" class="d-inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this admin user?')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
+                                @can('adminusers.update')
+                                    <a href="{{ route('admin.admincenter.adminusers.edit', $adminUser) }}" class="btn btn-warning btn-sm">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </a>
+                                @endcan
+                                @can('adminusers.delete')
+                                    <form method="POST" action="{{ route('admin.admincenter.adminusers.destroy', $adminUser) }}" class="d-inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this admin user?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                @endcan
                             </td>
                         </tr>
                     @empty

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Services\Admin\AdminRoleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -11,19 +12,27 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Spatie\Permission\Models\Role;
 
 class AdminUserController extends Controller
 {
+    public function __construct(private readonly AdminRoleService $roleService) {}
+
     public function index(): View
     {
         return view('admin.admin-users.index', [
-            'admins' => Admin::query()->latest()->paginate(15),
+            'admins' => Admin::query()
+                ->with('roles')
+                ->latest()
+                ->paginate(15),
         ]);
     }
 
     public function create(): View
     {
-        return view('admin.admin-users.create');
+        return view('admin.admin-users.create', [
+            'roles' => $this->roleService->orderedRoles(),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -33,18 +42,24 @@ class AdminUserController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:admins,email'],
             'email_verified_at' => ['nullable', 'date'],
             'password' => ['required', 'confirmed', 'min:8'],
-            'role' => ['required', 'string', 'max:255'],
+            'role_id' => ['required', Rule::exists('roles', 'id')->where(fn ($query) => $query->where('guard_name', 'admin'))],
             'is_active' => ['nullable', 'boolean'],
         ]);
+
+        $role = Role::query()
+            ->where('guard_name', 'admin')
+            ->findOrFail($validated['role_id']);
 
         $admin = Admin::query()->create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'email_verified_at' => $validated['email_verified_at'] ?? null,
             'password' => Hash::make($validated['password']),
-            'role' => $validated['role'],
+            'role' => $role->name,
             'is_active' => $request->boolean('is_active'),
         ]);
+
+        $admin->syncRoles([$role]);
 
         return redirect()
             ->route('admin.admincenter.adminusers.show', $admin)
@@ -53,15 +68,22 @@ class AdminUserController extends Controller
 
     public function show(Admin $adminuser): View
     {
+        $adminuser->load('roles.permissions');
+
         return view('admin.admin-users.show', [
             'adminUser' => $adminuser,
+            'currentRole' => $this->currentRole($adminuser),
         ]);
     }
 
     public function edit(Admin $adminuser): View
     {
+        $adminuser->load('roles');
+
         return view('admin.admin-users.edit', [
             'adminUser' => $adminuser,
+            'roles' => $this->roleService->orderedRoles(),
+            'currentRole' => $this->currentRole($adminuser),
         ]);
     }
 
@@ -89,6 +111,8 @@ class AdminUserController extends Controller
 
     private function updateProfile(Request $request, Admin $adminUser): RedirectResponse
     {
+        $this->authorizePermission('adminusers.update');
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => [
@@ -98,17 +122,23 @@ class AdminUserController extends Controller
                 Rule::unique('admins', 'email')->ignore($adminUser->id),
             ],
             'email_verified_at' => ['nullable', 'date'],
-            'role' => ['required', 'string', 'max:255'],
+            'role_id' => ['required', Rule::exists('roles', 'id')->where(fn ($query) => $query->where('guard_name', 'admin'))],
             'is_active' => ['nullable', 'boolean'],
         ]);
+
+        $role = Role::query()
+            ->where('guard_name', 'admin')
+            ->findOrFail($validated['role_id']);
 
         $adminUser->update([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'email_verified_at' => $validated['email_verified_at'] ?? null,
-            'role' => $validated['role'],
+            'role' => $role->name,
             'is_active' => $request->boolean('is_active'),
         ]);
+
+        $adminUser->syncRoles([$role]);
 
         return redirect()
             ->to($this->editTabUrl($adminUser, 'profile-info'))
@@ -118,6 +148,8 @@ class AdminUserController extends Controller
 
     private function updatePassword(Request $request, Admin $adminUser): RedirectResponse
     {
+        $this->authorizePermission('adminusers.reset-password');
+
         $validator = Validator::make($request->all(), [
             'new_password' => ['required', 'confirmed', 'min:8'],
         ]);
@@ -141,6 +173,8 @@ class AdminUserController extends Controller
 
     private function updateAvatar(Request $request, Admin $adminUser): RedirectResponse
     {
+        $this->authorizePermission('adminusers.manage-avatar');
+
         $validator = Validator::make($request->all(), [
             'avatar' => ['nullable', 'image', 'max:2048'],
             'use_gravatar' => ['nullable', 'boolean'],
@@ -183,5 +217,19 @@ class AdminUserController extends Controller
     private function editTabUrl(Admin $adminUser, string $tab): string
     {
         return route('admin.admincenter.adminusers.edit', $adminUser).'#'.$tab;
+    }
+
+    private function currentRole(Admin $adminUser): ?Role
+    {
+        return $adminUser->roles->first()
+            ?? Role::query()
+                ->where('guard_name', 'admin')
+                ->where('name', $adminUser->role)
+                ->first();
+    }
+
+    private function authorizePermission(string $permission): void
+    {
+        abort_unless(auth('admin')->user()?->can($permission), 403);
     }
 }

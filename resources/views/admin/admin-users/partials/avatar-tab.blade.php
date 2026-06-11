@@ -6,6 +6,7 @@
     <div class="alert alert-danger">{{ $errors->first() }}</div>
 @endif
 
+@can('adminusers.manage-avatar')
 <div class="row">
     <div class="col-lg-6">
         <div class="card bg-dark">
@@ -81,3 +82,6 @@
         </div>
     </div>
 </div>
+@else
+    <div class="alert alert-warning mb-0">You do not have permission to manage admin user avatars.</div>
+@endcan

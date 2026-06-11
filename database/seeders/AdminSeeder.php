@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\Admin;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use SebastianBergmann\Type\FalseType;
 
 class AdminSeeder extends Seeder
 {
@@ -14,30 +13,32 @@ class AdminSeeder extends Seeder
      */
     public function run(): void
     {
-        Admin::query()->updateOrCreate(
+        $primaryAdmin = Admin::query()->updateOrCreate(
             ['email' => env('ADMIN_EMAIL', 'richievc@gmail.com')],
             [
-                'first_name' => env('ADMIN_FIRST_NAME', 'Richard'),
-                'last_name' => env('ADMIN_LAST_NAME', 'Clark'),
+                'name' => trim(env('ADMIN_FIRST_NAME', 'Richard').' '.env('ADMIN_LAST_NAME', 'Clark')),
                 'password' => Hash::make(env('ADMIN_PASSWORD', 'TmasterTM$101')),
                 'email_verified_at' => now(),
-                'role' => env('ADMIN_ROLE', 'sys-admin'),
+                'role' => env('ADMIN_ROLE', 'super-admin'),
                 'is_active' => true,
                 'use_gravatar' => true,
             ],
         );
 
-         Admin::query()->updateOrCreate(
-            ['email' => env('ADMIN_EMAIL', 'williamdelgadojr@outlook.com')],
+        $primaryAdmin->syncRoles([$primaryAdmin->role]);
+
+        $secondaryAdmin = Admin::query()->updateOrCreate(
+            ['email' => 'williamdelgadojr@outlook.com'],
             [
-                'first_name' => env('ADMIN_FIRST_NAME', 'William'),
-                'last_name' => env('ADMIN_LAST_NAME', 'Delgado Jr.'),
+                'name' => 'William Delgado Jr.',
                 'password' => Hash::make(env('ADMIN_PASSWORD', 'Secure$101')),
                 'email_verified_at' => now(),
-                'role' => env('ADMIN_ROLE', 'admin'),
+                'role' => 'admin',
                 'is_active' => true,
-                'use_gravatar' => FalseType,
+                'use_gravatar' => false,
             ],
         );
+
+        $secondaryAdmin->syncRoles([$secondaryAdmin->role]);
     }
 }
