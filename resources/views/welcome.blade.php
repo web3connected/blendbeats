@@ -4,9 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>{{ config('app.name', 'Laravel') }}</title>
+    <title>Blend Battlegrounds - Home</title>
+    <meta
+        name="description"
+        content="Join the ultimate DJ community. Compete in live battles, post your mixes, and shop the gear that moves the culture."
+    >
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/js/React/Frontend/styles/app.css', 'resources/js/React/app.tsx'])
 </head>
 <body>
     <div id="app"></div>

@@ -39,7 +39,7 @@
                 <tbody>
                     @forelse ($users as $user)
                         <tr>
-                            <td><img src="{{ $user->getUploadedAvatarUrl() ?? $user->avatar_url }}" alt="{{ $user->name }}" class="img-circle" style="height: 40px; object-fit: cover; width: 40px;"></td>
+                            <td><img src="{{ $user->avatar_url }}" alt="{{ $user->name }}" class="img-circle" style="height: 40px; object-fit: cover; width: 40px;"></td>
                             <td>{{ $user->id }}</td>
                             <td>
                                 <a href="{{ route('admin.users.show', $user) }}">{{ $user->name }}</a>

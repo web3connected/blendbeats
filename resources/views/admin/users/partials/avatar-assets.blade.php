@@ -108,6 +108,15 @@
             updatePreview();
         });
 
+        image.addEventListener('error', () => {
+            if (panel.dataset.initials) {
+                showInitials();
+                return;
+            }
+
+            showImage(fallbackUrl, 'Default Fallback Image');
+        });
+
         gravatarToggle.addEventListener('change', updatePreview);
         updatePreview();
     });

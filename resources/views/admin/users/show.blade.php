@@ -24,7 +24,7 @@
         <div class="card-body">
             <div class="row">
                 <div class="col-lg-4 text-center mb-4 mb-lg-0">
-                    <img src="{{ $user->getUploadedAvatarUrl() ?? $user->avatar_url }}" alt="{{ $user->name }}" class="img-circle elevation-2 mb-3" style="height: 160px; object-fit: cover; width: 160px;">
+                    <img src="{{ $user->avatar_url }}" alt="{{ $user->name }}" class="img-circle elevation-2 mb-3" style="height: 160px; object-fit: cover; width: 160px;">
                     <h4 class="mb-1">{{ $user->name }}</h4>
                     <p class="text-muted mb-0">{{ ucfirst($user->avatar_source) }} Avatar</p>
                 </div>

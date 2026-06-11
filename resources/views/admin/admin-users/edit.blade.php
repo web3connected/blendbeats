@@ -50,7 +50,7 @@
                     id="avatar-upload"
                     role="tabpanel"
                     data-avatar-panel
-                    data-uploaded-avatar="{{ $adminUser->avatar ? $adminUser->avatar_url : '' }}"
+                    data-uploaded-avatar="{{ $adminUser->getUploadedAvatarUrl() ?? '' }}"
                     data-gravatar="{{ $adminUser->getGravatarUrl(192) }}"
                     data-initials="{{ $adminUser->getInitials() }}"
                     data-name="{{ $adminUser->name }}"
@@ -173,6 +173,15 @@
                 }
 
                 updatePreview();
+            });
+
+            image.addEventListener('error', () => {
+                if (panel.dataset.initials) {
+                    showInitials();
+                    return;
+                }
+
+                showImage(fallbackUrl, 'Default Fallback Image');
             });
 
             gravatarToggle.addEventListener('change', updatePreview);

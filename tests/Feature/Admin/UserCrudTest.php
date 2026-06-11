@@ -136,6 +136,7 @@ class UserCrudTest extends TestCase
         $user->refresh();
 
         $this->assertNotNull($user->avatar);
+        $this->assertStringStartsWith('media/accounts/avatar/', $user->avatar);
         $this->assertFalse($user->use_gravatar);
         $this->assertFalse($user->is_gravatar);
         Storage::disk('public')->assertExists($user->avatar);

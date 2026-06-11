@@ -49,6 +49,7 @@
                     <div class="form-group">
                         <label for="avatar">Uploaded Avatar</label>
                         <input id="avatar" data-avatar-file type="file" name="avatar" class="form-control-file @error('avatar') is-invalid @enderror" accept="image/*">
+                        <small class="form-text text-muted">Max {{ number_format(config('media_storage.avatar.max_kilobytes', 5120) / 1024) }} MB.</small>
                         @error('avatar') <span class="invalid-feedback d-block">{{ $message }}</span> @enderror
                     </div>
 

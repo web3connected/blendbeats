@@ -13,26 +13,34 @@ trait AvatarTrait
 
     public function getAvatarUrl(?int $size = null): string
     {
-        if ($this->usesGravatar()) {
-            return $this->getGravatarUrl($size);
-        }
-
         if ($this->avatar) {
             if (filter_var($this->avatar, FILTER_VALIDATE_URL)) {
                 return $this->avatar;
             }
 
-            // Support new per-account avatar path: accounts/{account_slug}/avatar/{file}
+            // Support public disk avatar paths such as media/accounts/avatar/{file}.
+            if (str_starts_with($this->avatar, 'media/')) {
+                if (Storage::disk('public')->exists($this->avatar)) {
+                    return $this->publicStorageUrl($this->avatar);
+                }
+
+                return asset($this->avatar);
+            }
+
+            // Support legacy per-account avatar paths: accounts/{account_slug}/avatar/{file}.
             if (str_starts_with($this->avatar, 'accounts/')) {
                 if (Storage::disk('public')->exists($this->avatar)) {
-                    return Storage::disk('public')->url($this->avatar);
+                    return $this->publicStorageUrl($this->avatar);
                 }
 
                 return asset('media/'.$this->avatar);
             }
 
-            // Fallback for legacy avatars stored directly under accounts/avatars/
-            return asset('media/accounts/avatars/'.ltrim($this->avatar, '/'));
+            return asset('media/accounts/avatar/'.ltrim($this->avatar, '/'));
+        }
+
+        if ($this->usesGravatar()) {
+            return $this->getGravatarUrl($size);
         }
 
         return $this->getGeneratedAvatarUrl($size);
@@ -58,15 +66,15 @@ trait AvatarTrait
 
     public function getAvatarSourceAttribute(): string
     {
-        if ($this->usesGravatar()) {
-            return 'gravatar';
-        }
-
         if (filter_var($this->avatar, FILTER_VALIDATE_URL)) {
             return 'url';
         }
 
-        return $this->avatar ? 'uploaded' : 'generated';
+        if ($this->avatar) {
+            return 'uploaded';
+        }
+
+        return $this->usesGravatar() ? 'gravatar' : 'generated';
     }
 
     public function usesGravatar(): bool
@@ -84,15 +92,23 @@ trait AvatarTrait
             return $this->avatar;
         }
 
+        if (str_starts_with($this->avatar, 'media/')) {
+            if (Storage::disk('public')->exists($this->avatar)) {
+                return $this->publicStorageUrl($this->avatar);
+            }
+
+            return asset($this->avatar);
+        }
+
         if (str_starts_with($this->avatar, 'accounts/')) {
             if (Storage::disk('public')->exists($this->avatar)) {
-                return Storage::disk('public')->url($this->avatar);
+                return $this->publicStorageUrl($this->avatar);
             }
 
             return asset('media/'.$this->avatar);
         }
 
-        return asset('media/accounts/avatars/'.ltrim($this->avatar, '/'));
+        return asset('media/accounts/avatar/'.ltrim($this->avatar, '/'));
     }
 
     public function getInitials(): string
@@ -118,8 +134,8 @@ trait AvatarTrait
 
     public function setAvatarFromFile(string $filePath): void
     {
-        if (! str_starts_with($filePath, 'accounts/')) {
-            $filePath = 'accounts/avatars/'.basename($filePath);
+        if (! str_starts_with($filePath, 'media/accounts/avatar/')) {
+            $filePath = 'media/accounts/avatar/'.basename($filePath);
         }
 
         $this->avatar = $filePath;
@@ -140,15 +156,22 @@ trait AvatarTrait
 
     public function getGeneratedAvatarUrl(?int $size = null): string
     {
-        $name = trim((string) ($this->name ?? $this->email ?? 'BlendBeats'));
         $dimension = $size ?: 128;
+        $fontSize = (int) round($dimension * 0.42);
+        $initials = e($this->getInitials());
 
-        return 'https://ui-avatars.com/api/?'.http_build_query([
-            'name' => $name,
-            'size' => $dimension,
-            'background' => 'dc3545',
-            'color' => 'fff',
-            'bold' => 'true',
-        ]);
+        $svg = <<<SVG
+        <svg xmlns="http://www.w3.org/2000/svg" width="{$dimension}" height="{$dimension}" viewBox="0 0 {$dimension} {$dimension}">
+            <rect width="{$dimension}" height="{$dimension}" rx="{$dimension}" fill="#dc3545"/>
+            <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="{$fontSize}" font-weight="700">{$initials}</text>
+        </svg>
+        SVG;
+
+        return 'data:image/svg+xml;charset=UTF-8,'.rawurlencode($svg);
+    }
+
+    private function publicStorageUrl(string $path): string
+    {
+        return url('/storage/'.ltrim($path, '/'));
     }
 }

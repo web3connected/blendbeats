@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Traits\AvatarTrait;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -19,7 +21,7 @@ class Admin extends Authenticatable
 
     public function adminlte_image(): string
     {
-        return $this->avatar_url;
+        return $this->getAvatarUrl(128);
     }
 
     public function adminlte_desc(): string
@@ -35,5 +37,20 @@ class Admin extends Authenticatable
             'is_active' => 'boolean',
             'use_gravatar' => 'boolean',
         ];
+    }
+
+    public function mediaFiles(): HasMany
+    {
+        return $this->hasMany(MediaFile::class);
+    }
+
+    public function mediaAccount(): HasOne
+    {
+        return $this->hasOne(MediaAccount::class);
+    }
+
+    public function featureActivations(): HasMany
+    {
+        return $this->hasMany(UserFeatureActivation::class);
     }
 }

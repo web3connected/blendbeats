@@ -144,7 +144,7 @@ class UserController extends Controller
     private function updateAvatar(Request $request, User $user): RedirectResponse
     {
         $validator = Validator::make($request->all(), [
-            'avatar' => ['nullable', 'image', 'max:2048'],
+            'avatar' => ['nullable', 'image', 'max:'.config('media_storage.avatar.max_kilobytes', 5120)],
             'use_gravatar' => ['nullable', 'boolean'],
         ]);
 
@@ -165,7 +165,7 @@ class UserController extends Controller
                     ->withInput($request->except('avatar'));
             }
 
-            $updates['avatar'] = $request->file('avatar')->store("accounts/users/{$user->id}/avatar", 'public');
+            $updates['avatar'] = $request->file('avatar')->store('media/accounts/avatar', 'public');
         }
 
         if (Schema::hasColumn($user->getTable(), 'use_gravatar')) {

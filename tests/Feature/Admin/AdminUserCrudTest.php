@@ -183,6 +183,7 @@ class AdminUserCrudTest extends TestCase
         $adminUser->refresh();
 
         $this->assertNotNull($adminUser->avatar);
+        $this->assertStringStartsWith('media/accounts/avatar/', $adminUser->avatar);
         $this->assertFalse($adminUser->use_gravatar);
         Storage::disk('public')->assertExists($adminUser->avatar);
 

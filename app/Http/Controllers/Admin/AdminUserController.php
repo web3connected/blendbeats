@@ -176,7 +176,7 @@ class AdminUserController extends Controller
         $this->authorizePermission('adminusers.manage-avatar');
 
         $validator = Validator::make($request->all(), [
-            'avatar' => ['nullable', 'image', 'max:2048'],
+            'avatar' => ['nullable', 'image', 'max:'.config('media_storage.avatar.max_kilobytes', 5120)],
             'use_gravatar' => ['nullable', 'boolean'],
         ]);
 
@@ -197,7 +197,7 @@ class AdminUserController extends Controller
                     ->withInput($request->except('avatar'));
             }
 
-            $updates['avatar'] = $request->file('avatar')->store("accounts/admins/{$adminUser->id}/avatar", 'public');
+            $updates['avatar'] = $request->file('avatar')->store('media/accounts/avatar', 'public');
         }
 
         if (Schema::hasColumn($adminUser->getTable(), 'use_gravatar')) {
