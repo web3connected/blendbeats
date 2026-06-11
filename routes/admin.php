@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ResourcePlaceholderController;
+use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest:admin')->group(function (): void {
@@ -58,9 +59,7 @@ Route::middleware('admin.auth')->group(function (): void {
     Route::get('admincenter/adminpermissions', [AdminPermissionController::class, 'index'])
         ->name('admincenter.adminpermissions.index');
 
-    Route::get('user-accounts', ResourcePlaceholderController::class)
-        ->defaults('resource', 'users')
-        ->name('user-accounts');
+    Route::resource('users', UserController::class);
 
     Route::prefix('resources')->name('resources.')->group(function (): void {
         Route::get('{resource}', ResourcePlaceholderController::class)

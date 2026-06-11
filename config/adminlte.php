@@ -352,11 +352,11 @@ return [
             ],
         ],
         ['header' => 'User Management'],
-        [
-            'text' => 'User Accounts',
-            'url' => 'admin/user-accounts',
-            'icon' => 'fas fa-fw fa-users',
-        ],
+         [
+             'text' => 'User Accounts',
+             'url' => 'admin/users',
+             'icon' => 'fas fa-fw fa-users',
+         ],
         [
             'text' => 'Settings',
             'url' => 'admin/resources/settings',
