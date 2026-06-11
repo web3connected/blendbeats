@@ -2,42 +2,119 @@ const app = document.querySelector("#app");
 
 if (app) {
     app.innerHTML = `
-        <main class="next-page">
-            <section class="next-main" aria-labelledby="home-title">
-                <div class="next-logo" aria-label="Next.js">Next.js</div>
+        <main class="blendbeats-page">
+            <section class="hero">
+                <div class="container">
+                    <span class="badge">🎧 Monthly DJ Battles</span>
 
-                <ol class="next-steps">
-                    <li>
-                        Get started by editing
-                        <code>resources/js/app.js</code>.
-                    </li>
-                    <li>Save and see your changes instantly.</li>
-                </ol>
+                    <h1>BlendBeats</h1>
 
-                <div class="next-actions">
-                    <a
-                        class="next-button next-button-primary"
-                        href="https://vercel.com/new"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        Deploy now
-                    </a>
-                    <a
-                        class="next-button next-button-secondary"
-                        href="https://nextjs.org/docs"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        Read our docs
-                    </a>
+                    <p class="hero-text">
+                        Compete against DJs from around the world using the
+                        same monthly sample pack. Submit your mix, earn votes,
+                        climb the rankings, and win prizes.
+                    </p>
+
+                    <div class="hero-actions">
+                        <a href="/register" class="btn btn-primary">
+                            Join Competition
+                        </a>
+
+                        <a href="/rankings" class="btn btn-secondary">
+                            View Rankings
+                        </a>
+                    </div>
                 </div>
             </section>
 
-            <footer class="next-footer">
-                <a href="https://nextjs.org/learn" target="_blank" rel="noopener noreferrer">Learn</a>
-                <a href="https://vercel.com/templates" target="_blank" rel="noopener noreferrer">Examples</a>
-                <a href="https://nextjs.org" target="_blank" rel="noopener noreferrer">Go to nextjs.org</a>
+            <section class="features">
+                <div class="container">
+                    <h2>How It Works</h2>
+
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <h3>1. Download Samples</h3>
+                            <p>
+                                Every month receives a new sample pack
+                                generated for the competition.
+                            </p>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3>2. Create Your Mix</h3>
+                            <p>
+                                Build your best routine using the provided
+                                sounds and your own creativity.
+                            </p>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3>3. Submit Entry</h3>
+                            <p>
+                                Upload your performance before the competition
+                                deadline.
+                            </p>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3>4. Community Voting</h3>
+                            <p>
+                                Members vote for their favorite DJs and battle
+                                performances.
+                            </p>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3>5. Win Rewards</h3>
+                            <p>
+                                Earn rankings, badges, recognition, and prize
+                                pool rewards.
+                            </p>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3>6. Build Your Career</h3>
+                            <p>
+                                Showcase your profile, mixes, and achievements
+                                to promoters and fans.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="competition">
+                <div class="container">
+                    <h2>Current Competition</h2>
+
+                    <div class="competition-card">
+                        <h3>Summer Battle 2026</h3>
+
+                        <p>
+                            Submit your mix using this month's official sample
+                            pack and compete for the top spot.
+                        </p>
+
+                        <ul>
+                            <li>🎵 3 Official Samples</li>
+                            <li>🏆 Community Voting</li>
+                            <li>🎖 DJ Rankings</li>
+                            <li>💰 Prize Pool</li>
+                        </ul>
+
+                        <a href="/competition" class="btn btn-primary">
+                            Enter Battle
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <footer class="footer">
+                <div class="container">
+                    <p>
+                        © 2026 BlendBeats • DJ Battles • Competitions • Community
+                    </p>
+                </div>
             </footer>
         </main>
     `;

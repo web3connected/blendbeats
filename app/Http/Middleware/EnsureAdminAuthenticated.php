@@ -18,6 +18,8 @@ class EnsureAdminAuthenticated
             return redirect()->guest(route('admin.login'));
         }
 
+        Auth::shouldUse('admin');
+
         if (! Auth::guard('admin')->user()?->is_active) {
             Auth::guard('admin')->logout();
             $request->session()->invalidate();

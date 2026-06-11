@@ -22,13 +22,23 @@ class ResourcePlaceholderController extends Controller
     private function resources(): array
     {
         return [
+            'account' => [
+                'title' => 'Account',
+                'icon' => 'fas fa-user-shield',
+                'description' => 'Manage the signed-in administrator profile and account preferences.',
+            ],
             'users' => [
-                'title' => 'Users',
+                'title' => 'User Accounts',
                 'icon' => 'fas fa-users',
                 'description' => 'Manage public accounts, DJs, fans, and user status.',
             ],
+            'admin-users' => [
+                'title' => 'Admin Users',
+                'icon' => 'fas fa-user-shield',
+                'description' => 'Manage administrator accounts, access status, and admin identity.',
+            ],
             'roles' => [
-                'title' => 'Roles',
+                'title' => 'Role Manager',
                 'icon' => 'fas fa-user-shield',
                 'description' => 'Prepare administrator roles and future permission assignments.',
             ],

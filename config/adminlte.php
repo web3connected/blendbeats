@@ -142,10 +142,10 @@ return [
     */
 
     'usermenu_enabled' => true,
-    'usermenu_header' => false,
-    'usermenu_header_class' => 'bg-primary',
-    'usermenu_image' => false,
-    'usermenu_desc' => false,
+    'usermenu_header' => true,
+    'usermenu_header_class' => 'bg-dark',
+    'usermenu_image' => true,
+    'usermenu_desc' => true,
     'usermenu_profile_url' => false,
 
     /*
@@ -317,6 +317,12 @@ return [
             'type' => 'fullscreen-widget',
             'topnav_right' => true,
         ],
+        [
+            'text' => 'Account',
+            'icon' => 'fas fa-fw fa-user-shield',
+            'url' => 'admin/account',
+            'topnav_user' => true,
+        ],
 
         // Sidebar items:
         [
@@ -324,21 +330,32 @@ return [
             'url' => 'admin',
             'icon' => 'fas fa-fw fa-tachometer-alt',
         ],
-        ['header' => 'Management'],
         [
-            'text' => 'Users',
-            'url' => 'admin/resources/users',
+            'text' => 'Admin Center',
+            'icon' => 'fas fa-fw fa-users-cog',
+            'submenu' => [
+                [
+                    'text' => 'Admin Users',
+                    'url' => 'admin/admincenter/adminusers',
+                    'icon' => 'fas fa-fw fa-user-shield',
+                ],
+                [
+                    'text' => 'Role Manager',
+                    'url' => 'admin/admin-center/roles',
+                    'icon' => 'fas fa-fw fa-user-lock',
+                ],
+                [
+                    'text' => 'Permissions',
+                    'url' => 'admin/admin-center/permissions',
+                    'icon' => 'fas fa-fw fa-key',
+                ],
+            ],
+        ],
+        ['header' => 'User Management'],
+        [
+            'text' => 'User Accounts',
+            'url' => 'admin/user-accounts',
             'icon' => 'fas fa-fw fa-users',
-        ],
-        [
-            'text' => 'Roles',
-            'url' => 'admin/resources/roles',
-            'icon' => 'fas fa-fw fa-user-shield',
-        ],
-        [
-            'text' => 'Permissions',
-            'url' => 'admin/resources/permissions',
-            'icon' => 'fas fa-fw fa-key',
         ],
         [
             'text' => 'Settings',
