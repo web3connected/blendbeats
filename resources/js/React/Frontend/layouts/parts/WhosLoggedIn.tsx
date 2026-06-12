@@ -1,4 +1,4 @@
-import { ChevronDown, LayoutDashboard, LogIn, LogOut, Radio, Settings, User, UserPlus } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, LogIn, LogOut, Music2, Radio, Settings, User, UserPlus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -105,6 +105,14 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
             {djProfileLabel}
           </Link>
           <Link
+            to="/dj/portfolio"
+            onClick={onNavigate}
+            className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
+          >
+            <Music2 size={15} />
+            DJ Portfolio
+          </Link>
+          <Link
             to="/account"
             onClick={onNavigate}
             className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
@@ -165,6 +173,15 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
           >
             <Radio size={15} />
             {djProfileLabel}
+          </Link>
+          <Link
+            to="/dj/portfolio"
+            onClick={() => setIsOpen(false)}
+            className="flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
+            role="menuitem"
+          >
+            <Music2 size={15} />
+            DJ Portfolio
           </Link>
           <Link
             to="/account"

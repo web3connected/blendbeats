@@ -1,6 +1,7 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowRight,
+  CreditCard,
   ListMusic,
   Music2,
   Radio,
@@ -52,6 +53,51 @@ const dashboardActions = [
   },
 ];
 
+const membershipTiers: Record<string, { label: string; storage: string; groups: string; tone: string }> = {
+  free: {
+    label: 'Free Tier',
+    storage: '500 MB storage',
+    groups: 'Group F promotion access',
+    tone: 'Core BlendBeats access is active.',
+  },
+  starter: {
+    label: 'Free Tier',
+    storage: '500 MB storage',
+    groups: 'Group F promotion access',
+    tone: 'Core BlendBeats access is active.',
+  },
+  dj_plus: {
+    label: 'DJ Plus',
+    storage: '3 GB storage',
+    groups: 'Groups E-F promotion access',
+    tone: 'Extra growth tools are active.',
+  },
+  growth: {
+    label: 'DJ Plus',
+    storage: '3 GB storage',
+    groups: 'Groups E-F promotion access',
+    tone: 'Extra growth tools are active.',
+  },
+  dj_pro: {
+    label: 'DJ Pro',
+    storage: '10 GB storage',
+    groups: 'Groups C-F promotion access',
+    tone: 'Pro growth tools are active.',
+  },
+  premium: {
+    label: 'DJ Pro',
+    storage: '10 GB storage',
+    groups: 'Groups C-F promotion access',
+    tone: 'Pro growth tools are active.',
+  },
+  dj_elite: {
+    label: 'DJ Elite',
+    storage: '25 GB storage',
+    groups: 'Groups A-F promotion access',
+    tone: 'Elite growth and promotion access is active.',
+  },
+};
+
 export default function UserDashboardPage() {
   const { user, isLoading } = useAuth();
 
@@ -68,6 +114,9 @@ export default function UserDashboardPage() {
   if (!user) return <Navigate to="/login" replace />;
 
   const hasDjProfile = Boolean(user.dj_profile);
+  const tierKey = user.media_storage_tier ?? 'free';
+  const membership = membershipTiers[tierKey] ?? membershipTiers.free;
+  const isFreeTier = ['free', 'starter'].includes(tierKey);
   const djProfileActionLabel = hasDjProfile ? 'Edit DJ Profile' : 'Start DJ Career';
   const djProfileStatus = hasDjProfile ? 'DJ profile active' : 'DJ profile not started';
   const actions = dashboardActions.map((action) =>
@@ -127,6 +176,35 @@ export default function UserDashboardPage() {
                 {djProfileActionLabel}
                 <ArrowRight size={17} />
               </Link>
+            </div>
+
+            <div className="mt-8 border border-[#303030] bg-[#111111] p-5 sm:p-6">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center bg-primary text-white">
+                    <CreditCard size={20} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#FFB800]" style={{ fontFamily: 'var(--font-heading)' }}>
+                      Membership
+                    </p>
+                    <h2 className="mt-1 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                      {membership.label}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-[#aaaaaa]">
+                      {membership.tone} You have {membership.storage} and {membership.groups}.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  to={isFreeTier ? '/pricing' : `/subscription?plan=${tierKey}`}
+                  className="inline-flex h-12 items-center justify-center gap-2 border border-primary px-5 text-sm font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary hover:text-white"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                >
+                  {isFreeTier ? 'Upgrade Membership' : 'Manage Membership'}
+                  <ArrowRight size={16} />
+                </Link>
+              </div>
             </div>
           </div>
         </section>
