@@ -123,7 +123,7 @@ const DJHero = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.65, duration: 0.5 }}
-          className="relative z-10 border-t border-[#ffffff10] bg-[#0a0a0a]/70 backdrop-blur-md"
+          className="relative z-10 border-t border-[#ffffff10] bg-[#0a0a0a]/70 "
         >
           <div className="container mx-auto px-4 lg:px-8">
             <div className="flex flex-wrap items-stretch divide-x divide-[#ffffff10]">
