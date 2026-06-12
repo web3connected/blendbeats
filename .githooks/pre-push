@@ -15,11 +15,4 @@ if [ "$should_deploy" -ne 1 ]; then
   exit 0
 fi
 
-echo "pre-push: main branch push detected; deploying production."
-
-if [ ! -x scripts/deploy-production.sh ]; then
-  echo "pre-push: scripts/deploy-production.sh is missing or not executable." >&2
-  exit 1
-fi
-
-sh scripts/deploy-production.sh
+echo "pre-push: main branch push detected; Forge handles deployment."
