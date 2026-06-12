@@ -30,7 +30,7 @@ const DJHero = () => {
         {/* Vertical red slash accent */}
         <div
           className="absolute top-0 bottom-0 w-[3px] bg-primary hidden lg:block"
-          style={{ left: '55%', transform: 'skewX(-6deg)', boxShadow: '0 0 40px rgba(255,26,26,0.8), 0 0 80px rgba(255,26,26,0.3)' }}
+          style={{ left: 'calc(50% - 225px)', transform: 'skewX(-6deg)', boxShadow: '0 0 40px rgba(255,26,26,0.8), 0 0 80px rgba(255,26,26,0.3)' }}
         />
 
         {/* Main content — vertically centered, takes up full height */}
