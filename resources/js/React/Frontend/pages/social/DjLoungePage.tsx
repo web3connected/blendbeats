@@ -2,12 +2,16 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Heart,
   MessageCircle,
+  MoreHorizontal,
+  Pencil,
   Radio,
   Repeat2,
   Bookmark,
+  Flag,
   Send,
   Share2,
   Sparkles,
+  Trash2,
   Users,
 } from 'lucide-react';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
@@ -20,6 +24,8 @@ import { useFeaturedDjs } from '@/hooks/use-featured-djs';
 import {
   createDjLoungePost,
   createDjLoungeReply,
+  deleteDjLoungePost,
+  reportDjLoungePost,
   type DjLoungePost,
   type DjLoungeReply,
   type DjLoungeStats,
@@ -28,6 +34,7 @@ import {
   toggleDjLoungePostBookmark,
   toggleDjLoungePostReaction,
   toggleDjLoungePostRepost,
+  updateDjLoungePost,
 } from '@/lib/dj-lounge';
 
 function LoungeAvatar({
@@ -164,6 +171,9 @@ function PostCard({
   onLike,
   onRepost,
   onBookmark,
+  onEdit,
+  onDelete,
+  onReport,
   onReply,
 }: {
   post: DjLoungePost;
@@ -172,9 +182,29 @@ function PostCard({
   onLike: (postId: string) => void;
   onRepost: (postId: string) => void;
   onBookmark: (postId: string) => void;
+  onEdit: (postId: string, body: string) => Promise<void>;
+  onDelete: (postId: string) => Promise<void>;
+  onReport: (postId: string) => Promise<void>;
   onReply: (postId: string, body: string, parentId?: string) => Promise<void>;
 }) {
   const [isThreadOpen, setIsThreadOpen] = useState(post.replies.length > 0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editBody, setEditBody] = useState(post.body);
+
+  useEffect(() => {
+    setEditBody(post.body);
+  }, [post.body]);
+
+  const submitEdit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextBody = editBody.trim();
+    if (!nextBody) return;
+
+    await onEdit(post.id, nextBody);
+    setIsEditing(false);
+    setIsMenuOpen(false);
+  };
 
   return (
     <article className="border-b border-[#222222] bg-[#0d0d0d] p-4 transition-colors hover:bg-[#111111] sm:p-5">
@@ -186,24 +216,120 @@ function PostCard({
           className="h-11 w-11 shrink-0 text-lg"
         />
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="font-semibold text-white">{post.authorName}</p>
-            <span className="text-sm text-[#777777]">{post.handle}</span>
-            <span className="text-sm text-[#555555]">{post.timestamp}</span>
-            {post.isLive && (
-              <span
-                className="inline-flex items-center gap-1 bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white"
-                style={{ fontFamily: 'var(--font-heading)' }}
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="font-semibold text-white">{post.authorName}</p>
+                <span className="text-sm text-[#777777]">{post.handle}</span>
+                <span className="text-sm text-[#555555]">{post.timestamp}</span>
+                {post.isLive && (
+                  <span
+                    className="inline-flex items-center gap-1 bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white"
+                    style={{ fontFamily: 'var(--font-heading)' }}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                    Live
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 text-xs uppercase tracking-widest text-[#777777]">{post.role}</p>
+            </div>
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen((current) => !current)}
+                className="inline-flex h-9 w-9 items-center justify-center text-[#888888] transition-colors hover:text-white"
+                aria-label="Post actions"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                Live
-              </span>
-            )}
+                <MoreHorizontal size={18} />
+              </button>
+              {isMenuOpen && (
+                <div className="absolute right-0 top-10 z-20 w-44 border border-[#303030] bg-[#0a0a0a] p-1 shadow-2xl shadow-black/50">
+                  {post.canManage ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditing(true);
+                          setIsMenuOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#dddddd] hover:bg-[#161616] hover:text-primary"
+                      >
+                        <Pencil size={14} />
+                        Edit post
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          void onDelete(post.id);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#dddddd] hover:bg-[#161616] hover:text-primary"
+                      >
+                        <Trash2 size={14} />
+                        Delete post
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          void onReport(post.id);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#dddddd] hover:bg-[#161616] hover:text-primary"
+                      >
+                        <Flag size={14} />
+                        Report post
+                      </button>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#777777] hover:bg-[#161616]"
+                      >
+                        Hide post
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          <p className="mt-0.5 text-xs uppercase tracking-widest text-[#777777]">{post.role}</p>
-          <div className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#dddddd] sm:text-base">
-            {post.body}
-          </div>
+
+          {isEditing ? (
+            <form onSubmit={submitEdit} className="mt-3 grid gap-3">
+              <textarea
+                value={editBody}
+                onChange={(event) => setEditBody(event.target.value)}
+                className="min-h-32 w-full resize-none border border-[#303030] bg-[#080808] p-3 text-sm leading-6 text-white outline-none transition-colors focus:border-primary"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditBody(post.body);
+                    setIsEditing(false);
+                  }}
+                  className="h-9 border border-[#333333] px-3 text-xs font-bold uppercase tracking-widest text-[#dddddd] hover:border-white"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!editBody.trim()}
+                  className="h-9 bg-primary px-3 text-xs font-bold uppercase tracking-widest text-white hover:bg-primary/90 disabled:opacity-50"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#dddddd] sm:text-base">
+              {post.body}
+            </div>
+          )}
 
           {post.mediaTitle && (
             <div className="mt-4 border border-[#303030] bg-[#080808] p-4">
@@ -474,6 +600,49 @@ export default function DjLoungePage() {
     }
   };
 
+  const handleEditPost = async (postId: string, body: string) => {
+    if (!user) return;
+
+    try {
+      setError(null);
+      const updatedPost = await updateDjLoungePost(postId, body);
+      setPosts((currentPosts) => currentPosts.map((post) => (post.id === postId ? updatedPost : post)));
+    } catch (editError) {
+      setError(editError instanceof Error ? editError.message : 'That post could not be updated.');
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!user) return;
+
+    try {
+      setError(null);
+      await deleteDjLoungePost(postId);
+      setPosts((currentPosts) => currentPosts.filter((post) => post.id !== postId));
+      setStats((currentStats) => ({
+        ...currentStats,
+        postsToday: Math.max(currentStats.postsToday - 1, 0),
+      }));
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'That post could not be deleted.');
+    }
+  };
+
+  const handleReportPost = async (postId: string) => {
+    if (!user) {
+      setError('Log in to report a post.');
+      return;
+    }
+
+    try {
+      setError(null);
+      await reportDjLoungePost(postId);
+      setError('Thanks. The post was reported for review.');
+    } catch (reportError) {
+      setError(reportError instanceof Error ? reportError.message : 'That report could not be submitted.');
+    }
+  };
+
   const handleReply = async (postId: string, body: string, parentId?: string) => {
     if (!user) return;
 
@@ -635,6 +804,9 @@ export default function DjLoungePage() {
                     onLike={handleLike}
                     onRepost={handleRepost}
                     onBookmark={handleBookmark}
+                    onEdit={handleEditPost}
+                    onDelete={handleDeletePost}
+                    onReport={handleReportPost}
                     onReply={handleReply}
                   />
                 ))

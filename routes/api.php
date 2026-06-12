@@ -52,6 +52,9 @@ Route::prefix('dj-lounge')->name('api.dj-lounge.')->group(function (): void {
 
     Route::middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])->group(function (): void {
         Route::post('posts', [DjLoungeController::class, 'store'])->name('posts.store');
+        Route::put('posts/{post}', [DjLoungeController::class, 'update'])->name('posts.update');
+        Route::delete('posts/{post}', [DjLoungeController::class, 'destroy'])->name('posts.destroy');
+        Route::post('posts/{post}/report', [DjLoungeController::class, 'report'])->name('posts.report');
         Route::post('posts/{post}/replies', [DjLoungeController::class, 'storeReply'])->name('posts.replies.store');
         Route::post('posts/{post}/reaction', [DjLoungeController::class, 'toggleReaction'])->name('posts.reaction');
         Route::post('posts/{post}/repost', [DjLoungeController::class, 'toggleRepost'])->name('posts.repost');

@@ -11,6 +11,7 @@ export interface DjLoungePost {
   role: string;
   timestamp: string;
   body: string;
+  canManage?: boolean;
   genre: string;
   mediaTitle?: string | null;
   mediaUrl?: string | null;
@@ -134,6 +135,29 @@ export async function createDjLoungePost(body: string): Promise<DjLoungePost> {
   });
 
   return data.post;
+}
+
+export async function updateDjLoungePost(postId: string, body: string): Promise<DjLoungePost> {
+  const data = await request<PostResponse>(`/dj-lounge/posts/${postId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ body }),
+  });
+
+  return data.post;
+}
+
+export async function deleteDjLoungePost(postId: string): Promise<{ deleted: boolean }> {
+  return request(`/dj-lounge/posts/${postId}`, { method: 'DELETE' });
+}
+
+export async function reportDjLoungePost(
+  postId: string,
+  reason = 'other',
+): Promise<{ reported: boolean }> {
+  return request(`/dj-lounge/posts/${postId}/report`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
 }
 
 export async function createDjLoungeReply(

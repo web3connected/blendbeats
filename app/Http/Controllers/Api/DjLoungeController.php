@@ -28,16 +28,7 @@ class DjLoungeController extends Controller
 
         $userId = $request->user()?->id;
 
-        $posts = DB::table('dj_lounge_posts')
-            ->join('users', 'users.id', '=', 'dj_lounge_posts.user_id')
-            ->select([
-                'dj_lounge_posts.*',
-                'users.name as author_name',
-                'users.email as author_email',
-                'users.avatar as author_avatar',
-                'users.is_gravatar as author_is_gravatar',
-                'users.use_gravatar as author_use_gravatar',
-            ])
+        $posts = $this->postQuery()
             ->where('dj_lounge_posts.status', 'published')
             ->where('dj_lounge_posts.visibility', 'public')
             ->whereNull('dj_lounge_posts.deleted_at')
@@ -77,7 +68,18 @@ class DjLoungeController extends Controller
             'updated_at' => now(),
         ]);
 
-        $post = DB::table('dj_lounge_posts')
+        $post = $this->postQuery()
+            ->where('dj_lounge_posts.id', $postId)
+            ->first();
+
+        return response()->json([
+            'post' => $this->postPayload($post, $user->id),
+        ], Response::HTTP_CREATED);
+    }
+
+    private function postQuery(): Builder
+    {
+        return DB::table('dj_lounge_posts')
             ->join('users', 'users.id', '=', 'dj_lounge_posts.user_id')
             ->select([
                 'dj_lounge_posts.*',
@@ -86,13 +88,7 @@ class DjLoungeController extends Controller
                 'users.avatar as author_avatar',
                 'users.is_gravatar as author_is_gravatar',
                 'users.use_gravatar as author_use_gravatar',
-            ])
-            ->where('dj_lounge_posts.id', $postId)
-            ->first();
-
-        return response()->json([
-            'post' => $this->postPayload($post, $user->id),
-        ], Response::HTTP_CREATED);
+            ]);
     }
 
     public function storeReply(Request $request, string $post): JsonResponse
@@ -151,6 +147,78 @@ class DjLoungeController extends Controller
             'reply' => $this->replyPayload($reply, []),
             'comment_count' => (int) DB::table('dj_lounge_posts')->where('id', $post->id)->value('comment_count'),
         ], Response::HTTP_CREATED);
+    }
+
+    public function update(Request $request, string $post): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user, Response::HTTP_UNAUTHORIZED);
+        $post = $this->publicPostOrFail($post);
+        abort_unless((int) $post->user_id === (int) $user->id, Response::HTTP_FORBIDDEN);
+
+        $attributes = $request->validate([
+            'body' => ['required', 'string', 'max:10000'],
+        ]);
+
+        DB::table('dj_lounge_posts')
+            ->where('id', $post->id)
+            ->update([
+                'body' => $attributes['body'],
+                'updated_at' => now(),
+            ]);
+
+        $updatedPost = $this->postQuery()
+            ->where('dj_lounge_posts.id', $post->id)
+            ->first();
+
+        return response()->json([
+            'post' => $this->postPayload($updatedPost, $user->id),
+        ]);
+    }
+
+    public function destroy(Request $request, string $post): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user, Response::HTTP_UNAUTHORIZED);
+        $post = $this->publicPostOrFail($post);
+        abort_unless((int) $post->user_id === (int) $user->id, Response::HTTP_FORBIDDEN);
+
+        DB::table('dj_lounge_posts')
+            ->where('id', $post->id)
+            ->update([
+                'status' => 'archived',
+                'deleted_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        return response()->json(['deleted' => true]);
+    }
+
+    public function report(Request $request, string $post): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user, Response::HTTP_UNAUTHORIZED);
+        $post = $this->publicPostOrFail($post);
+        abort_if((int) $post->user_id === (int) $user->id, Response::HTTP_UNPROCESSABLE_ENTITY, 'You cannot report your own post.');
+        abort_unless(Schema::hasTable('dj_lounge_reports'), Response::HTTP_SERVICE_UNAVAILABLE, 'DJLounge reports are not available right now.');
+
+        $attributes = $request->validate([
+            'reason' => ['nullable', 'in:spam,harassment,copyright,explicit,impersonation,other'],
+            'details' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        DB::table('dj_lounge_reports')->insert([
+            'reporter_user_id' => $user->id,
+            'reportable_type' => self::POST_MODEL_TYPE,
+            'reportable_id' => $post->id,
+            'reason' => $attributes['reason'] ?? 'other',
+            'details' => $attributes['details'] ?? null,
+            'status' => 'open',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['reported' => true], Response::HTTP_CREATED);
     }
 
     public function toggleReaction(Request $request, string $post): JsonResponse
@@ -265,6 +333,7 @@ class DjLoungeController extends Controller
             'role' => $post->genre ?: 'DJ',
             'timestamp' => Carbon::parse($post->published_at ?: $post->created_at)->diffForHumans(),
             'body' => $post->body,
+            'canManage' => $userId ? (int) $post->user_id === (int) $userId : false,
             'genre' => $post->genre ?? 'Open Format',
             'mediaTitle' => $post->media_title,
             'mediaUrl' => $post->media_url,
