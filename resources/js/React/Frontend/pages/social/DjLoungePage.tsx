@@ -76,7 +76,7 @@ function ReplyComposer({
     <form onSubmit={handleSubmit} className="mt-3 flex gap-2">
       <textarea
         value={body}
-        onChange={(event) => setBody(event.target.value.slice(0, 500))}
+        onChange={(event) => setBody(event.target.value)}
         placeholder={placeholder}
         className="min-h-10 min-w-0 flex-1 resize-none border border-[#303030] bg-[#080808] px-3 py-2 text-sm leading-6 text-white outline-none transition-colors placeholder:text-[#666666] focus:border-primary"
       />
@@ -324,7 +324,6 @@ export default function DjLoungePage() {
   const [error, setError] = useState<string | null>(null);
   const { getSlot } = useFeaturedDjs();
   const loungeFeaturedSlot = getSlot(1);
-  const remainingCharacters = 280 - draft.length;
 
   useEffect(() => {
     let isMounted = true;
@@ -574,13 +573,13 @@ export default function DjLoungePage() {
                     <div className="min-w-0 flex-1">
                       <textarea
                         value={draft}
-                        onChange={(event) => setDraft(event.target.value.slice(0, 280))}
+                        onChange={(event) => setDraft(event.target.value)}
                         placeholder="Drop a thought, mix update, battle callout, or crowd question..."
                         className="min-h-28 w-full resize-none border border-[#303030] bg-[#080808] p-4 text-sm leading-6 text-white outline-none transition-colors placeholder:text-[#666666] focus:border-primary"
                       />
                       <div className="mt-3 flex items-center justify-between gap-3">
-                        <span className={`text-xs ${remainingCharacters < 30 ? 'text-primary' : 'text-[#777777]'}`}>
-                          {remainingCharacters} characters left
+                        <span className="text-xs text-[#777777]">
+                          Larger posts are allowed. Keep it useful for the Lounge.
                         </span>
                         <button
                           type="submit"

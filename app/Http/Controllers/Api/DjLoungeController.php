@@ -59,7 +59,7 @@ class DjLoungeController extends Controller
         abort_unless(Schema::hasTable('dj_lounge_posts'), Response::HTTP_SERVICE_UNAVAILABLE, 'DJLounge is not available right now.');
 
         $attributes = $request->validate([
-            'body' => ['required', 'string', 'max:280'],
+            'body' => ['required', 'string', 'max:10000'],
         ]);
 
         $postId = DB::table('dj_lounge_posts')->insertGetId([
@@ -103,7 +103,7 @@ class DjLoungeController extends Controller
         abort_unless(Schema::hasTable('dj_lounge_comments'), Response::HTTP_SERVICE_UNAVAILABLE, 'DJLounge replies are not available right now.');
 
         $attributes = $request->validate([
-            'body' => ['required', 'string', 'max:500'],
+            'body' => ['required', 'string', 'max:10000'],
             'parent_id' => ['nullable', 'integer'],
         ]);
 

@@ -14,7 +14,7 @@ const DJHero = () => {
         <div className="absolute inset-0">
           <div className="h-full w-full bg-[radial-gradient(circle_at_70%_35%,rgba(255,26,26,0.28),transparent_34%),linear-gradient(135deg,#171717,#050505_55%,#210606)]" />
           <div
-            className="absolute inset-y-0 right-0 w-full md:w-[68%] bg-cover bg-center opacity-70"
+            className="absolute inset-y-0 right-0 w-full scale-105 bg-cover bg-center opacity-70 blur-sm md:w-[68%]"
             style={{ backgroundImage: `url(${heroImage})` }}
             aria-hidden="true"
           />
