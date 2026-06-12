@@ -187,6 +187,76 @@ class MixesApiTest extends TestCase
         ]);
     }
 
+    public function test_duplicate_public_portfolio_mixes_keep_the_newest_upload(): void
+    {
+        $user = User::factory()->create(['name' => 'DJ Portfolio']);
+
+        $oldFile = MediaFile::query()->create([
+            'user_id' => $user->id,
+            'name' => 'godstime-old.mp3',
+            'original_name' => 'godstime-old.mp3',
+            'disk' => 'public',
+            'path' => 'media/portfolios/dj-portfolio/godstime-old.mp3',
+            'mime_type' => 'audio/mpeg',
+            'size' => 1024,
+            'collection' => 'dj_media',
+            'created_at' => now()->subDay(),
+            'updated_at' => now()->subDay(),
+            'metadata' => [
+                'portfolio' => [
+                    'title' => 'GodsTime',
+                    'visibility' => 'public',
+                    'media_kind' => 'mix',
+                ],
+            ],
+        ]);
+
+        $newFile = MediaFile::query()->create([
+            'user_id' => $user->id,
+            'name' => 'godstime-new.mp3',
+            'original_name' => 'godstime-new.mp3',
+            'disk' => 'public',
+            'path' => 'media/portfolios/dj-portfolio/godstime-new.mp3',
+            'mime_type' => 'audio/mpeg',
+            'size' => 1024,
+            'collection' => 'dj_media',
+            'created_at' => now(),
+            'updated_at' => now(),
+            'metadata' => [
+                'portfolio' => [
+                    'title' => 'GodsTime',
+                    'genre' => 'Hip-Hop',
+                    'visibility' => 'public',
+                    'media_kind' => 'mix',
+                ],
+            ],
+        ]);
+
+        Mix::query()->create([
+            'user_id' => $user->id,
+            'audio_media_file_id' => $oldFile->id,
+            'title' => 'GodsTime',
+            'audio_file' => $oldFile->path,
+            'is_public' => true,
+            'published_at' => now()->subDay(),
+        ]);
+
+        $this->getJson('/api/mixes')
+            ->assertOk()
+            ->assertJsonCount(1, 'mixes')
+            ->assertJsonPath('mixes.0.audio_url', '/storage/media/portfolios/dj-portfolio/godstime-new.mp3');
+
+        $this->assertDatabaseHas('mixes', [
+            'audio_media_file_id' => $oldFile->id,
+            'is_public' => false,
+        ]);
+
+        $this->assertDatabaseHas('mixes', [
+            'audio_media_file_id' => $newFile->id,
+            'is_public' => true,
+        ]);
+    }
+
     public function test_play_endpoint_hides_private_mixes(): void
     {
         $mix = Mix::query()->create([

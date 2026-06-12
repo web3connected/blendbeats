@@ -151,6 +151,34 @@ class MixController extends Controller
                     ],
                 );
             });
+
+        $this->unpublishDuplicatePortfolioMixes();
+    }
+
+    private function unpublishDuplicatePortfolioMixes(): void
+    {
+        Mix::query()
+            ->whereNotNull('audio_media_file_id')
+            ->where('is_public', true)
+            ->get()
+            ->groupBy(fn (Mix $mix): string => $mix->user_id.'|'.Str::lower(trim($mix->title)))
+            ->each(function (Collection $mixes): void {
+                if ($mixes->count() <= 1) {
+                    return;
+                }
+
+                $keep = $mixes
+                    ->sortByDesc(fn (Mix $mix): int => (int) $mix->audio_media_file_id)
+                    ->first();
+
+                Mix::query()
+                    ->whereIn('id', $mixes->pluck('id')->reject(fn (int $id): bool => $id === $keep->id)->all())
+                    ->update([
+                        'is_public' => false,
+                        'is_featured' => false,
+                        'published_at' => null,
+                    ]);
+            });
     }
 
     private function mixSlugForMediaFile(MediaFile $file, string $title): string
