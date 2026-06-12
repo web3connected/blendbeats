@@ -8,15 +8,19 @@ import {
   Mail,
   MapPin,
   Megaphone,
+  LoaderCircle,
+  RotateCcw,
   Save,
   Settings,
   Swords,
+  Upload,
   UserRound,
 } from 'lucide-react';
-import { type FormEvent, type ElementType } from 'react';
+import { type FormEvent, type ElementType, useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import { saveAccountAvatar } from '@/lib/account';
 
 function Field({
   label,
@@ -82,7 +86,34 @@ function SectionTitle({ icon: Icon, title }: { icon: ElementType; title: string 
 
 export default function AccountPage() {
   const navigate = useNavigate();
-  const { user, isLoading, logout } = useAuth();
+  const { user, isLoading, logout, refreshUser } = useAuth();
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarFilePreview, setAvatarFilePreview] = useState<string | null>(null);
+  const [useGravatar, setUseGravatar] = useState(false);
+  const [useGeneratedInitials, setUseGeneratedInitials] = useState(false);
+  const [isAvatarSaving, setIsAvatarSaving] = useState(false);
+  const [avatarMessage, setAvatarMessage] = useState('');
+  const [avatarError, setAvatarError] = useState('');
+
+  useEffect(() => {
+    if (!user) return;
+
+    setUseGravatar(Boolean(user.is_gravatar ?? user.use_gravatar));
+    setUseGeneratedInitials(false);
+    setAvatarFile(null);
+  }, [user?.id, user?.avatar, user?.is_gravatar, user?.use_gravatar]);
+
+  useEffect(() => {
+    if (!avatarFile) {
+      setAvatarFilePreview(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(avatarFile);
+    setAvatarFilePreview(objectUrl);
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [avatarFile]);
 
   if (isLoading) {
     return (
@@ -105,8 +136,40 @@ export default function AccountPage() {
   const profile = user.profile;
   const firstName = user.first_name ?? user.name.split(' ')[0] ?? '';
   const lastName = user.last_name ?? user.name.split(' ').slice(1).join(' ');
-  const avatarPreview = user.avatar_url ?? user.avatar;
-  const avatarSource = user.avatar_source ?? (user.avatar ? 'uploaded' : 'generated');
+  const avatarPreview = avatarFilePreview
+    || (useGeneratedInitials
+      ? user.generated_avatar_url
+      : useGravatar
+        ? user.gravatar_url || user.avatar_url
+        : user.custom_avatar_url || user.avatar_url || user.generated_avatar_url);
+  const avatarSource = avatarFilePreview
+    ? 'selected upload'
+    : useGeneratedInitials
+      ? 'generated'
+      : useGravatar
+        ? 'gravatar'
+        : user.avatar_source ?? (user.avatar ? 'uploaded' : 'generated');
+
+  const handleAvatarSave = async () => {
+    setAvatarMessage('');
+    setAvatarError('');
+    setIsAvatarSaving(true);
+
+    try {
+      await saveAccountAvatar({
+        useGravatar,
+        avatarUrl: '',
+        avatarFile,
+        removeAvatar: useGeneratedInitials,
+      });
+      await refreshUser();
+      setAvatarMessage('Avatar updated.');
+    } catch (error) {
+      setAvatarError(error instanceof Error ? error.message : 'Avatar could not be updated.');
+    } finally {
+      setIsAvatarSaving(false);
+    }
+  };
 
   return (
     <>
@@ -196,37 +259,102 @@ export default function AccountPage() {
                   </div>
 
                   <div className="grid gap-4">
-                    <Field
-                      label="Avatar URL"
-                      name="avatar"
-                      type="url"
-                      value={user.avatar}
-                      placeholder="https://..."
-                    />
-                    <label className="flex items-start gap-3 border border-[#333333] bg-[#080808] p-4">
+                    <div className="border border-[#333333] bg-[#080808] p-4">
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-[#bbbbbb]">Avatar Source</p>
+                      <p className="mt-2 text-sm leading-6 text-[#888888]">
+                        Your account uses one avatar everywhere. Upload an image, use Gravatar from your email, or fall
+                        back to generated initials.
+                      </p>
+                    </div>
+
+                    <label className="grid gap-2 border border-[#333333] bg-[#080808] p-4">
+                      <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#bbbbbb]">
+                        <Upload size={15} className="text-primary" />
+                        Upload Avatar
+                      </span>
                       <input
-                        name="use_gravatar"
-                        type="checkbox"
-                        defaultChecked={Boolean(user.is_gravatar ?? user.use_gravatar)}
-                        className="mt-1 h-4 w-4 accent-primary"
+                        name="avatar_upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => {
+                          setAvatarFile(event.target.files?.[0] ?? null);
+                          setUseGravatar(false);
+                          setUseGeneratedInitials(false);
+                          setAvatarMessage('');
+                          setAvatarError('');
+                        }}
+                        className="w-full border border-[#333333] bg-[#050505] px-4 py-3 text-sm text-[#bbbbbb] file:mr-4 file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-white"
+                        style={{ fontFamily: 'var(--font-heading)' }}
                       />
-                      <span>
-                        <span className="text-sm font-semibold text-white">Use Gravatar</span>
-                        <span className="mt-1 block text-xs leading-5 text-[#888888]">
-                          When enabled, your account email controls the avatar. When disabled, the uploaded or URL avatar
-                          is used. If neither exists, AvatarTrait generates initials.
-                        </span>
-                      </span>
+                      <span className="text-xs leading-5 text-[#888888]">Stores the uploaded image as your user avatar.</span>
                     </label>
-                    <label className="flex items-start gap-3 border border-[#333333] bg-[#080808] p-4">
-                      <input name="remove_avatar" type="checkbox" className="mt-1 h-4 w-4 accent-primary" />
-                      <span>
-                        <span className="text-sm font-semibold text-white">Remove Custom Avatar</span>
-                        <span className="mt-1 block text-xs leading-5 text-[#888888]">
-                          Clears the saved user avatar and falls back to Gravatar or generated initials.
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseGravatar(true);
+                          setUseGeneratedInitials(false);
+                          setAvatarFile(null);
+                          setAvatarMessage('');
+                          setAvatarError('');
+                        }}
+                        className={`min-h-24 border p-4 text-left transition-colors ${
+                          useGravatar
+                            ? 'border-primary bg-primary/10'
+                            : 'border-[#333333] bg-[#080808] hover:border-primary'
+                        }`}
+                      >
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-primary">Use Gravatar</span>
+                        <span className="mt-3 block break-all text-sm leading-6 text-[#aaaaaa]">{user.email}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseGravatar(false);
+                          setUseGeneratedInitials(true);
+                          setAvatarFile(null);
+                          setAvatarMessage('');
+                          setAvatarError('');
+                        }}
+                        className={`min-h-24 border p-4 text-left transition-colors ${
+                          useGeneratedInitials
+                            ? 'border-primary bg-primary/10'
+                            : 'border-[#333333] bg-[#080808] hover:border-primary'
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#bbbbbb]">
+                          <RotateCcw size={15} className="text-primary" />
+                          Use Generated Initials
                         </span>
-                      </span>
-                    </label>
+                        <span className="mt-3 block text-sm leading-6 text-[#888888]">
+                          Use the initials avatar from your display name.
+                        </span>
+                      </button>
+                    </div>
+
+                    {avatarMessage && (
+                      <div className="border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
+                        {avatarMessage}
+                      </div>
+                    )}
+                    {avatarError && (
+                      <div className="border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
+                        {avatarError}
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => void handleAvatarSave()}
+                      disabled={isAvatarSaving}
+                      className="inline-flex h-11 w-fit items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
+                      style={{ fontFamily: 'var(--font-heading)' }}
+                    >
+                      {isAvatarSaving ? <LoaderCircle size={15} className="animate-spin" /> : <Save size={15} />}
+                      {isAvatarSaving ? 'Saving Avatar' : 'Save Avatar'}
+                    </button>
                   </div>
                 </div>
               </section>

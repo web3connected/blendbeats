@@ -1,12 +1,14 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { ArrowLeft, CalendarCheck, Headphones, MapPin, Star, Users } from 'lucide-react';
+import { ArrowLeft, CalendarCheck, Headphones, MapPin, Play, Star, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
+import { usePlayer } from '@/components/player/PlayerProvider';
 import { getDjHubDj, type DjHubDj } from '@/lib/dj-hub';
 
 export default function PublicDjProfilePage() {
   const { handle } = useParams();
+  const { playTrack } = usePlayer();
   const [dj, setDj] = useState<DjHubDj | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -144,7 +146,23 @@ export default function PublicDjProfilePage() {
                   {dj.featured_mix ? (
                     <div className="grid gap-2">
                       <p className="truncate text-sm font-semibold text-white">{dj.featured_mix.title}</p>
-                      <audio src={dj.featured_mix.url} controls className="h-9 w-full" />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          playTrack({
+                            id: `dj-profile-featured-${dj.featured_mix!.id}`,
+                            title: dj.featured_mix!.title,
+                            artist: dj.dj_name,
+                            src: dj.featured_mix!.url,
+                            meta: `${dj.primary_genre ?? 'Open Format'} featured mix`,
+                          })
+                        }
+                        className="inline-flex h-9 items-center justify-center gap-2 bg-primary px-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
+                        style={{ fontFamily: 'var(--font-heading)' }}
+                      >
+                        <Play size={14} fill="currentColor" />
+                        Play Mix
+                      </button>
                     </div>
                   ) : (
                     <p className="text-sm text-[#777777]">No public mix featured yet.</p>

@@ -20,6 +20,8 @@ class AdminRoleSeeder extends Seeder
             'adminusers.delete',
             'adminusers.reset-password',
             'adminusers.manage-avatar',
+            'featuredslots.view',
+            'featuredslots.update',
         ];
 
         foreach ($permissions as $permission) {
@@ -29,7 +31,7 @@ class AdminRoleSeeder extends Seeder
         $roles = [
             'super-admin' => [
                 'display_name' => 'Super Admin',
-                'description' => 'Full access to Admin User management.',
+                'description' => 'Full access to Admin Center management.',
                 'is_system' => true,
                 'permissions' => $permissions,
             ],
@@ -43,6 +45,8 @@ class AdminRoleSeeder extends Seeder
                     'adminusers.update',
                     'adminusers.reset-password',
                     'adminusers.manage-avatar',
+                    'featuredslots.view',
+                    'featuredslots.update',
                 ],
             ],
             'manager' => [

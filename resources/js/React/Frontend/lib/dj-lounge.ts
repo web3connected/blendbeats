@@ -7,6 +7,7 @@ export interface DjLoungePost {
   authorName: string;
   handle: string;
   avatarInitial: string;
+  avatarUrl?: string | null;
   role: string;
   timestamp: string;
   body: string;
@@ -22,14 +23,42 @@ export interface DjLoungePost {
   liked?: boolean;
   reposted?: boolean;
   bookmarked?: boolean;
+  replies: DjLoungeReply[];
 }
 
-interface PostsResponse {
+export interface DjLoungeReply {
+  id: string;
+  postId: string;
+  parentId?: string | null;
+  authorName: string;
+  handle: string;
+  avatarInitial: string;
+  avatarUrl?: string | null;
+  timestamp: string;
+  body: string;
+  likes: number;
+  replyCount: number;
+  replies: DjLoungeReply[];
+}
+
+export interface DjLoungeStats {
+  postsToday: number;
+  djsOnline: number;
+  liveThreads: number;
+}
+
+export interface PostsResponse {
   posts: DjLoungePost[];
+  stats: DjLoungeStats;
 }
 
 interface PostResponse {
   post: DjLoungePost;
+}
+
+interface ReplyResponse {
+  reply: DjLoungeReply;
+  comment_count: number;
 }
 
 interface ApiErrorBody {
@@ -86,8 +115,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export async function getDjLoungePosts(): Promise<DjLoungePost[]> {
-  const data = await request<PostsResponse>('/dj-lounge/posts');
+  const data = await getDjLoungeFeed();
   return data.posts;
+}
+
+export async function getDjLoungeFeed(): Promise<PostsResponse> {
+  const data = await request<PostsResponse>('/dj-lounge/posts');
+  return {
+    posts: data.posts,
+    stats: data.stats ?? { postsToday: data.posts.length, djsOnline: 0, liveThreads: 0 },
+  };
 }
 
 export async function createDjLoungePost(body: string): Promise<DjLoungePost> {
@@ -97,6 +134,17 @@ export async function createDjLoungePost(body: string): Promise<DjLoungePost> {
   });
 
   return data.post;
+}
+
+export async function createDjLoungeReply(
+  postId: string,
+  body: string,
+  parentId?: string,
+): Promise<ReplyResponse> {
+  return request<ReplyResponse>(`/dj-lounge/posts/${postId}/replies`, {
+    method: 'POST',
+    body: JSON.stringify({ body, parent_id: parentId }),
+  });
 }
 
 export async function toggleDjLoungePostReaction(postId: string): Promise<{ liked: boolean; like_count: number }> {

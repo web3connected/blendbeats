@@ -1,8 +1,11 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { CalendarCheck, Headphones, MapPin, Search, SlidersHorizontal, Star, Users } from 'lucide-react';
+import { CalendarCheck, Headphones, MapPin, Pause, Play, Search, SlidersHorizontal, Star, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import FeaturedDjSlotCard from '@/components/featured/FeaturedDjSlotCard';
+import { usePlayer } from '@/components/player/PlayerProvider';
+import { useFeaturedDjs } from '@/hooks/use-featured-djs';
 import { getDjHubDjs, type DjHubDj, type DjHubFilters, type DjHubQuery } from '@/lib/dj-hub';
 
 const sortOptions: Array<{ label: string; value: NonNullable<DjHubQuery['sort']> }> = [
@@ -21,17 +24,27 @@ function formatDjType(value: string) {
 
 function DjCard({ dj }: { dj: DjHubDj }) {
   const featuredLabel = dj.featured_statuses[0];
+  const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
+  const featuredMixTrackId = dj.featured_mix ? `dj-featured-${dj.featured_mix.id}` : null;
+  const isFeaturedMixPlaying = Boolean(featuredMixTrackId && currentTrack?.id === featuredMixTrackId && isPlaying);
 
   return (
-    <article className="grid border border-[#2a2a2a] bg-[#111111]">
-      <div className="relative aspect-[4/3] border-b border-[#242424] bg-[#080808]">
-        {dj.avatar_url ? (
-          <img src={dj.avatar_url} alt={dj.dj_name} className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-primary text-6xl font-black uppercase text-white">
-            {dj.dj_name.charAt(0)}
-          </div>
-        )}
+    <article className="group grid overflow-hidden border border-[#2a2a2a] bg-[#111111] transition-colors hover:border-primary/70">
+      <div className="relative border-b border-[#242424] bg-[#080808] px-5 pb-5 pt-6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,29,29,0.18),transparent_42%)] opacity-80" />
+        <div className="relative mx-auto flex h-40 w-40 items-center justify-center rounded-full border border-[#333333] bg-[#050505] p-2 shadow-2xl shadow-black/40">
+          {dj.avatar_url ? (
+            <img
+              src={dj.avatar_url}
+              alt={dj.dj_name}
+              className="h-full w-full rounded-full border-2 border-[#f2f2f2] bg-[#090909] object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-6xl font-black uppercase text-white">
+              {dj.dj_name.charAt(0)}
+            </div>
+          )}
+        </div>
         {featuredLabel && (
           <span
             className="absolute left-3 top-3 inline-flex h-8 items-center gap-2 bg-primary px-3 text-[10px] font-bold uppercase tracking-widest text-white"
@@ -41,14 +54,16 @@ function DjCard({ dj }: { dj: DjHubDj }) {
             {featuredLabel}
           </span>
         )}
+        <div className="relative mt-5 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[#777777]">
+          <span className="h-px w-8 bg-[#333333]" />
+          <span>{dj.primary_genre ?? 'Open Format'}</span>
+          <span className="h-px w-8 bg-[#333333]" />
+        </div>
       </div>
 
       <div className="grid gap-4 p-4">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-primary">
-            {dj.primary_genre ?? 'Open Format'}
-          </p>
-          <h2 className="mt-2 text-3xl uppercase leading-none text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+          <h2 className="text-3xl uppercase leading-none text-white" style={{ fontFamily: 'var(--font-heading)' }}>
             {dj.dj_name}
           </h2>
           <p className="mt-3 min-h-12 text-sm leading-6 text-[#aaaaaa]">
@@ -78,7 +93,29 @@ function DjCard({ dj }: { dj: DjHubDj }) {
           {dj.featured_mix ? (
             <div className="grid gap-2">
               <p className="truncate text-sm font-semibold text-white">{dj.featured_mix.title}</p>
-              <audio src={dj.featured_mix.url} controls className="h-9 w-full" />
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentTrack?.id === featuredMixTrackId) {
+                    togglePlay();
+                    return;
+                  }
+
+                  playTrack({
+                    id: featuredMixTrackId!,
+                    title: dj.featured_mix!.title,
+                    artist: dj.dj_name,
+                    src: dj.featured_mix!.url,
+                    artwork: dj.avatar_url,
+                    meta: `${dj.primary_genre ?? 'Open Format'} featured mix`,
+                  });
+                }}
+                className="inline-flex h-9 items-center justify-center gap-2 bg-primary px-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
+                style={{ fontFamily: 'var(--font-heading)' }}
+              >
+                {isFeaturedMixPlaying ? <Pause size={14} /> : <Play size={14} fill="currentColor" />}
+                {isFeaturedMixPlaying ? 'Pause Mix' : 'Play Mix'}
+              </button>
             </div>
           ) : (
             <p className="text-sm text-[#777777]">No public mix featured yet.</p>
@@ -101,10 +138,10 @@ export default function DjsPage() {
   const [query, setQuery] = useState<DjHubQuery>({ sort: 'featured' });
   const [searchInput, setSearchInput] = useState('');
   const [djs, setDjs] = useState<DjHubDj[]>([]);
-  const [featuredDjs, setFeaturedDjs] = useState<DjHubDj[]>([]);
   const [filters, setFilters] = useState<DjHubFilters>({ genres: [], dj_types: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const { selectedGroup: featuredSlots } = useFeaturedDjs();
 
   useEffect(() => {
     let isMounted = true;
@@ -116,7 +153,6 @@ export default function DjsPage() {
       .then((data) => {
         if (!isMounted) return;
         setDjs(data.djs);
-        setFeaturedDjs(data.featured_djs ?? []);
         setFilters(data.filters);
       })
       .catch(() => {
@@ -193,65 +229,23 @@ export default function DjsPage() {
                   Top paid placements
                 </h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-[#aaaaaa]">
-                  Four premium panel slots reserved for DJs who want their profile seen first.
+                  Four spotlight cards rotate from the featured DJ pool each time the page loads.
                 </p>
               </div>
               <div className="border border-[#2a2a2a] bg-[#111111] p-4 text-sm text-[#aaaaaa]">
-                <p className="font-semibold uppercase tracking-widest text-primary">Paid placement</p>
-                <p className="mt-2">Easy to manage in the DJ Hub backend. Keep this basic now and grow the payment flow later.</p>
+                <p className="font-semibold uppercase tracking-widest text-primary">Featured placement</p>
+                <p className="mt-2">Reserve a premium spotlight and put your DJ profile in front of the BlendBeats community.</p>
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, index) => {
-                const slotDj = featuredDjs[index];
-
-                return (
-                  <article key={index} className="group overflow-hidden border border-[#222] bg-[#111111] p-5 transition hover:border-primary">
-                    <div className="mb-4 flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Featured Slot {index + 1}</p>
-                        <p className="mt-2 text-sm uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                          {slotDj ? 'Sponsored DJ' : 'Available'}
-                        </p>
-                      </div>
-                      <div className="flex h-12 w-12 items-center justify-center bg-[#0b0b0b] text-lg font-black uppercase text-white">
-                        {slotDj ? slotDj.dj_name.charAt(0) : '+'}
-                      </div>
-                    </div>
-                    {slotDj ? (
-                      <div className="grid gap-3">
-                        <p className="text-sm text-[#aaaaaa]">{slotDj.featured_statuses[0] ?? 'Paid Spotlight'}</p>
-                        <p className="text-xl font-bold uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                          {slotDj.dj_name}
-                        </p>
-                        <p className="text-sm text-[#888888]">
-                          {slotDj.primary_genre ?? 'Open Format'} - {slotDj.location || 'World'}
-                        </p>
-                        <div className="grid gap-2 border border-[#222] bg-[#080808] p-4">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Followers</p>
-                          <p className="text-lg font-semibold text-white">{slotDj.followers_count.toLocaleString()}</p>
-                        </div>
-                        <Link
-                          to={`/djs/${slotDj.handle}`}
-                          className="inline-flex h-11 items-center justify-center border border-[#333333] bg-[#0d0d0d] px-4 text-xs font-bold uppercase tracking-widest text-white transition hover:border-primary hover:text-primary"
-                          style={{ fontFamily: 'var(--font-heading)' }}
-                        >
-                          View profile
-                        </Link>
-                      </div>
-                    ) : (
-                      <div className="grid gap-3">
-                        <p className="text-sm leading-6 text-[#aaaaaa]">This slot is open for DJs who want premium visibility on the DJ Hub page.</p>
-                        <div className="border border-[#222] bg-[#080808] p-4 text-sm text-[#dddddd]">
-                          <p className="font-semibold uppercase tracking-widest text-primary">Claim now</p>
-                          <p className="mt-1 text-[#888888]">Contact support to reserve this position.</p>
-                        </div>
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
+              {featuredSlots.map((slot) => (
+                <FeaturedDjSlotCard
+                  key={slot.number}
+                  slot={slot}
+                  emptyMessage="This slot is open for DJs who want premium visibility on the DJ Hub page."
+                />
+              ))}
             </div>
           </div>
         </section>

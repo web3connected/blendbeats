@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Mix;
+use App\Models\MediaFile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -75,6 +76,45 @@ class MixesApiTest extends TestCase
         $this->assertDatabaseHas('mixes', [
             'id' => $mix->id,
             'play_count' => 5,
+        ]);
+    }
+
+    public function test_public_portfolio_audio_uploads_are_exposed_as_public_mixes(): void
+    {
+        $user = User::factory()->create(['name' => 'DJ Portfolio']);
+
+        MediaFile::query()->create([
+            'user_id' => $user->id,
+            'name' => 'late-night-blend.mp3',
+            'original_name' => 'late-night-blend.mp3',
+            'disk' => 'public',
+            'path' => 'media/portfolios/dj-portfolio/late-night-blend.mp3',
+            'mime_type' => 'audio/mpeg',
+            'size' => 1024,
+            'collection' => 'dj_media',
+            'metadata' => [
+                'portfolio' => [
+                    'title' => 'Late Night Blend',
+                    'description' => 'A public portfolio upload.',
+                    'genre' => 'Hip-Hop',
+                    'visibility' => 'public',
+                    'media_kind' => 'mix',
+                ],
+            ],
+        ]);
+
+        $this->getJson('/api/mixes')
+            ->assertOk()
+            ->assertJsonPath('mixes.0.title', 'Late Night Blend')
+            ->assertJsonPath('mixes.0.genre', 'Hip-Hop')
+            ->assertJsonPath('mixes.0.audio_url', '/media/portfolios/dj-portfolio/late-night-blend.mp3')
+            ->assertJsonPath('stats.genre_count', 1);
+
+        $this->assertDatabaseHas('mixes', [
+            'user_id' => $user->id,
+            'title' => 'Late Night Blend',
+            'is_public' => true,
+            'audio_file' => 'media/portfolios/dj-portfolio/late-night-blend.mp3',
         ]);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\MediaFile;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -101,10 +102,10 @@ class DjHubController extends Controller
 
     private function baseProfileQuery(): Builder
     {
-        $followersSubquery = Schema::hasTable('dj_followers')
-            ? DB::table('dj_followers')
+        $followersSubquery = Schema::hasTable('followers')
+            ? DB::table('followers')
                 ->selectRaw('count(*)')
-                ->whereColumn('dj_followers.followed_dj_id', 'dj_profiles.id')
+                ->whereColumn('followers.followed_dj_id', 'dj_profiles.id')
             : DB::query()->selectRaw('0');
 
         $featuredSubquery = Schema::hasTable('dj_featured_status')
@@ -153,9 +154,27 @@ class DjHubController extends Controller
             'country' => $profile->country ?? null,
             'open_for_bookings' => (bool) ($profile->booking_enabled ?? false),
             'followers_count' => (int) ($profile->followers_count ?? 0),
+            'featured_slot' => $this->featuredSlotFor((int) $profile->id),
             'featured_statuses' => $this->featuredStatusesFor((int) $profile->id),
             'featured_mix' => $this->featuredMixFor((int) $profile->user_id),
         ];
+    }
+
+    private function featuredSlotFor(int $profileId): ?int
+    {
+        if (! Schema::hasTable('dj_featured_status') || ! Schema::hasColumn('dj_featured_status', 'slot_number')) {
+            return null;
+        }
+
+        $slot = DB::table('dj_featured_status')
+            ->where('dj_profile_id', $profileId)
+            ->where('status', 'active')
+            ->where(fn (Builder $query) => $query->whereNull('start_date')->orWhere('start_date', '<=', now()))
+            ->where(fn (Builder $query) => $query->whereNull('end_date')->orWhere('end_date', '>=', now()))
+            ->orderBy('slot_number')
+            ->value('slot_number');
+
+        return $slot ? (int) $slot : null;
     }
 
     private function genresFor(int $profileId): array
@@ -195,7 +214,7 @@ class DjHubController extends Controller
             return null;
         }
 
-        $mix = DB::table('media_files')
+        $mix = MediaFile::query()
             ->where('user_id', $userId)
             ->where('collection', 'dj_media')
             ->where('mime_type', 'like', 'audio/%')
@@ -208,8 +227,8 @@ class DjHubController extends Controller
 
         return [
             'id' => (int) $mix->id,
-            'title' => $mix->name,
-            'url' => "/api/media/files/{$mix->id}/stream",
+            'title' => $mix->metadata['portfolio']['title'] ?? $mix->original_name ?? $mix->name,
+            'url' => $mix->url,
             'mime_type' => $mix->mime_type,
         ];
     }
@@ -220,21 +239,26 @@ class DjHubController extends Controller
             return [];
         }
 
-        $profileIds = DB::table('dj_featured_status')
+        $featuredRows = DB::table('dj_featured_status')
             ->where('status', 'active')
             ->where(fn (Builder $query) => $query->whereNull('start_date')->orWhere('start_date', '<=', now()))
             ->where(fn (Builder $query) => $query->whereNull('end_date')->orWhere('end_date', '>=', now()))
-            ->orderByDesc('start_date')
+            ->when(
+                Schema::hasColumn('dj_featured_status', 'slot_number'),
+                fn (Builder $query) => $query->orderBy('slot_number'),
+                fn (Builder $query) => $query->orderByDesc('start_date'),
+            )
             ->orderByDesc('id')
-            ->pluck('dj_profile_id')
-            ->unique()
-            ->take(4)
-            ->values()
-            ->all();
+            ->get(['dj_profile_id'])
+            ->unique('dj_profile_id')
+            ->take(24)
+            ->values();
 
-        if (empty($profileIds)) {
+        if ($featuredRows->isEmpty()) {
             return [];
         }
+
+        $profileIds = $featuredRows->pluck('dj_profile_id')->all();
 
         return $this->baseProfileQuery()
             ->whereIn('dj_profiles.id', $profileIds)

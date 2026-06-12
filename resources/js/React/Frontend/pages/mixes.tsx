@@ -5,6 +5,7 @@ import { CalendarDays, Disc3, Eye, Headphones, Play, Radio, Star } from 'lucide-
 import StarRatingContainer from '@/components/StarRatingContainer';
 import HeaderTitle from '@/layouts/HeaderTitle';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { usePlayer } from '@/components/player/PlayerProvider';
 import { getMixesIndex, trackMixPlay, type MixesIndexResponse, type PublicMix } from '@/lib/mixes';
 
 const emptyStats = {
@@ -186,6 +187,7 @@ function GenreRow({ genre, mixes, onPlay }: { genre: string; mixes: PublicMix[];
 
 export default function MixesPage() {
   const { user } = useAuth();
+  const { playTrack } = usePlayer();
   const [data, setData] = useState<MixesIndexResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -228,7 +230,14 @@ export default function MixesPage() {
 
   const handlePlay = async (mix: PublicMix) => {
     if (mix.audio_url) {
-      new Audio(mix.audio_url).play().catch(() => undefined);
+      playTrack({
+        id: `mix-${mix.id}`,
+        title: mix.title,
+        artist: mix.dj.name,
+        src: mix.audio_url,
+        artwork: mix.cover_image_url,
+        meta: mix.genre || 'Mix',
+      });
     }
 
     try {

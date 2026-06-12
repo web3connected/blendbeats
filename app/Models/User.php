@@ -55,6 +55,11 @@ class User extends Authenticatable
         return $this->hasMany(Mix::class);
     }
 
+    public function djProfile(): HasOne
+    {
+        return $this->hasOne(DjProfile::class);
+    }
+
     public function mediaAccount(): HasOne
     {
         return $this->hasOne(MediaAccount::class);

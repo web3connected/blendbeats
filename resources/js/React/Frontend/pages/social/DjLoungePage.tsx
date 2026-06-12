@@ -14,33 +14,177 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import FeaturedDjSlotCard from '@/components/featured/FeaturedDjSlotCard';
 import { djLoungeTrends } from '@/config/djLounge';
+import { useFeaturedDjs } from '@/hooks/use-featured-djs';
 import {
   createDjLoungePost,
+  createDjLoungeReply,
   type DjLoungePost,
+  type DjLoungeReply,
+  type DjLoungeStats,
+  getDjLoungeFeed,
   getDjLoungePosts,
   toggleDjLoungePostBookmark,
   toggleDjLoungePostReaction,
   toggleDjLoungePostRepost,
 } from '@/lib/dj-lounge';
 
+function LoungeAvatar({
+  src,
+  initial,
+  alt,
+  className,
+}: {
+  src?: string | null;
+  initial: string;
+  alt: string;
+  className: string;
+}) {
+  if (src) {
+    return <img src={src} alt={alt} className={`${className} object-cover`} />;
+  }
+
+  return (
+    <div className={`${className} flex items-center justify-center bg-primary font-black uppercase text-white`}>
+      {initial}
+    </div>
+  );
+}
+
+function ReplyComposer({
+  placeholder,
+  isSubmitting,
+  onSubmit,
+}: {
+  placeholder: string;
+  isSubmitting: boolean;
+  onSubmit: (body: string) => Promise<void>;
+}) {
+  const [body, setBody] = useState('');
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextBody = body.trim();
+    if (!nextBody) return;
+
+    await onSubmit(nextBody);
+    setBody('');
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-3 flex gap-2">
+      <input
+        value={body}
+        onChange={(event) => setBody(event.target.value.slice(0, 500))}
+        placeholder={placeholder}
+        className="h-10 min-w-0 flex-1 border border-[#303030] bg-[#080808] px-3 text-sm text-white outline-none transition-colors placeholder:text-[#666666] focus:border-primary"
+      />
+      <button
+        type="submit"
+        disabled={!body.trim() || isSubmitting}
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center bg-primary text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+        aria-label="Send reply"
+      >
+        <Send size={15} />
+      </button>
+    </form>
+  );
+}
+
+function ReplyItem({
+  reply,
+  canReply,
+  isSubmitting,
+  onReply,
+}: {
+  reply: DjLoungeReply;
+  canReply: boolean;
+  isSubmitting: boolean;
+  onReply: (body: string, parentId?: string) => Promise<void>;
+}) {
+  const [isReplying, setIsReplying] = useState(false);
+
+  return (
+    <div className="border-l border-[#303030] pl-3">
+      <div className="flex gap-3">
+        <LoungeAvatar
+          src={reply.avatarUrl}
+          initial={reply.avatarInitial}
+          alt={reply.authorName}
+          className="h-8 w-8 shrink-0 text-xs"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="text-sm font-semibold text-white">{reply.authorName}</p>
+            <span className="text-xs text-[#777777]">{reply.handle}</span>
+            <span className="text-xs text-[#555555]">{reply.timestamp}</span>
+          </div>
+          <p className="mt-1 text-sm leading-6 text-[#cccccc]">{reply.body}</p>
+          {!reply.parentId && canReply && (
+            <button
+              type="button"
+              onClick={() => setIsReplying((current) => !current)}
+              className="mt-2 text-xs font-semibold uppercase tracking-widest text-[#888888] transition-colors hover:text-primary"
+              style={{ fontFamily: 'var(--font-heading)' }}
+            >
+              Reply
+            </button>
+          )}
+          {isReplying && (
+            <ReplyComposer
+              placeholder={`Reply to ${reply.authorName}...`}
+              isSubmitting={isSubmitting}
+              onSubmit={(body) => onReply(body, reply.id).then(() => setIsReplying(false))}
+            />
+          )}
+          {reply.replies.length > 0 && (
+            <div className="mt-3 grid gap-3">
+              {reply.replies.map((childReply) => (
+                <ReplyItem
+                  key={childReply.id}
+                  reply={childReply}
+                  canReply={false}
+                  isSubmitting={isSubmitting}
+                  onReply={onReply}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PostCard({
   post,
+  canReply,
+  isSubmittingReply,
   onLike,
   onRepost,
   onBookmark,
+  onReply,
 }: {
   post: DjLoungePost;
+  canReply: boolean;
+  isSubmittingReply: boolean;
   onLike: (postId: string) => void;
   onRepost: (postId: string) => void;
   onBookmark: (postId: string) => void;
+  onReply: (postId: string, body: string, parentId?: string) => Promise<void>;
 }) {
+  const [isThreadOpen, setIsThreadOpen] = useState(post.replies.length > 0);
+
   return (
     <article className="border-b border-[#222222] bg-[#0d0d0d] p-4 transition-colors hover:bg-[#111111] sm:p-5">
       <div className="flex gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center bg-primary text-lg font-black uppercase text-white">
-          {post.avatarInitial}
-        </div>
+        <LoungeAvatar
+          src={post.avatarUrl}
+          initial={post.avatarInitial}
+          alt={post.authorName}
+          className="h-11 w-11 shrink-0 text-lg"
+        />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <p className="font-semibold text-white">{post.authorName}</p>
@@ -85,6 +229,7 @@ function PostCard({
           <div className="mt-4 flex items-center justify-between gap-2 text-[#888888] sm:max-w-md">
             <button
               type="button"
+              onClick={() => setIsThreadOpen((current) => !current)}
               className="inline-flex items-center gap-2 text-sm transition-colors hover:text-primary"
             >
               <MessageCircle size={17} />
@@ -127,6 +272,39 @@ function PostCard({
               <Bookmark size={17} className={post.bookmarked ? 'fill-[#FFB800]' : ''} />
             </button>
           </div>
+
+          {isThreadOpen && (
+            <div className="mt-4 border-t border-[#242424] pt-4">
+              {canReply ? (
+                <ReplyComposer
+                  placeholder="Reply to this post..."
+                  isSubmitting={isSubmittingReply}
+                  onSubmit={(body) => onReply(post.id, body)}
+                />
+              ) : (
+                <p className="text-sm text-[#888888]">
+                  <Link to="/login" className="text-primary hover:text-primary/80">
+                    Log in
+                  </Link>{' '}
+                  to reply.
+                </p>
+              )}
+
+              {post.replies.length > 0 && (
+                <div className="mt-4 grid gap-4">
+                  {post.replies.map((reply) => (
+                    <ReplyItem
+                      key={reply.id}
+                      reply={reply}
+                      canReply={canReply}
+                      isSubmitting={isSubmittingReply}
+                      onReply={(body, parentId) => onReply(post.id, body, parentId)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </article>
@@ -136,10 +314,14 @@ function PostCard({
 export default function DjLoungePage() {
   const { user } = useAuth();
   const [posts, setPosts] = useState<DjLoungePost[]>([]);
+  const [stats, setStats] = useState<DjLoungeStats>({ postsToday: 0, djsOnline: 0, liveThreads: 0 });
   const [draft, setDraft] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isPosting, setIsPosting] = useState(false);
+  const [replyingPostId, setReplyingPostId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { getSlot } = useFeaturedDjs();
+  const loungeFeaturedSlot = getSlot(1);
   const remainingCharacters = 280 - draft.length;
 
   useEffect(() => {
@@ -149,8 +331,11 @@ export default function DjLoungePage() {
       try {
         setIsLoading(true);
         setError(null);
-        const nextPosts = await getDjLoungePosts();
-        if (isMounted) setPosts(nextPosts);
+        const feed = await getDjLoungeFeed();
+        if (isMounted) {
+          setPosts(feed.posts);
+          setStats(feed.stats);
+        }
       } catch (loadError) {
         if (isMounted) {
           setError(loadError instanceof Error ? loadError.message : 'DJLounge could not load.');
@@ -169,11 +354,11 @@ export default function DjLoungePage() {
 
   const feedStats = useMemo(
     () => [
-      { label: 'Posts Today', value: posts.length.toString() },
-      { label: 'DJs Online', value: '247' },
-      { label: 'Live Threads', value: posts.filter((post) => post.isLive).length.toString() },
+      { label: 'Posts Today', value: stats.postsToday.toString() },
+      { label: 'DJs Online', value: stats.djsOnline.toString() },
+      { label: 'Live Threads', value: stats.liveThreads.toString() },
     ],
-    [posts],
+    [stats],
   );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -186,6 +371,11 @@ export default function DjLoungePage() {
       setError(null);
       const post = await createDjLoungePost(body);
       setPosts((currentPosts) => [post, ...currentPosts]);
+      setStats((currentStats) => ({
+        ...currentStats,
+        postsToday: currentStats.postsToday + 1,
+        djsOnline: Math.max(currentStats.djsOnline, 1),
+      }));
       setDraft('');
     } catch (postError) {
       setError(postError instanceof Error ? postError.message : 'Your post could not be published.');
@@ -283,6 +473,48 @@ export default function DjLoungePage() {
     }
   };
 
+  const handleReply = async (postId: string, body: string, parentId?: string) => {
+    if (!user) return;
+
+    try {
+      setReplyingPostId(postId);
+      setError(null);
+      const result = await createDjLoungeReply(postId, body, parentId);
+
+      setPosts((currentPosts) =>
+        currentPosts.map((post) => {
+          if (post.id !== postId) return post;
+
+          if (!parentId) {
+            return {
+              ...post,
+              comments: result.comment_count,
+              replies: [...post.replies, result.reply],
+            };
+          }
+
+          return {
+            ...post,
+            comments: result.comment_count,
+            replies: post.replies.map((reply) =>
+              reply.id === parentId
+                ? {
+                    ...reply,
+                    replyCount: reply.replyCount + 1,
+                    replies: [...reply.replies, result.reply],
+                  }
+                : reply,
+            ),
+          };
+        }),
+      );
+    } catch (replyError) {
+      setError(replyError instanceof Error ? replyError.message : 'That reply could not be published.');
+    } finally {
+      setReplyingPostId(null);
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -331,9 +563,12 @@ export default function DjLoungePage() {
               <form onSubmit={handleSubmit} className="border-b border-[#222222] bg-[#111111] p-4 sm:p-5">
                 {user ? (
                   <div className="flex gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center bg-primary text-lg font-black uppercase text-white">
-                      {user.name.charAt(0)}
-                    </div>
+                    <LoungeAvatar
+                      src={user.avatar_url}
+                      initial={user.name.charAt(0)}
+                      alt={user.name}
+                      className="h-11 w-11 shrink-0 text-lg"
+                    />
                     <div className="min-w-0 flex-1">
                       <textarea
                         value={draft}
@@ -394,9 +629,12 @@ export default function DjLoungePage() {
                   <PostCard
                     key={post.id}
                     post={post}
+                    canReply={Boolean(user)}
+                    isSubmittingReply={replyingPostId === post.id}
                     onLike={handleLike}
                     onRepost={handleRepost}
                     onBookmark={handleBookmark}
+                    onReply={handleReply}
                   />
                 ))
               ) : (
@@ -407,6 +645,13 @@ export default function DjLoungePage() {
             </div>
 
             <aside className="grid gap-5 self-start">
+              {loungeFeaturedSlot && (
+                <FeaturedDjSlotCard
+                  slot={loungeFeaturedSlot}
+                  emptyMessage="This spotlight is open for DJs who want premium visibility in DJLounge."
+                />
+              )}
+
               <section className="border border-[#2a2a2a] bg-[#111111] p-5">
                 <div className="mb-4 flex items-center gap-2">
                   <Sparkles size={18} className="text-primary" />

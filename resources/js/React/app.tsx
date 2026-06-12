@@ -3,13 +3,17 @@ import { createRoot } from 'react-dom/client';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './Frontend/components/auth/AuthProvider';
+import { PlayerProvider } from './Frontend/components/player/PlayerProvider';
 import SiteWrapper from './Frontend/layouts/SiteWrapper';
 import AccountPage from './Frontend/pages/auth/AccountPage';
 import ForgotPasswordPage from './Frontend/pages/auth/ForgotPasswordPage';
 import LoginPage from './Frontend/pages/auth/LoginPage';
 import RegisterPage from './Frontend/pages/auth/RegisterPage';
 import UserDashboardPage from './Frontend/pages/auth/UserDashboardPage';
+import BattlesPage from './Frontend/pages/battles';
+import DjPortfolioPage from './Frontend/pages/dj/DjPortfolioPage';
 import PublicDjProfilePage from './Frontend/pages/dj/PublicDjProfilePage';
+import StartDjCareerPage from './Frontend/pages/dj/StartDjCareerPage';
 import DjsPage from './Frontend/pages/djs';
 import GearPage from './Frontend/pages/gear';
 import HomePage from './Frontend/pages';
@@ -29,23 +33,29 @@ createRoot(rootElement).render(
     <HelmetProvider>
       <BrowserRouter>
         <AuthProvider>
-          <SiteWrapper>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/mixes" element={<MixesPage />} />
-              <Route path="/merch" element={<MerchPage />} />
-              <Route path="/gear" element={<GearPage />} />
-              <Route path="/djs" element={<DjsPage />} />
-              <Route path="/djs/:handle" element={<PublicDjProfilePage />} />
-              <Route path="/dj-lounge" element={<DjLoungePage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/dashboard" element={<UserDashboardPage />} />
-              <Route path="/account" element={<AccountPage />} />
-              <Route path="*" element={<HomePage />} />
-            </Routes>
-          </SiteWrapper>
+          <PlayerProvider>
+            <SiteWrapper>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/battles" element={<BattlesPage />} />
+                <Route path="/mixes" element={<MixesPage />} />
+                <Route path="/merch" element={<MerchPage />} />
+                <Route path="/gear" element={<GearPage />} />
+                <Route path="/djs" element={<DjsPage />} />
+                <Route path="/djs/:handle" element={<PublicDjProfilePage />} />
+                <Route path="/dj/start" element={<StartDjCareerPage />} />
+                <Route path="/dj/edit" element={<StartDjCareerPage />} />
+                <Route path="/dj/portfolio" element={<DjPortfolioPage />} />
+                <Route path="/dj-lounge" element={<DjLoungePage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/dashboard" element={<UserDashboardPage />} />
+                <Route path="/account" element={<AccountPage />} />
+                <Route path="*" element={<HomePage />} />
+              </Routes>
+            </SiteWrapper>
+          </PlayerProvider>
         </AuthProvider>
       </BrowserRouter>
     </HelmetProvider>

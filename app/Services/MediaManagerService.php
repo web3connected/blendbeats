@@ -48,10 +48,26 @@ class MediaManagerService
     public function getFileUrl(MediaFile $file): string
     {
         return match ($file->disk) {
-            'public' => Storage::disk('public')->url($file->path),
+            'public' => $this->publicDiskUrl($file->path),
             'local', 'media_s3', 's3' => "/api/media/files/{$file->id}/stream",
             default => throw new \InvalidArgumentException("Unsupported disk: {$file->disk}"),
         };
+    }
+
+    private function publicDiskUrl(string $path): string
+    {
+        $normalizedPath = ltrim(str_replace('\\', '/', $path), '/');
+
+        if (
+            str_starts_with($normalizedPath, 'media/portfolios/')
+            || str_starts_with($normalizedPath, 'media/site/')
+            || str_starts_with($normalizedPath, 'media/accounts/avatar/')
+            || (str_starts_with($normalizedPath, 'media/') && is_file(public_path($normalizedPath)))
+        ) {
+            return '/'.$normalizedPath;
+        }
+
+        return '/storage/'.$normalizedPath;
     }
 
     public function uploadFileToMediaManager(UploadedFile $file, string $disk = 'public', ?string $collection = null): MediaFile
@@ -79,7 +95,17 @@ class MediaManagerService
         $filename = pathinfo($originalName, PATHINFO_FILENAME);
         $uniqueFilename = Str::slug($filename).'_'.time().'_'.Str::lower(Str::random(6)).'.'.$extension;
         $directory = $this->accountMediaPath($mediaAccount->root_path, $collection);
-        $path = $file->storeAs($directory, $uniqueFilename, $mediaAccount->disk);
+
+        if ($disk === 'public' && $collection === self::COLLECTION_DJ_MEDIA) {
+            $directory = $this->portfolioPublicPath($owner);
+            if (! is_dir(public_path($directory))) {
+                mkdir(public_path($directory), 0755, true);
+            }
+            $file->move(public_path($directory), $uniqueFilename);
+            $path = $directory.'/'.$uniqueFilename;
+        } else {
+            $path = $file->storeAs($directory, $uniqueFilename, $mediaAccount->disk);
+        }
 
         $mediaFile = MediaFile::create([
             ...$this->ownerColumns($owner),
@@ -183,7 +209,14 @@ class MediaManagerService
         DB::beginTransaction();
 
         try {
-            Storage::disk($file->disk)->delete($file->path);
+            if ($file->disk === 'public' && str_starts_with($file->path, 'media/')) {
+                $publicFile = public_path($file->path);
+                if (is_file($publicFile)) {
+                    unlink($publicFile);
+                }
+            } else {
+                Storage::disk($file->disk)->delete($file->path);
+            }
             $file->delete();
             $this->auditAction('delete', $file->disk, $file->path, $owner);
 
@@ -208,6 +241,18 @@ class MediaManagerService
 
         $disk = Storage::disk($file->disk);
 
+        if ($file->disk === 'public' && str_starts_with($file->path, 'media/')) {
+            $publicFile = public_path($file->path);
+
+            if (! is_file($publicFile)) {
+                throw new Exception('File not found');
+            }
+
+            return response(file_get_contents($publicFile))
+                ->header('Content-Type', $file->mime_type)
+                ->header('Content-Disposition', 'inline; filename="'.($file->original_name ?? $file->name).'"');
+        }
+
         if (! $disk->exists($file->path)) {
             throw new Exception('File not found');
         }
@@ -219,6 +264,8 @@ class MediaManagerService
 
     public function filePayload(MediaFile $file): array
     {
+        $portfolio = $file->metadata['portfolio'] ?? [];
+
         return [
             'id' => $file->id,
             'name' => $file->name,
@@ -234,6 +281,12 @@ class MediaManagerService
             'is_video' => $file->isVideo(),
             'is_audio' => $file->isAudio(),
             'is_pdf' => $file->isPdf(),
+            'metadata' => $file->metadata,
+            'portfolio_title' => $portfolio['title'] ?? null,
+            'portfolio_description' => $portfolio['description'] ?? null,
+            'portfolio_genre' => $portfolio['genre'] ?? null,
+            'portfolio_visibility' => $portfolio['visibility'] ?? null,
+            'portfolio_kind' => $portfolio['media_kind'] ?? null,
             'created_at' => $file->created_at,
         ];
     }
@@ -420,6 +473,19 @@ class MediaManagerService
     private function accountMediaPath(string $rootPath, string $collection): string
     {
         return trim($rootPath, '/').'/'.trim($collection, '/');
+    }
+
+    private function portfolioPublicPath(Model $owner): string
+    {
+        $slug = null;
+
+        if ($owner instanceof User) {
+            $slug = $owner->djProfile?->handle;
+        }
+
+        $slug = Str::slug($slug ?: ($owner->name ?? 'portfolio')) ?: 'portfolio-'.$owner->getKey();
+
+        return 'media/portfolios/'.$slug;
     }
 
     private function auditAction(string $action, string $disk, string $path, ?Model $owner = null): void

@@ -3,10 +3,25 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import type { AuthUser } from '@/lib/auth';
 
 interface WhosLoggedInProps {
   onNavigate?: () => void;
   variant?: 'desktop' | 'mobile';
+}
+
+function UserAvatar({ user, className }: { user: AuthUser; className: string }) {
+  const avatarUrl = user.avatar_url || user.custom_avatar_url || user.gravatar_url || user.generated_avatar_url;
+
+  if (avatarUrl) {
+    return <img src={avatarUrl} alt={user.name} className={`${className} object-cover`} />;
+  }
+
+  return (
+    <span className={`${className} flex items-center justify-center bg-primary font-black uppercase text-white`}>
+      {user.name.charAt(0)}
+    </span>
+  );
 }
 
 export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLoggedInProps) {
@@ -66,9 +81,7 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
     return (
       <div className="mt-3 border border-[#2a2a2a] bg-[#111111] p-3">
         <div className="mb-3 flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center bg-primary text-sm font-black uppercase text-white">
-            {user.name.charAt(0)}
-          </div>
+          <UserAvatar user={user} className="h-9 w-9 text-sm" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-white">{user.name}</p>
             <p className="truncate text-xs text-[#888888]">{user.email}</p>
@@ -121,18 +134,19 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
         aria-expanded={isOpen}
         aria-haspopup="menu"
       >
-        <span className="flex h-7 w-7 items-center justify-center bg-primary text-xs font-black uppercase text-white">
-          {user.name.charAt(0)}
-        </span>
+        <UserAvatar user={user} className="h-7 w-7 text-xs" />
         <span className="max-w-28 truncate text-sm font-semibold text-white">{user.name}</span>
         <ChevronDown size={15} className="text-[#888888]" />
       </button>
 
       {isOpen && (
         <div className="absolute right-0 top-12 w-56 border border-[#2a2a2a] bg-[#0d0d0d] p-2 shadow-xl shadow-black/40" role="menu">
-          <div className="border-b border-[#202020] px-3 py-2">
-            <p className="truncate text-sm font-semibold text-white">{user.name}</p>
-            <p className="truncate text-xs text-[#888888]">{user.email}</p>
+          <div className="flex items-center gap-3 border-b border-[#202020] px-3 py-2">
+            <UserAvatar user={user} className="h-10 w-10 shrink-0 text-sm" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-white">{user.name}</p>
+              <p className="truncate text-xs text-[#888888]">{user.email}</p>
+            </div>
           </div>
           <Link
             to="/dashboard"

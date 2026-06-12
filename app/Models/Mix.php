@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Mix extends Model
@@ -132,11 +131,18 @@ class Mix extends Model
             return $path;
         }
 
-        if (Str::startsWith($path, 'media/')) {
-            return asset($path);
+        $normalizedPath = ltrim(str_replace('\\', '/', $path), '/');
+
+        if (
+            Str::startsWith($normalizedPath, 'media/portfolios/')
+            || Str::startsWith($normalizedPath, 'media/site/')
+            || Str::startsWith($normalizedPath, 'media/accounts/avatar/')
+            || (Str::startsWith($normalizedPath, 'media/') && is_file(public_path($normalizedPath)))
+        ) {
+            return '/'.$normalizedPath;
         }
 
-        return Storage::disk('public')->url($path);
+        return '/storage/'.$normalizedPath;
     }
 
     private static function uniqueSlug(string $title): string

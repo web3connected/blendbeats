@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class UserAuthController extends Controller
@@ -77,6 +78,52 @@ class UserAuthController extends Controller
         return response()->json([
             'ok' => true,
             'message' => 'If an account exists for that email, password reset instructions will be sent.',
+        ]);
+    }
+
+    public function updateAvatar(Request $request): JsonResponse
+    {
+        $attributes = $request->validate([
+            'avatar' => ['nullable', 'image', 'max:2048'],
+            'avatar_url' => ['nullable', 'url', 'max:255'],
+            'remove_avatar' => ['nullable', 'boolean'],
+            'is_gravatar' => ['nullable', 'boolean'],
+            'use_gravatar' => ['nullable', 'boolean'],
+        ]);
+
+        /** @var User $user */
+        $user = Auth::guard('web')->user();
+        abort_unless($user, 401);
+
+        $isGravatar = $request->has('is_gravatar')
+            ? $request->boolean('is_gravatar')
+            : $request->boolean('use_gravatar');
+
+        $user->forceFill([
+            'is_gravatar' => $isGravatar,
+            'use_gravatar' => $isGravatar,
+        ])->save();
+
+        if ($request->boolean('remove_avatar')) {
+            $user->removeAvatar();
+        } elseif ($request->hasFile('avatar')) {
+            $directory = public_path('media/accounts/avatar');
+
+            if (! is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+
+            $file = $request->file('avatar');
+            $fileName = 'avatar-'.$user->id.'-'.Str::random(12).'.'.$file->getClientOriginalExtension();
+
+            $file->move($directory, $fileName);
+            $user->setAvatarFromFile('media/accounts/avatar/'.$fileName);
+        } elseif (! empty($attributes['avatar_url'])) {
+            $user->setAvatarFromUrl($attributes['avatar_url']);
+        }
+
+        return response()->json([
+            'user' => $this->userPayload($user->fresh()),
         ]);
     }
 

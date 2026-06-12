@@ -3,14 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\MediaFile;
 use App\Models\Mix;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class MixController extends Controller
 {
     public function index(): JsonResponse
     {
+        $this->syncPublicPortfolioMediaToMixes();
+
         $publicMixes = Mix::query()
             ->public()
             ->with('user:id,name')
@@ -100,5 +104,61 @@ class MixController extends Controller
                 'name' => $mix->dj_name,
             ],
         ];
+    }
+
+    private function syncPublicPortfolioMediaToMixes(): void
+    {
+        MediaFile::query()
+            ->with('user:id,name')
+            ->where('collection', 'dj_media')
+            ->whereNotNull('user_id')
+            ->latest('created_at')
+            ->get()
+            ->filter(function (MediaFile $file): bool {
+                $portfolio = $file->metadata['portfolio'] ?? [];
+
+                return $file->isAudio()
+                    && ($portfolio['visibility'] ?? null) === 'public'
+                    && in_array($portfolio['media_kind'] ?? 'mix', ['mix', 'track'], true);
+            })
+            ->each(function (MediaFile $file): void {
+                $portfolio = $file->metadata['portfolio'] ?? [];
+                $title = filled($portfolio['title'] ?? null)
+                    ? (string) $portfolio['title']
+                    : (string) ($file->original_name ?? $file->name);
+
+                Mix::query()->updateOrCreate(
+                    ['audio_media_file_id' => $file->id],
+                    [
+                        'user_id' => $file->user_id,
+                        'title' => $title,
+                        'slug' => $this->mixSlugForMediaFile($file, $title),
+                        'description' => $portfolio['description'] ?? null,
+                        'genre' => $portfolio['genre'] ?? null,
+                        'audio_file' => $file->path,
+                        'is_public' => true,
+                        'published_at' => $file->created_at ?? now(),
+                    ],
+                );
+            });
+    }
+
+    private function mixSlugForMediaFile(MediaFile $file, string $title): string
+    {
+        $base = Str::slug($title) ?: 'mix';
+        $slug = $base;
+        $index = 2;
+
+        while (
+            Mix::query()
+                ->where('slug', $slug)
+                ->where('audio_media_file_id', '!=', $file->id)
+                ->exists()
+        ) {
+            $slug = "{$base}-{$index}";
+            $index++;
+        }
+
+        return $slug;
     }
 }

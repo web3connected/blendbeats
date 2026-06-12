@@ -355,6 +355,11 @@ return [
                     'url' => 'admin/admincenter/adminpermissions',
                     'icon' => 'fas fa-fw fa-key',
                 ],
+                [
+                    'text' => 'Featured Slots',
+                    'url' => 'admin/admincenter/featuredslots',
+                    'icon' => 'fas fa-fw fa-star',
+                ],
             ],
         ],
         ['header' => 'User Management'],

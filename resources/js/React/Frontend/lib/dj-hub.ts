@@ -16,6 +16,7 @@ export type DjHubDj = {
   country: string | null;
   open_for_bookings: boolean;
   followers_count: number;
+  featured_slot: number | null;
   featured_statuses: string[];
   featured_mix: {
     id: number;

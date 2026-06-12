@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminCenter\AdminPermissionController;
+use App\Http\Controllers\Admin\AdminCenter\FeaturedSlotController;
 use App\Http\Controllers\Admin\AdminCenter\AdminRoleController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AuthController;
@@ -58,6 +59,22 @@ Route::middleware('admin.auth')->group(function (): void {
 
     Route::get('admincenter/adminpermissions', [AdminPermissionController::class, 'index'])
         ->name('admincenter.adminpermissions.index');
+
+    Route::get('admincenter/featuredslots', [FeaturedSlotController::class, 'index'])
+        ->middleware('permission:featuredslots.view,admin')
+        ->name('admincenter.featuredslots.index');
+    Route::put('admincenter/featuredslots/{slot}', [FeaturedSlotController::class, 'update'])
+        ->middleware('permission:featuredslots.update,admin')
+        ->name('admincenter.featuredslots.update');
+    Route::post('admincenter/featuredslots/options', [FeaturedSlotController::class, 'storeCampaignOption'])
+        ->middleware('permission:featuredslots.update,admin')
+        ->name('admincenter.featuredslots.options.store');
+    Route::put('admincenter/featuredslots/options/{option}', [FeaturedSlotController::class, 'updateCampaignOption'])
+        ->middleware('permission:featuredslots.update,admin')
+        ->name('admincenter.featuredslots.options.update');
+    Route::delete('admincenter/featuredslots/options/{option}', [FeaturedSlotController::class, 'destroyCampaignOption'])
+        ->middleware('permission:featuredslots.update,admin')
+        ->name('admincenter.featuredslots.options.destroy');
 
     Route::resource('users', UserController::class);
 
