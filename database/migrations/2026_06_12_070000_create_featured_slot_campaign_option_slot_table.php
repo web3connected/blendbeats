@@ -9,17 +9,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('featured_slot_campaign_option_slot', function (Blueprint $table): void {
-            $table->id();
-            $table->unsignedTinyInteger('slot_number');
-            $table->foreignId('featured_slot_campaign_option_id')
-                ->constrained('featured_slot_campaign_options')
-                ->cascadeOnDelete();
-            $table->timestamps();
+        if (! Schema::hasTable('featured_slot_campaign_option_slot')) {
+            Schema::create('featured_slot_campaign_option_slot', function (Blueprint $table): void {
+                $table->id();
+                $table->unsignedTinyInteger('slot_number');
+                $table->unsignedBigInteger('featured_slot_campaign_option_id');
+                $table->timestamps();
 
-            $table->unique(['slot_number', 'featured_slot_campaign_option_id'], 'featured_slot_option_unique');
-            $table->index('slot_number');
-        });
+                $table->foreign('featured_slot_campaign_option_id', 'fsco_slot_option_fk')
+                    ->references('id')
+                    ->on('featured_slot_campaign_options')
+                    ->cascadeOnDelete();
+                $table->unique(['slot_number', 'featured_slot_campaign_option_id'], 'featured_slot_option_unique');
+                $table->index('slot_number');
+            });
+        }
 
         if (Schema::hasTable('featured_slot_campaign_options')) {
             $now = now();
