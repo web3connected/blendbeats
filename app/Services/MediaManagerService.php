@@ -58,16 +58,35 @@ class MediaManagerService
     {
         $normalizedPath = ltrim(str_replace('\\', '/', $path), '/');
 
-        if (
-            str_starts_with($normalizedPath, 'media/portfolios/')
-            || str_starts_with($normalizedPath, 'media/site/')
-            || str_starts_with($normalizedPath, 'media/accounts/avatar/')
-            || (str_starts_with($normalizedPath, 'media/') && is_file(public_path($normalizedPath)))
-        ) {
+        if ($this->usesDirectPublicUrl($normalizedPath)) {
             return '/'.$normalizedPath;
         }
 
         return '/storage/'.$normalizedPath;
+    }
+
+    private function isDirectPublicFile(string $path): bool
+    {
+        $normalizedPath = ltrim(str_replace('\\', '/', $path), '/');
+
+        return $this->usesDirectPublicUrl($normalizedPath) && is_file(public_path($normalizedPath));
+    }
+
+    private function usesDirectPublicUrl(string $path): bool
+    {
+        $normalizedPath = ltrim(str_replace('\\', '/', $path), '/');
+
+        return (
+            str_starts_with($normalizedPath, 'media/portfolios/')
+            || str_starts_with($normalizedPath, 'media/site/')
+            || str_starts_with($normalizedPath, 'media/accounts/avatar/')
+            || str_starts_with($normalizedPath, 'media/')
+        ) && (
+            str_starts_with($normalizedPath, 'media/portfolios/')
+            || str_starts_with($normalizedPath, 'media/site/')
+            || str_starts_with($normalizedPath, 'media/accounts/avatar/')
+            || is_file(public_path($normalizedPath))
+        );
     }
 
     public function uploadFileToMediaManager(UploadedFile $file, string $disk = 'public', ?string $collection = null): MediaFile
@@ -209,7 +228,7 @@ class MediaManagerService
         DB::beginTransaction();
 
         try {
-            if ($file->disk === 'public' && str_starts_with($file->path, 'media/')) {
+            if ($file->disk === 'public' && $this->isDirectPublicFile($file->path)) {
                 $publicFile = public_path($file->path);
                 if (is_file($publicFile)) {
                     unlink($publicFile);

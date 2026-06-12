@@ -36,8 +36,14 @@
     </div>
 
     <div class="form-group col-md-6">
-        <label for="media_storage_tier">Media Storage Tier</label>
-        <input id="media_storage_tier" type="text" name="media_storage_tier" value="{{ old('media_storage_tier', $user?->media_storage_tier ?? 'starter') }}" class="form-control @error('media_storage_tier') is-invalid @enderror" required>
+        <label for="media_storage_tier">Membership Tier</label>
+        <select id="media_storage_tier" name="media_storage_tier" class="form-control @error('media_storage_tier') is-invalid @enderror" required>
+            @foreach (config('billing.subscription.tiers') as $tierKey => $tier)
+                <option value="{{ $tierKey }}" @selected(old('media_storage_tier', config("media_storage.tier_aliases.{$user?->media_storage_tier}", $user?->media_storage_tier ?? 'free')) === $tierKey)>
+                    {{ $tier['name'] }}
+                </option>
+            @endforeach
+        </select>
         @error('media_storage_tier') <span class="invalid-feedback">{{ $message }}</span> @enderror
     </div>
 </div>

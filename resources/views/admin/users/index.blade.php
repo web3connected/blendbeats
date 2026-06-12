@@ -31,7 +31,7 @@
                         <th>Name</th>
                         <th>Email</th>
                         <th>Gravatar</th>
-                        <th>Storage Tier</th>
+                        <th>Membership Tier</th>
                         <th>Created</th>
                         <th class="text-right">Actions</th>
                     </tr>
@@ -47,7 +47,8 @@
                             </td>
                             <td>{{ $user->email }}</td>
                             <td>{{ $user->use_gravatar || $user->is_gravatar ? 'On' : 'Off' }}</td>
-                            <td>{{ $user->media_storage_tier }}</td>
+                            @php($membershipTier = config("media_storage.tier_aliases.{$user->media_storage_tier}", $user->media_storage_tier ?? 'free'))
+                            <td>{{ config("billing.subscription.tiers.{$membershipTier}.name", $membershipTier) }}</td>
                             <td>{{ optional($user->created_at)->format('Y-m-d H:i') }}</td>
                             <td class="text-right">
                                 <a href="{{ route('admin.users.show', $user) }}" class="btn btn-info btn-sm">

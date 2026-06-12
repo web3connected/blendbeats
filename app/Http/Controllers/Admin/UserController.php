@@ -36,7 +36,7 @@ class UserController extends Controller
             'last_name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'email_verified_at' => ['nullable', 'date'],
-            'media_storage_tier' => ['required', 'string', 'max:255'],
+            'media_storage_tier' => ['required', Rule::in(array_keys(config('billing.subscription.tiers')))],
             'password' => ['required', 'confirmed', 'min:8'],
         ]);
 
@@ -100,7 +100,7 @@ class UserController extends Controller
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
             'email_verified_at' => ['nullable', 'date'],
-            'media_storage_tier' => ['required', 'string', 'max:255'],
+            'media_storage_tier' => ['required', Rule::in(array_keys(config('billing.subscription.tiers')))],
         ]);
 
         $user->update([

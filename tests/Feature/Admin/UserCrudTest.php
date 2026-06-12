@@ -30,7 +30,7 @@ class UserCrudTest extends TestCase
             'last_name' => 'User',
             'email' => 'managed@example.com',
             'password' => 'password',
-            'media_storage_tier' => 'starter',
+            'media_storage_tier' => 'free',
         ]);
 
         $this->actingAs($admin, 'admin')
@@ -43,13 +43,13 @@ class UserCrudTest extends TestCase
             ->get('/admin/users/create')
             ->assertOk()
             ->assertSee('Create User')
-            ->assertSee('Media Storage Tier');
+            ->assertSee('Membership Tier');
 
         $this->actingAs($admin, 'admin')
             ->get("/admin/users/{$user->id}")
             ->assertOk()
             ->assertSee('User Details')
-            ->assertSee('Media Storage Tier')
+            ->assertSee('Membership Tier')
             ->assertSee('Edit')
             ->assertDontSee('Password Reset')
             ->assertDontSee('Avatar Upload')
@@ -86,7 +86,7 @@ class UserCrudTest extends TestCase
                 'email' => 'created@example.com',
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
-                'media_storage_tier' => 'starter',
+                'media_storage_tier' => 'free',
             ])
             ->assertRedirect();
 
@@ -101,7 +101,7 @@ class UserCrudTest extends TestCase
                 'first_name' => 'Updated',
                 'last_name' => 'Person',
                 'email' => 'updated@example.com',
-                'media_storage_tier' => 'premium',
+                'media_storage_tier' => 'dj_pro',
             ])
             ->assertRedirect(route('admin.users.edit', $user).'#profile-info');
 
@@ -111,7 +111,7 @@ class UserCrudTest extends TestCase
         $this->assertSame('Updated', $user->first_name);
         $this->assertSame('Person', $user->last_name);
         $this->assertSame('updated@example.com', $user->email);
-        $this->assertSame('premium', $user->media_storage_tier);
+        $this->assertSame('dj_pro', $user->media_storage_tier);
 
         $this->actingAs($admin, 'admin')
             ->put("/admin/users/{$user->id}", [

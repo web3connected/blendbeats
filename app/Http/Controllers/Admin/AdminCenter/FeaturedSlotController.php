@@ -17,6 +17,12 @@ class FeaturedSlotController extends Controller
 
     private const GROUP_SIZE = 4;
 
+    private const GROUP_WEIGHTS = [35, 25, 15, 10, 8, 7];
+
+    private const MAX_DAILY_PRICE_CENTS = 2500;
+
+    private const MIN_DAILY_PRICE_CENTS = 599;
+
     public function index(): View
     {
         $slots = collect(range(1, self::SLOT_COUNT))
@@ -24,6 +30,7 @@ class FeaturedSlotController extends Controller
                 'number' => $slotNumber,
                 'group' => intdiv($slotNumber - 1, self::GROUP_SIZE) + 1,
                 'position' => (($slotNumber - 1) % self::GROUP_SIZE) + 1,
+                'daily_price_cents' => $this->dailyPriceForGroup(intdiv($slotNumber - 1, self::GROUP_SIZE) + 1),
             ]);
 
         $campaignOptions = Schema::hasTable('featured_slot_campaign_options')
@@ -47,6 +54,12 @@ class FeaturedSlotController extends Controller
             'campaignOptions' => $campaignOptions,
             'activeCampaignOptions' => $activeCampaignOptions,
             'slotCampaignOptionIds' => $slotCampaignOptionIds,
+            'pricingGroups' => collect(range(1, count(self::GROUP_WEIGHTS)))->map(fn (int $group): array => [
+                'group' => $group,
+                'weight' => self::GROUP_WEIGHTS[$group - 1],
+                'daily_price_cents' => $this->dailyPriceForGroup($group),
+                'daily_price' => $this->formatMoney($this->dailyPriceForGroup($group)),
+            ]),
             'configuredSlotCount' => $slotCampaignOptionIds->filter(fn (array $optionIds) => count($optionIds) > 0)->count(),
             'slotCount' => self::SLOT_COUNT,
         ]);
@@ -128,7 +141,6 @@ class FeaturedSlotController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:1000'],
             'duration_days' => ['required', 'integer', 'min:1', 'max:365'],
-            'price' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'is_active' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:999'],
         ]);
@@ -137,9 +149,29 @@ class FeaturedSlotController extends Controller
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'duration_days' => $validated['duration_days'],
-            'price_cents' => filled($validated['price'] ?? null) ? (int) round(((float) $validated['price']) * 100) : null,
+            'price_cents' => null,
             'is_active' => $request->boolean('is_active'),
             'sort_order' => $validated['sort_order'] ?? 0,
         ];
+    }
+
+    private function dailyPriceForGroup(int $group): int
+    {
+        $weight = self::GROUP_WEIGHTS[$group - 1] ?? min(self::GROUP_WEIGHTS);
+        $maxWeight = max(self::GROUP_WEIGHTS);
+        $minWeight = min(self::GROUP_WEIGHTS);
+
+        if ($maxWeight === $minWeight) {
+            return self::MIN_DAILY_PRICE_CENTS;
+        }
+
+        $visibilityRatio = ($weight - $minWeight) / ($maxWeight - $minWeight);
+
+        return (int) round(self::MIN_DAILY_PRICE_CENTS + ($visibilityRatio * (self::MAX_DAILY_PRICE_CENTS - self::MIN_DAILY_PRICE_CENTS)));
+    }
+
+    private function formatMoney(int $cents): string
+    {
+        return '$'.number_format($cents / 100, 2);
     }
 }

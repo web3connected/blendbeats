@@ -5,6 +5,8 @@
 ])
 
 @section('admin_content')
+    @php($membershipTier = config("media_storage.tier_aliases.{$user->media_storage_tier}", $user->media_storage_tier ?? 'free'))
+
     @if (session('status'))
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
@@ -40,7 +42,7 @@
                             <tr><th>Avatar</th><td>{{ $user->avatar ?: 'Empty' }}</td></tr>
                             <tr><th>Use Gravatar</th><td>{{ $user->use_gravatar ? 'Yes' : 'No' }}</td></tr>
                             <tr><th>Is Gravatar</th><td>{{ $user->is_gravatar ? 'Yes' : 'No' }}</td></tr>
-                            <tr><th>Media Storage Tier</th><td>{{ $user->media_storage_tier }}</td></tr>
+                            <tr><th>Membership Tier</th><td>{{ config("billing.subscription.tiers.{$membershipTier}.name", $membershipTier) }}</td></tr>
                             <tr><th>Password</th><td><span class="text-muted">Stored hash hidden</span></td></tr>
                             <tr><th>Remember Token</th><td>{{ $user->remember_token ? 'Set' : 'Not set' }}</td></tr>
                             <tr><th>Created At</th><td>{{ optional($user->created_at)->format('Y-m-d H:i:s') }}</td></tr>

@@ -56,6 +56,7 @@ export default function Footer() {
               {[
                 { href: '/battles', label: 'DJ Battles' },
                 { href: '/mixes', label: 'Mix Submissions' },
+                { href: '/pricing', label: 'Pricing' },
                 { href: '/djs', label: 'DJ Profiles' },
                 { href: '/leaderboard', label: 'Leaderboard' },
               ].map((item) => (

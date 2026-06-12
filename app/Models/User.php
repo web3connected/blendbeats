@@ -12,13 +12,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Cashier\Billable;
 
 #[Fillable(['name', 'first_name', 'last_name', 'email', 'password', 'avatar', 'is_gravatar', 'use_gravatar', 'media_storage_tier'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use AvatarTrait, HasFactory, Notifiable;
+    use AvatarTrait, Billable, HasFactory, Notifiable;
 
     public function adminlte_image(): string
     {

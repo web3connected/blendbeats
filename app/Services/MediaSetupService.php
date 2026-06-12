@@ -23,7 +23,9 @@ class MediaSetupService
             if (! $mediaAccount) {
                 $slug = $this->uniqueAccountSlug($this->baseSlugForOwner($owner));
                 $tier = $owner->media_storage_tier ?? config('media_storage.default_tier');
-                $tierConfig = config("media_storage.tiers.{$tier}") ?? config('media_storage.tiers.starter');
+                $tier = config("media_storage.tier_aliases.{$tier}", $tier);
+                $tierConfig = config("billing.subscription.tiers.{$tier}")
+                    ?? config('billing.subscription.tiers.'.config('billing.subscription.free_tier', 'free'));
 
                 $mediaAccount = MediaAccount::create([
                     ...$this->ownerColumns($owner),
@@ -31,7 +33,7 @@ class MediaSetupService
                     'disk' => 'public',
                     'root_path' => "media/accounts/{$slug}",
                     'storage_tier' => $tier,
-                    'storage_limit_bytes' => (int) $tierConfig['limit_bytes'],
+                    'storage_limit_bytes' => (int) $tierConfig['storage_bytes'],
                     'storage_used_bytes' => 0,
                     'status' => 'active',
                     'activated_at' => now(),

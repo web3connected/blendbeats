@@ -19,7 +19,9 @@ import GearPage from './Frontend/pages/gear';
 import HomePage from './Frontend/pages';
 import MerchPage from './Frontend/pages/merch';
 import MixesPage from './Frontend/pages/mixes';
+import PricingPage from './Frontend/pages/pricing';
 import DjLoungePage from './Frontend/pages/social/DjLoungePage';
+import SubscriptionPage from './Frontend/pages/subscription';
 
 
 const rootElement = document.getElementById('app');
@@ -39,6 +41,8 @@ createRoot(rootElement).render(
                 <Route path="/" element={<HomePage />} />
                 <Route path="/battles" element={<BattlesPage />} />
                 <Route path="/mixes" element={<MixesPage />} />
+                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/subscription" element={<SubscriptionPage />} />
                 <Route path="/merch" element={<MerchPage />} />
                 <Route path="/gear" element={<GearPage />} />
                 <Route path="/djs" element={<DjsPage />} />

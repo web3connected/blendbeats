@@ -30,6 +30,9 @@ class FeaturedSlotManagementTest extends TestCase
             ->assertOk()
             ->assertSee('Featured Slots')
             ->assertSee('Campaign Options')
+            ->assertSee('Visibility Pricing')
+            ->assertSee('$25.00 / day')
+            ->assertSee('$5.99 / day')
             ->assertSee('Slot 1')
             ->assertDontSee('Select a public DJ');
 
@@ -37,7 +40,6 @@ class FeaturedSlotManagementTest extends TestCase
             ->post('/admin/admincenter/featuredslots/options', [
                 'name' => '7 Day Spotlight',
                 'duration_days' => 7,
-                'price' => '49.00',
                 'is_active' => '1',
                 'sort_order' => 1,
                 'description' => 'One week featured placement.',

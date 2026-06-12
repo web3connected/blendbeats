@@ -2,23 +2,27 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 
 class MediaStorageQuotaService
 {
+    public function __construct(private readonly MembershipTierService $membershipTiers) {}
+
     public function quotaForOwner(Model $owner): array
     {
-        $tier = $owner->media_storage_tier ?? config('media_storage.default_tier');
-        $tierConfig = config("media_storage.tiers.{$tier}") ?? config('media_storage.tiers.starter');
-        $limitBytes = (int) $tierConfig['limit_bytes'];
+        $membershipUser = $owner instanceof User ? $owner : null;
+        $tier = $this->membershipTiers->tierFor($membershipUser);
+        $tierConfig = $this->membershipTiers->configFor($membershipUser);
+        $limitBytes = $this->membershipTiers->storageBytesFor($membershipUser);
         $usedBytes = $this->usedBytes($owner);
         $remainingBytes = max(0, $limitBytes - $usedBytes);
 
         return [
             'tier' => $tier,
-            'tier_label' => $tierConfig['label'],
+            'tier_label' => $tierConfig['name'],
             'limit_bytes' => $limitBytes,
             'limit_formatted' => MediaManagerService::formatBytes($limitBytes),
             'used_bytes' => $usedBytes,

@@ -51,6 +51,39 @@
 
     <div class="card">
         <div class="card-header">
+            <h3 class="card-title">Visibility Pricing</h3>
+            <div class="card-tools text-muted">
+                Daily price drops with lower rotation visibility.
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Group</th>
+                        <th>Visibility Weight</th>
+                        <th>Daily Rate</th>
+                        <th>Slot Range</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($pricingGroups as $pricingGroup)
+                        <tr>
+                            <td>Group {{ $pricingGroup['group'] }}</td>
+                            <td>{{ $pricingGroup['weight'] }}%</td>
+                            <td>{{ $pricingGroup['daily_price'] }} / day</td>
+                            <td>
+                                Slots {{ (($pricingGroup['group'] - 1) * 4) + 1 }}-{{ $pricingGroup['group'] * 4 }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
             <h3 class="card-title">Campaign Options</h3>
             <div class="card-tools text-muted">
                 These are the choices DJs will see when claiming a featured slot.
@@ -69,14 +102,10 @@
                         <input id="new_option_duration_days" type="number" name="duration_days" class="form-control" min="1" max="365" value="1" required>
                     </div>
                     <div class="form-group col-lg-2">
-                        <label for="new_option_price">Price</label>
-                        <input id="new_option_price" type="number" name="price" class="form-control" min="0" step="0.01" placeholder="0.00">
-                    </div>
-                    <div class="form-group col-lg-2">
                         <label for="new_option_sort_order">Sort</label>
                         <input id="new_option_sort_order" type="number" name="sort_order" class="form-control" min="0" max="999" value="0">
                     </div>
-                    <div class="form-group col-lg-3">
+                    <div class="form-group col-lg-5">
                         <label for="new_option_description">Description</label>
                         <input id="new_option_description" type="text" name="description" class="form-control" placeholder="Runs for 24 hours after approval">
                     </div>
@@ -100,7 +129,6 @@
                         <tr>
                             <th>Name</th>
                             <th>Days</th>
-                            <th>Price</th>
                             <th>Status</th>
                             <th>Sort</th>
                             <th>Description</th>
@@ -118,9 +146,6 @@
                                     </td>
                                     <td style="width: 110px;">
                                         <input type="number" name="duration_days" value="{{ $option->duration_days }}" class="form-control form-control-sm" min="1" max="365" required>
-                                    </td>
-                                    <td style="width: 130px;">
-                                        <input type="number" name="price" value="{{ $option->price_cents !== null ? number_format($option->price_cents / 100, 2, '.', '') : '' }}" class="form-control form-control-sm" min="0" step="0.01">
                                     </td>
                                     <td style="width: 120px;">
                                         <div class="custom-control custom-checkbox">
@@ -152,7 +177,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-4">No campaign options yet. Add options like 1 day, 7 days, or 30 days.</td>
+                                <td colspan="6" class="text-center text-muted py-4">No campaign options yet. Add options like 1 day, 7 days, or 30 days.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -211,9 +236,7 @@
                                                                 {{ $option->name }}
                                                                 <span class="text-muted">
                                                                     - {{ $option->duration_days }} {{ str('day')->plural($option->duration_days) }}
-                                                                    @if($option->price_cents !== null)
-                                                                        - {{ $option->formatted_price }}
-                                                                    @endif
+                                                                    - ${{ number_format(($slot['daily_price_cents'] * $option->duration_days) / 100, 2) }}
                                                                 </span>
                                                             </label>
                                                         </div>

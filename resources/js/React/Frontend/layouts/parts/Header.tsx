@@ -13,6 +13,7 @@ export default function Header() {
   const navItems = [
     { href: '/battles', label: 'BATTLES' },
     { href: '/mixes', label: 'MIXES' },
+    { href: '/pricing', label: 'PRICING' },
     { href: '/merch', label: 'MERCH' },
     { href: '/gear', label: 'GEAR' },
     { href: '/djs', label: 'DJS' },
