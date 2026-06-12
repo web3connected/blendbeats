@@ -4,6 +4,11 @@ import { HelmetProvider } from '@dr.pogodin/react-helmet';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './Frontend/components/auth/AuthProvider';
 import SiteWrapper from './Frontend/layouts/SiteWrapper';
+import AccountPage from './Frontend/pages/auth/AccountPage';
+import ForgotPasswordPage from './Frontend/pages/auth/ForgotPasswordPage';
+import LoginPage from './Frontend/pages/auth/LoginPage';
+import RegisterPage from './Frontend/pages/auth/RegisterPage';
+import UserDashboardPage from './Frontend/pages/auth/UserDashboardPage';
 import PublicDjProfilePage from './Frontend/pages/dj/PublicDjProfilePage';
 import DjsPage from './Frontend/pages/djs';
 import GearPage from './Frontend/pages/gear';
@@ -33,6 +38,11 @@ createRoot(rootElement).render(
               <Route path="/djs" element={<DjsPage />} />
               <Route path="/djs/:handle" element={<PublicDjProfilePage />} />
               <Route path="/dj-lounge" element={<DjLoungePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/dashboard" element={<UserDashboardPage />} />
+              <Route path="/account" element={<AccountPage />} />
               <Route path="*" element={<HomePage />} />
             </Routes>
           </SiteWrapper>

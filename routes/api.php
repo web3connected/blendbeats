@@ -3,7 +3,21 @@
 use App\Http\Controllers\Api\MixController;
 use App\Http\Controllers\Api\DjHubController;
 use App\Http\Controllers\Api\DjLoungeController;
+use App\Http\Controllers\Api\Auth\UserAuthController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Session\Middleware\StartSession;
+
+Route::prefix('auth')
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
+    ->name('api.auth.')
+    ->group(function (): void {
+        Route::post('register', [UserAuthController::class, 'register'])->name('register');
+        Route::post('login', [UserAuthController::class, 'login'])->name('login');
+        Route::get('me', [UserAuthController::class, 'me'])->name('me');
+        Route::post('logout', [UserAuthController::class, 'logout'])->name('logout');
+        Route::post('forgot-password', [UserAuthController::class, 'forgotPassword'])->name('forgot-password');
+    });
 
 Route::get('dj-hub/djs', [DjHubController::class, 'index'])->name('api.dj-hub.index');
 Route::get('dj-hub/djs/{handle}', [DjHubController::class, 'show'])->name('api.dj-hub.show');
