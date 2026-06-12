@@ -84,7 +84,7 @@ const DJHero = () => {
                 transition={{ delay: 0.38, duration: 0.35 }}
                 className="mt-8 flex items-start gap-5"
               >
-                <div className="w-[3px] self-stretch bg-primary shrink-0 mt-1" />
+                <div className="w-0.75 self-stretch bg-primary shrink-0 mt-1" />
                 <p className="text-[#aaaaaa] text-base md:text-lg max-w-md leading-relaxed">
                   Compete head-to-head, post your mixes, get rated by the culture, and shop the gear that moves the crowd.
                 </p>
@@ -99,7 +99,7 @@ const DJHero = () => {
               >
                 <Link
                   to="/battles"
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-white font-bold tracking-widest uppercase text-sm hover:bg-primary/90 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-4 bg-primary text-white font-bold tracking-widest uppercase text-sm hover:bg-primary/90 transition-colors"
                   style={{ fontFamily: 'var(--font-heading)' }}
                 >
                   <Zap size={16} />
