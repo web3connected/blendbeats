@@ -118,6 +118,75 @@ class MixesApiTest extends TestCase
         ]);
     }
 
+    public function test_deleted_portfolio_audio_is_removed_from_public_mixes(): void
+    {
+        $user = User::factory()->create(['name' => 'DJ Portfolio']);
+
+        $deletedFile = MediaFile::query()->create([
+            'user_id' => $user->id,
+            'name' => 'godstime-old.mp3',
+            'original_name' => 'godstime-old.mp3',
+            'disk' => 'public',
+            'path' => 'media/portfolios/dj-portfolio/godstime-old.mp3',
+            'mime_type' => 'audio/mpeg',
+            'size' => 1024,
+            'collection' => 'dj_media',
+            'metadata' => [
+                'portfolio' => [
+                    'title' => 'GodsTime',
+                    'visibility' => 'public',
+                    'media_kind' => 'mix',
+                ],
+            ],
+        ]);
+
+        $activeFile = MediaFile::query()->create([
+            'user_id' => $user->id,
+            'name' => 'godstime-new.mp3',
+            'original_name' => 'godstime-new.mp3',
+            'disk' => 'public',
+            'path' => 'media/portfolios/dj-portfolio/godstime-new.mp3',
+            'mime_type' => 'audio/mpeg',
+            'size' => 1024,
+            'collection' => 'dj_media',
+            'metadata' => [
+                'portfolio' => [
+                    'title' => 'GodsTime',
+                    'genre' => 'Hip-Hop',
+                    'visibility' => 'public',
+                    'media_kind' => 'mix',
+                ],
+            ],
+        ]);
+
+        Mix::query()->create([
+            'user_id' => $user->id,
+            'audio_media_file_id' => $deletedFile->id,
+            'title' => 'GodsTime',
+            'audio_file' => $deletedFile->path,
+            'is_public' => true,
+            'published_at' => now()->subDay(),
+        ]);
+
+        $deletedFile->delete();
+
+        $this->getJson('/api/mixes')
+            ->assertOk()
+            ->assertJsonCount(1, 'mixes')
+            ->assertJsonPath('mixes.0.title', 'GodsTime')
+            ->assertJsonPath('mixes.0.audio_url', '/storage/media/portfolios/dj-portfolio/godstime-new.mp3');
+
+        $this->assertDatabaseHas('mixes', [
+            'audio_media_file_id' => $deletedFile->id,
+            'is_public' => false,
+        ]);
+
+        $this->assertDatabaseHas('mixes', [
+            'audio_media_file_id' => $activeFile->id,
+            'is_public' => true,
+        ]);
+    }
+
     public function test_play_endpoint_hides_private_mixes(): void
     {
         $mix = Mix::query()->create([

@@ -108,7 +108,7 @@ class MixController extends Controller
 
     private function syncPublicPortfolioMediaToMixes(): void
     {
-        MediaFile::query()
+        $publicPortfolioMediaIds = MediaFile::query()
             ->with('user:id,name')
             ->where('collection', 'dj_media')
             ->whereNotNull('user_id')
@@ -120,8 +120,18 @@ class MixController extends Controller
                 return $file->isAudio()
                     && ($portfolio['visibility'] ?? null) === 'public'
                     && in_array($portfolio['media_kind'] ?? 'mix', ['mix', 'track'], true);
-            })
-            ->each(function (MediaFile $file): void {
+            });
+
+        Mix::query()
+            ->whereNotNull('audio_media_file_id')
+            ->whereNotIn('audio_media_file_id', $publicPortfolioMediaIds->pluck('id')->all())
+            ->update([
+                'is_public' => false,
+                'is_featured' => false,
+                'published_at' => null,
+            ]);
+
+        $publicPortfolioMediaIds->each(function (MediaFile $file): void {
                 $portfolio = $file->metadata['portfolio'] ?? [];
                 $title = filled($portfolio['title'] ?? null)
                     ? (string) $portfolio['title']

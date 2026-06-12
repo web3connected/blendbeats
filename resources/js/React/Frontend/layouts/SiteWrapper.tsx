@@ -17,7 +17,9 @@ export default function SiteWrapper({ children }: SiteWrapperProps) {
         <meta name="description" content="The premier underground DJ battle platform." />
       </Helmet>
       <Header />
-      {children}
+      <div className="pt-20">
+        {children}
+      </div>
       <Footer />
     </Website>
   );
