@@ -74,11 +74,11 @@ function ReplyComposer({
 
   return (
     <form onSubmit={handleSubmit} className="mt-3 flex gap-2">
-      <input
+      <textarea
         value={body}
         onChange={(event) => setBody(event.target.value.slice(0, 500))}
         placeholder={placeholder}
-        className="h-10 min-w-0 flex-1 border border-[#303030] bg-[#080808] px-3 text-sm text-white outline-none transition-colors placeholder:text-[#666666] focus:border-primary"
+        className="min-h-10 min-w-0 flex-1 resize-none border border-[#303030] bg-[#080808] px-3 py-2 text-sm leading-6 text-white outline-none transition-colors placeholder:text-[#666666] focus:border-primary"
       />
       <button
         type="submit"
@@ -120,7 +120,7 @@ function ReplyItem({
             <span className="text-xs text-[#777777]">{reply.handle}</span>
             <span className="text-xs text-[#555555]">{reply.timestamp}</span>
           </div>
-          <p className="mt-1 text-sm leading-6 text-[#cccccc]">{reply.body}</p>
+          <div className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-[#cccccc]">{reply.body}</div>
           {!reply.parentId && canReply && (
             <button
               type="button"
@@ -201,7 +201,9 @@ function PostCard({
             )}
           </div>
           <p className="mt-0.5 text-xs uppercase tracking-widest text-[#777777]">{post.role}</p>
-          <p className="mt-3 text-sm leading-6 text-[#dddddd] sm:text-base">{post.body}</p>
+          <div className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#dddddd] sm:text-base">
+            {post.body}
+          </div>
 
           {post.mediaTitle && (
             <div className="mt-4 border border-[#303030] bg-[#080808] p-4">
