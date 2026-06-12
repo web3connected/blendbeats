@@ -107,17 +107,11 @@ class UserAuthController extends Controller
         if ($request->boolean('remove_avatar')) {
             $user->removeAvatar();
         } elseif ($request->hasFile('avatar')) {
-            $directory = public_path('media/accounts/avatar');
-
-            if (! is_dir($directory)) {
-                mkdir($directory, 0755, true);
-            }
-
             $file = $request->file('avatar');
             $fileName = 'avatar-'.$user->id.'-'.Str::random(12).'.'.$file->getClientOriginalExtension();
+            $path = $file->storeAs('media/accounts/avatar', $fileName, 'public');
 
-            $file->move($directory, $fileName);
-            $user->setAvatarFromFile('media/accounts/avatar/'.$fileName);
+            $user->setAvatarFromFile($path);
         } elseif (! empty($attributes['avatar_url'])) {
             $user->setAvatarFromUrl($attributes['avatar_url']);
         }

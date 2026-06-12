@@ -133,12 +133,7 @@ class Mix extends Model
 
         $normalizedPath = ltrim(str_replace('\\', '/', $path), '/');
 
-        if (
-            Str::startsWith($normalizedPath, 'media/portfolios/')
-            || Str::startsWith($normalizedPath, 'media/site/')
-            || Str::startsWith($normalizedPath, 'media/accounts/avatar/')
-            || (Str::startsWith($normalizedPath, 'media/') && is_file(public_path($normalizedPath)))
-        ) {
+        if (Str::startsWith($normalizedPath, 'media/') && is_file(public_path($normalizedPath))) {
             return '/'.$normalizedPath;
         }
 

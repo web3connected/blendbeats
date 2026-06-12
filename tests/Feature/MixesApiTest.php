@@ -107,7 +107,7 @@ class MixesApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('mixes.0.title', 'Late Night Blend')
             ->assertJsonPath('mixes.0.genre', 'Hip-Hop')
-            ->assertJsonPath('mixes.0.audio_url', '/media/portfolios/dj-portfolio/late-night-blend.mp3')
+            ->assertJsonPath('mixes.0.audio_url', '/storage/media/portfolios/dj-portfolio/late-night-blend.mp3')
             ->assertJsonPath('stats.genre_count', 1);
 
         $this->assertDatabaseHas('mixes', [

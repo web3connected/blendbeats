@@ -122,7 +122,8 @@ class MediaLibraryServiceTest extends TestCase
         ]);
 
         $this->actingAs($admin, 'admin')
-            ->put("/admin/users/{$user->id}", [
+            ->post("/admin/users/{$user->id}", [
+                '_method' => 'PUT',
                 '_section' => 'avatar',
                 'avatar' => UploadedFile::fake()->image('avatar.jpg'),
                 'use_gravatar' => '0',
@@ -133,5 +134,38 @@ class MediaLibraryServiceTest extends TestCase
 
         $this->assertStringStartsWith('media/accounts/avatar/', $user->avatar);
         Storage::disk('public')->assertExists($user->avatar);
+    }
+
+    public function test_public_media_path_streams_from_public_disk_when_not_direct_public_file(): void
+    {
+        Storage::fake('public');
+
+        $user = User::query()->create([
+            'name' => 'Streaming User',
+            'email' => 'streaming-user@example.com',
+            'password' => 'password',
+            'media_storage_tier' => 'starter',
+        ]);
+
+        $path = 'media/accounts/avatar/avatar-'.$user->id.'.jpg';
+        Storage::disk('public')->put($path, 'avatar-bytes');
+
+        $file = MediaFile::query()->create([
+            'user_id' => $user->id,
+            'name' => basename($path),
+            'original_name' => basename($path),
+            'disk' => 'public',
+            'path' => $path,
+            'mime_type' => 'image/jpeg',
+            'size' => 12,
+            'collection' => MediaManagerService::COLLECTION_USER_AVATARS,
+        ]);
+
+        $this->actingAs($user);
+
+        $response = app(MediaManagerService::class)->downloadFile($file);
+
+        $this->assertSame('avatar-bytes', $response->getContent());
+        $this->assertSame('image/jpeg', $response->headers->get('Content-Type'));
     }
 }

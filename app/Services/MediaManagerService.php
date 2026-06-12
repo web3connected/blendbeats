@@ -76,17 +76,8 @@ class MediaManagerService
     {
         $normalizedPath = ltrim(str_replace('\\', '/', $path), '/');
 
-        return (
-            str_starts_with($normalizedPath, 'media/portfolios/')
-            || str_starts_with($normalizedPath, 'media/site/')
-            || str_starts_with($normalizedPath, 'media/accounts/avatar/')
-            || str_starts_with($normalizedPath, 'media/')
-        ) && (
-            str_starts_with($normalizedPath, 'media/portfolios/')
-            || str_starts_with($normalizedPath, 'media/site/')
-            || str_starts_with($normalizedPath, 'media/accounts/avatar/')
-            || is_file(public_path($normalizedPath))
-        );
+        return str_starts_with($normalizedPath, 'media/')
+            && is_file(public_path($normalizedPath));
     }
 
     public function uploadFileToMediaManager(UploadedFile $file, string $disk = 'public', ?string $collection = null): MediaFile
@@ -120,14 +111,9 @@ class MediaManagerService
 
         if ($disk === 'public' && $collection === self::COLLECTION_DJ_MEDIA) {
             $directory = $this->portfolioPublicPath($owner);
-            if (! is_dir(public_path($directory))) {
-                mkdir(public_path($directory), 0755, true);
-            }
-            $file->move(public_path($directory), $uniqueFilename);
-            $path = $directory.'/'.$uniqueFilename;
-        } else {
-            $path = $file->storeAs($directory, $uniqueFilename, $mediaAccount->disk);
         }
+
+        $path = $file->storeAs($directory, $uniqueFilename, $mediaAccount->disk);
 
         $mediaFile = MediaFile::create([
             ...$this->ownerColumns($owner),
@@ -263,12 +249,8 @@ class MediaManagerService
 
         $disk = Storage::disk($file->disk);
 
-        if ($file->disk === 'public' && str_starts_with($file->path, 'media/')) {
+        if ($file->disk === 'public' && $this->isDirectPublicFile($file->path)) {
             $publicFile = public_path($file->path);
-
-            if (! is_file($publicFile)) {
-                throw new Exception('File not found');
-            }
 
             return response(file_get_contents($publicFile))
                 ->header('Content-Type', $file->mime_type)
