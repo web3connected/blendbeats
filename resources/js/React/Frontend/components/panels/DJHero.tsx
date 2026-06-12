@@ -100,7 +100,7 @@ const DJHero = () => {
                 <Link
                   to="/battles"
                   className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-white font-bold tracking-widest uppercase text-sm hover:bg-primary/90 transition-colors"
-                  style={{ fontFamily: 'var(--font-heading)', paddingLeft: '2.25rem' }}
+                  style={{ fontFamily: 'var(--font-heading)', paddingLeft: '2.0rem' }}
                 >
                   <Zap size={16} />
                   ENTER A BATTLE
