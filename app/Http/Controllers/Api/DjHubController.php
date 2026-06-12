@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MediaFile;
+use App\Models\User;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -120,7 +121,10 @@ class DjHubController extends Controller
             ->select([
                 'dj_profiles.*',
                 'users.name as user_name',
+                'users.email as user_email',
                 'users.avatar as user_avatar',
+                'users.use_gravatar as user_use_gravatar',
+                'users.is_gravatar as user_is_gravatar',
             ])
             ->selectSub($followersSubquery, 'followers_count')
             ->selectSub($featuredSubquery, 'featured_count')
@@ -144,7 +148,7 @@ class DjHubController extends Controller
             'handle' => $profile->handle,
             'headline' => $profile->profile_headline ?? null,
             'bio' => $profile->bio ?? null,
-            'avatar_url' => $this->avatarUrl($profile->user_avatar ?? null),
+            'avatar_url' => $this->avatarUrl($profile),
             'primary_genre' => $primaryGenre,
             'secondary_genres' => $secondaryGenres,
             'dj_type' => $profile->dj_type ?? null,
@@ -287,21 +291,19 @@ class DjHubController extends Controller
         ];
     }
 
-    private function avatarUrl(?string $avatar): ?string
+    private function avatarUrl(object $profile): string
     {
-        if (! $avatar) {
-            return null;
-        }
+        $user = new User();
+        $user->setRawAttributes([
+            'id' => (int) $profile->user_id,
+            'name' => $profile->user_name ?? $profile->dj_name,
+            'email' => $profile->user_email ?? null,
+            'avatar' => $profile->user_avatar ?? null,
+            'use_gravatar' => (bool) ($profile->user_use_gravatar ?? false),
+            'is_gravatar' => (bool) ($profile->user_is_gravatar ?? false),
+        ], true);
 
-        if (str_starts_with($avatar, 'http://') || str_starts_with($avatar, 'https://') || str_starts_with($avatar, '/')) {
-            return $avatar;
-        }
-
-        if (str_starts_with($avatar, 'media/')) {
-            return asset($avatar);
-        }
-
-        return asset('storage/'.$avatar);
+        return $user->getAvatarUrl();
     }
 
     private function emptyPayload(): array
