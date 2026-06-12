@@ -19,7 +19,7 @@ const features = [
             "Browse DJ profiles, portfolios, mixes, genres, and featured artists. Discover talent and connect with DJs from around the world.",
         image: "images/pages/home/live-battles/dj-hub.jpg",
         alt: "DJ Hub",
-        href: "/dj-hub",
+        href: "/djs",
     },
     {
         label: "Competition",
