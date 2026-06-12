@@ -212,7 +212,6 @@ export default function DjPortfolioPage() {
 
   const handleUploadFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    event.target.value = '';
 
     if (!file) return;
     setUploadFile(file);
@@ -220,6 +219,18 @@ export default function DjPortfolioPage() {
       ...currentForm,
       title: currentForm.title || file.name.replace(/\.[^/.]+$/, ''),
     }));
+  };
+
+  const closeUploadModal = () => {
+    setIsUploadModalOpen(false);
+    setUploadFile(null);
+    setUploadForm({
+      title: '',
+      description: '',
+      genre: '',
+      visibility: 'draft',
+      mediaKind: 'mix',
+    });
   };
 
   const handleUploadSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -663,7 +674,7 @@ export default function DjPortfolioPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsUploadModalOpen(false)}
+                onClick={closeUploadModal}
                 className="inline-flex h-10 w-10 shrink-0 items-center justify-center border border-[#333333] text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
                 aria-label="Close upload modal"
               >
@@ -760,7 +771,7 @@ export default function DjPortfolioPage() {
             <div className="mt-6 flex flex-col gap-3 border-t border-[#252525] pt-5 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => setIsUploadModalOpen(false)}
+                onClick={closeUploadModal}
                 className="inline-flex h-11 items-center justify-center border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
                 style={{ fontFamily: 'var(--font-heading)' }}
               >
