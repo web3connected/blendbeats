@@ -111,6 +111,9 @@ class MediaManagerService
         $collection ??= self::COLLECTION_DJ_MEDIA;
         $originalName = $file->getClientOriginalName();
         $extension = $file->getClientOriginalExtension();
+        $mimeType = $file->getMimeType();
+        $fileSize = $file->getSize() ?: 0;
+        $metadata = $this->extractMetadata($file);
         $filename = pathinfo($originalName, PATHINFO_FILENAME);
         $uniqueFilename = Str::slug($filename).'_'.time().'_'.Str::lower(Str::random(6)).'.'.$extension;
         $directory = $this->accountMediaPath($mediaAccount->root_path, $collection);
@@ -132,11 +135,11 @@ class MediaManagerService
             'original_name' => $originalName,
             'disk' => $mediaAccount->disk,
             'path' => $path,
-            'mime_type' => $file->getMimeType(),
-            'size' => $file->getSize() ?: 0,
+            'mime_type' => $mimeType,
+            'size' => $fileSize,
             'collection' => $collection,
             'media_account_id' => $mediaAccount->id,
-            'metadata' => $this->extractMetadata($file),
+            'metadata' => $metadata,
         ]);
 
         $this->auditAction('upload', $mediaAccount->disk, $path, $owner);
