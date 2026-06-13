@@ -90,7 +90,7 @@ class DjHubController extends Controller
         abort_unless($profile, 404);
 
         return response()->json([
-            'dj' => $this->profilePayload($profile),
+            'dj' => $this->profilePayload($profile, true),
         ]);
     }
 
@@ -132,7 +132,7 @@ class DjHubController extends Controller
             ->where('dj_profiles.profile_status', 'active');
     }
 
-    private function profilePayload(object $profile): array
+    private function profilePayload(object $profile, bool $includeDetails = false): array
     {
         $genres = $this->genresFor((int) $profile->id);
         $primaryGenre = collect($genres)->firstWhere('is_primary', true)['name'] ?? null;
@@ -142,7 +142,7 @@ class DjHubController extends Controller
             ->values()
             ->all();
 
-        return [
+        $payload = [
             'id' => (int) $profile->id,
             'dj_name' => $profile->dj_name,
             'handle' => $profile->handle,
@@ -162,6 +162,16 @@ class DjHubController extends Controller
             'featured_statuses' => $this->featuredStatusesFor((int) $profile->id),
             'featured_mix' => $this->featuredMixFor((int) $profile->user_id),
         ];
+
+        if ($includeDetails) {
+            $allPortfolioMedia = $this->portfolioMediaFor((int) $profile->user_id);
+            $portfolioMedia = array_slice($allPortfolioMedia, 0, 8);
+
+            $payload['portfolio_media'] = $portfolioMedia;
+            $payload['portfolio_stats'] = $this->portfolioStatsFor($allPortfolioMedia);
+        }
+
+        return $payload;
     }
 
     private function featuredSlotFor(int $profileId): ?int
@@ -234,6 +244,56 @@ class DjHubController extends Controller
             'title' => $mix->metadata['portfolio']['title'] ?? $mix->original_name ?? $mix->name,
             'url' => $mix->url,
             'mime_type' => $mix->mime_type,
+        ];
+    }
+
+    private function portfolioMediaFor(int $userId): array
+    {
+        if (! Schema::hasTable('media_files')) {
+            return [];
+        }
+
+        return MediaFile::query()
+            ->where('user_id', $userId)
+            ->where('collection', 'dj_media')
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get()
+            ->filter(fn (MediaFile $file): bool => ($file->metadata['portfolio']['visibility'] ?? null) === 'public')
+            ->map(fn (MediaFile $file): array => $this->portfolioMediaPayload($file))
+            ->values()
+            ->all();
+    }
+
+    private function portfolioStatsFor(array $portfolioMedia): array
+    {
+        $media = collect($portfolioMedia);
+
+        return [
+            'public_media_count' => $media->count(),
+            'audio_count' => $media->where('is_audio', true)->count(),
+            'video_count' => $media->where('is_video', true)->count(),
+            'genre_count' => $media->pluck('genre')->filter()->unique()->count(),
+        ];
+    }
+
+    private function portfolioMediaPayload(MediaFile $file): array
+    {
+        $portfolio = $file->metadata['portfolio'] ?? [];
+
+        return [
+            'id' => (int) $file->id,
+            'title' => $portfolio['title'] ?? $file->original_name ?? $file->name,
+            'description' => $portfolio['description'] ?? null,
+            'genre' => $portfolio['genre'] ?? null,
+            'kind' => $portfolio['media_kind'] ?? null,
+            'url' => $file->url,
+            'mime_type' => $file->mime_type,
+            'formatted_size' => $file->formatted_size,
+            'is_audio' => $file->isAudio(),
+            'is_video' => $file->isVideo(),
+            'is_image' => $file->isImage(),
+            'created_at' => optional($file->created_at)->toISOString(),
         ];
     }
 

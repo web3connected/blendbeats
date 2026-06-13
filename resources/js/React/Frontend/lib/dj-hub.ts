@@ -24,6 +24,26 @@ export type DjHubDj = {
     url: string;
     mime_type: string | null;
   } | null;
+  portfolio_media?: Array<{
+    id: number;
+    title: string;
+    description: string | null;
+    genre: string | null;
+    kind: string | null;
+    url: string;
+    mime_type: string | null;
+    formatted_size: string;
+    is_audio: boolean;
+    is_video: boolean;
+    is_image: boolean;
+    created_at: string | null;
+  }>;
+  portfolio_stats?: {
+    public_media_count: number;
+    audio_count: number;
+    video_count: number;
+    genre_count: number;
+  };
 };
 
 export type DjHubFilters = {
