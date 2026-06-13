@@ -9,6 +9,7 @@ import AccountPage from './Frontend/pages/auth/AccountPage';
 import ForgotPasswordPage from './Frontend/pages/auth/ForgotPasswordPage';
 import LoginPage from './Frontend/pages/auth/LoginPage';
 import RegisterPage from './Frontend/pages/auth/RegisterPage';
+import SettingsPage from './Frontend/pages/auth/SettingsPage';
 import UserDashboardPage from './Frontend/pages/auth/UserDashboardPage';
 import BattlesPage from './Frontend/pages/battles';
 import DjPortfolioPage from './Frontend/pages/dj/DjPortfolioPage';
@@ -56,6 +57,7 @@ createRoot(rootElement).render(
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/dashboard" element={<UserDashboardPage />} />
                 <Route path="/account" element={<AccountPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<HomePage />} />
               </Routes>
             </SiteWrapper>
