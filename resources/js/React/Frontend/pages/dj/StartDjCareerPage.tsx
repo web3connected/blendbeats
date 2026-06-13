@@ -209,7 +209,7 @@ export default function StartDjCareerPage() {
     setAvatarSettings({
       mode: usesGravatar ? 'gravatar' : 'custom',
       useGravatar: usesGravatar,
-      avatarUrl: user.avatar ?? '',
+      avatarUrl: '',
       avatarFile: null,
       removeCustomAvatar: false,
     });

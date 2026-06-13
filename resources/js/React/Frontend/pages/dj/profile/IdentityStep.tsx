@@ -38,10 +38,12 @@ export function IdentityStep({
 }) {
   const [selectedUploadPreviewUrl, setSelectedUploadPreviewUrl] = useState<string | null>(null);
   const avatarInitial = user.name.charAt(0);
+  const savedCustomAvatarUrl = user.custom_avatar_url
+    || (['uploaded', 'url'].includes(String(user.avatar_source)) ? user.avatar_url : null);
   const customAvatarUrl = avatarSettings.removeCustomAvatar
     ? null
-    : selectedUploadPreviewUrl || avatarSettings.avatarUrl.trim() || user.custom_avatar_url || user.avatar;
-  const generatedAvatarUrl = user.generated_avatar_url;
+    : selectedUploadPreviewUrl || avatarSettings.avatarUrl.trim() || savedCustomAvatarUrl;
+  const generatedAvatarUrl = user.generated_avatar_url || user.avatar_url;
   const avatarPreview = avatarSettings.useGravatar
     ? user.gravatar_url || user.avatar_url
     : customAvatarUrl || generatedAvatarUrl;
@@ -50,11 +52,9 @@ export function IdentityStep({
     : customAvatarUrl
       ? selectedUploadPreviewUrl
         ? 'selected upload'
-        : user.custom_avatar_url || user.avatar
-          ? 'uploaded'
-          : 'uploaded'
+        : user.avatar_source ?? 'uploaded'
       : 'generated';
-  const hasSavedCustomAvatar = Boolean(user.custom_avatar_url || user.avatar);
+  const hasSavedCustomAvatar = Boolean(savedCustomAvatarUrl);
   const canResetAvatar = Boolean(selectedUploadPreviewUrl || hasSavedCustomAvatar || avatarSettings.useGravatar);
 
   useEffect(() => {
