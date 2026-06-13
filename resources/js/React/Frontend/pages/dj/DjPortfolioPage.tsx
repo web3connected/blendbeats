@@ -303,6 +303,8 @@ export default function DjPortfolioPage() {
   if (!user) return <Navigate to="/login" replace />;
   if (!user.dj_profile) return <Navigate to="/dj/start" replace />;
 
+  const avatarUrl = user.avatar_url || user.custom_avatar_url || user.gravatar_url || user.generated_avatar_url;
+
   if (isSetupLoading) {
     return (
       <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a] px-4 py-20">
@@ -388,9 +390,17 @@ export default function DjPortfolioPage() {
             <aside className="grid gap-5 self-start">
               <section className="border border-[#2a2a2a] bg-[#111111] p-5">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center bg-primary text-white">
-                    <Radio size={20} />
-                  </div>
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={user.dj_profile.dj_name}
+                      className="h-12 w-12 shrink-0 border border-[#333333] bg-[#080808] object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center bg-primary text-white">
+                      <Radio size={20} />
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <p className="truncate text-lg font-semibold text-white">{user.dj_profile.dj_name}</p>
                     <p className="truncate text-sm text-[#888888]">@{user.dj_profile.handle}</p>
