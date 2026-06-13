@@ -12,6 +12,7 @@ export type BillingPlan = {
   advertising_groups_label: string;
   is_free: boolean;
   is_current: boolean;
+  price_cents: number;
   price_label: string;
   interval_label: string;
   checkout_enabled: boolean;

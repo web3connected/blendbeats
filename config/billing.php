@@ -60,8 +60,10 @@ return [
         'free_tier' => 'free',
         'tiers' => [
             'free' => [
-                'name' => 'Free Tier',
+                'name' => 'Free',
                 'stripe_price_id' => null,
+                'price_cents' => 0,
+                'billing_interval' => 'forever',
                 'storage_bytes' => 500 * $megabyte,
                 'advertising_groups' => ['F'],
                 'purpose' => 'Allows DJs to fully participate in the BlendBeats ecosystem without any required subscription.',
@@ -81,6 +83,8 @@ return [
             'dj_plus' => [
                 'name' => 'DJ Plus',
                 'stripe_price_id' => env('STRIPE_PRICE_DJ_PLUS'),
+                'price_cents' => 999,
+                'billing_interval' => 'monthly',
                 'storage_bytes' => 3 * $gigabyte,
                 'advertising_groups' => ['E', 'F'],
                 'purpose' => 'Adds extra growth tools for DJs who are ready to promote more consistently.',
@@ -99,6 +103,8 @@ return [
             'dj_pro' => [
                 'name' => 'DJ Pro',
                 'stripe_price_id' => env('STRIPE_PRICE_DJ_PRO'),
+                'price_cents' => 4999,
+                'billing_interval' => 'monthly',
                 'storage_bytes' => 10 * $gigabyte,
                 'advertising_groups' => ['C', 'D', 'E', 'F'],
                 'purpose' => 'Supports active DJs with stronger discovery, analytics, and booking growth tools.',
@@ -119,6 +125,8 @@ return [
             'dj_elite' => [
                 'name' => 'DJ Elite',
                 'stripe_price_id' => env('STRIPE_PRICE_DJ_ELITE'),
+                'price_cents' => 9999,
+                'billing_interval' => 'monthly',
                 'storage_bytes' => 25 * $gigabyte,
                 'advertising_groups' => ['A', 'B', 'C', 'D', 'E', 'F'],
                 'purpose' => 'Premium growth tier for DJs building a professional DJ brand and booking pipeline.',

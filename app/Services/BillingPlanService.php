@@ -57,6 +57,7 @@ class BillingPlanService
     {
         $priceId = $this->stripePriceIdFor($key);
         $storageBytes = (int) ($tier['storage_bytes'] ?? 0);
+        $priceCents = (int) ($tier['price_cents'] ?? 0);
         $isFree = $key === $this->freeTier();
 
         return [
@@ -71,10 +72,20 @@ class BillingPlanService
             'advertising_groups_label' => $this->groupsLabel($tier['advertising_groups'] ?? []),
             'is_free' => $isFree,
             'is_current' => ($user?->media_storage_tier ?: $this->freeTier()) === $key,
-            'price_label' => $isFree ? '$0' : ($priceId ? 'Stripe test price' : 'Setup needed'),
-            'interval_label' => $isFree ? 'forever' : 'monthly',
+            'price_cents' => $priceCents,
+            'price_label' => $this->priceLabel($priceCents),
+            'interval_label' => $tier['billing_interval'] ?? ($isFree ? 'forever' : 'monthly'),
             'checkout_enabled' => ! $isFree && $priceId !== null,
         ];
+    }
+
+    private function priceLabel(int $priceCents): string
+    {
+        if ($priceCents <= 0) {
+            return '$0';
+        }
+
+        return '$'.number_format($priceCents / 100, 2);
     }
 
     private function groupsLabel(array $groups): string
