@@ -22,6 +22,8 @@ import MerchPage from './Frontend/pages/merch';
 import MixesPage from './Frontend/pages/mixes';
 import PricingPage from './Frontend/pages/pricing';
 import DjLoungePage from './Frontend/pages/social/DjLoungePage';
+import SubscriptionCancelPage from './Frontend/pages/subscription-cancel';
+import SubscriptionSuccessPage from './Frontend/pages/subscription-success';
 import SubscriptionPage from './Frontend/pages/subscription';
 
 
@@ -44,6 +46,8 @@ createRoot(rootElement).render(
                 <Route path="/mixes" element={<MixesPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/subscription" element={<SubscriptionPage />} />
+                <Route path="/subscription/success" element={<SubscriptionSuccessPage />} />
+                <Route path="/subscription/cancel" element={<SubscriptionCancelPage />} />
                 <Route path="/merch" element={<MerchPage />} />
                 <Route path="/gear" element={<GearPage />} />
                 <Route path="/djs" element={<DjsPage />} />

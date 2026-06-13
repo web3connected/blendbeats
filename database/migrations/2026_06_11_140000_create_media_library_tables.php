@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('account_slug')->unique();
             $table->string('disk')->default('public');
             $table->string('root_path');
-            $table->string('storage_tier')->default('starter');
+            $table->string('storage_tier')->default('free');
             $table->unsignedBigInteger('storage_limit_bytes')->default(0);
             $table->unsignedBigInteger('storage_used_bytes')->default(0);
             $table->enum('status', ['active', 'suspended', 'disabled'])->default('active');

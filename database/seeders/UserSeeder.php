@@ -25,7 +25,7 @@ class UserSeeder extends Seeder
                 'email_verified_at' => now(),
                 'use_gravatar' => true,
                 'is_gravatar' => true,
-                'media_storage_tier' => env('SEEDED_USER_MEDIA_STORAGE_TIER', 'starter'),
+                'media_storage_tier' => env('SEEDED_USER_MEDIA_STORAGE_TIER', config('billing.subscription.free_tier', 'free')),
             ],
         );
     }

@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Listeners\SyncSubscriptionTierFromStripe;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Laravel\Cashier\Events\WebhookHandled;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Event::listen(WebhookHandled::class, SyncSubscriptionTierFromStripe::class);
+
         Gate::before(function ($user, string $ability): ?bool {
             if (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['super-admin', 'sys-admin'])) {
                 return true;

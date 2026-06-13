@@ -22,7 +22,10 @@ class UserAuthController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $user = User::query()->create($attributes);
+        $user = User::query()->create([
+            ...$attributes,
+            'media_storage_tier' => config('billing.subscription.free_tier', 'free'),
+        ]);
 
         Auth::guard('web')->login($user);
         $request->session()->regenerate();

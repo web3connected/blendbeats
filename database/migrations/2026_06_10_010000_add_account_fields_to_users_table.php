@@ -31,7 +31,7 @@ return new class extends Migration
             }
 
             if (! Schema::hasColumn('users', 'media_storage_tier')) {
-                $table->string('media_storage_tier')->default('starter')->after('is_gravatar');
+                $table->string('media_storage_tier')->default('free')->after('is_gravatar');
             }
         });
 

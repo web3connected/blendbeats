@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\MixController;
+use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\DjHubController;
 use App\Http\Controllers\Api\DjLoungeController;
 use App\Http\Controllers\Api\DjProfileController;
@@ -47,6 +48,18 @@ Route::prefix('media')
 
 Route::get('dj-hub/djs', [DjHubController::class, 'index'])->name('api.dj-hub.index');
 Route::get('dj-hub/djs/{handle}', [DjHubController::class, 'show'])->name('api.dj-hub.show');
+
+Route::get('billing/plans', [BillingController::class, 'plans'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
+    ->name('api.billing.plans');
+Route::prefix('billing')
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.billing.')
+    ->group(function (): void {
+        Route::get('subscription', [BillingController::class, 'subscription'])->name('subscription');
+        Route::post('checkout', [BillingController::class, 'checkout'])->name('checkout');
+        Route::post('portal', [BillingController::class, 'portal'])->name('portal');
+    });
 
 Route::prefix('dj-lounge')->name('api.dj-lounge.')->group(function (): void {
     Route::get('posts', [DjLoungeController::class, 'index'])->name('posts.index');
