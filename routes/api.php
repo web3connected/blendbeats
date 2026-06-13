@@ -80,7 +80,9 @@ Route::prefix('dj-lounge')->name('api.dj-lounge.')->group(function (): void {
 Route::get('mixes', [MixController::class, 'index'])->name('api.mixes.index');
 Route::post('mixes/{mix:slug}/play', [MixController::class, 'play'])->name('api.mixes.play');
 
-Route::get('ratings/{type}/{id}', [RatingController::class, 'show'])->name('api.ratings.show');
+Route::get('ratings/{type}/{id}', [RatingController::class, 'show'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
+    ->name('api.ratings.show');
 Route::middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
     ->group(function (): void {
         Route::post('ratings/{type}/{id}', [RatingController::class, 'store'])->name('api.ratings.store');

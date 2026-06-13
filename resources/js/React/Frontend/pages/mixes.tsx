@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, Disc3, Eye, Headphones, Play, Radio, Star } from 'lucide-react';
 
-import StarRatingContainer from '@/components/StarRatingContainer';
 import HeaderTitle from '@/layouts/HeaderTitle';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { usePlayer } from '@/components/player/PlayerProvider';
 import { getMixesIndex, trackMixPlay, type MixesIndexResponse, type PublicMix } from '@/lib/mixes';
+import { getRatingSummary, rateTarget, type RatingSummary } from '@/lib/ratings';
 
 const emptyStats = {
   featured_mixes: 0,
@@ -72,7 +72,110 @@ function PlayButton({ mix, onPlay }: { mix: PublicMix; onPlay: (mix: PublicMix) 
   );
 }
 
-function FeaturedMixCard({ mix, onPlay }: { mix: PublicMix; onPlay: (mix: PublicMix) => void }) {
+function MixRatingStars({
+  mix,
+  canRate,
+  onRated,
+}: {
+  mix: PublicMix;
+  canRate: boolean;
+  onRated: (mixId: number, rating: RatingSummary) => void;
+}) {
+  const [summary, setSummary] = useState<RatingSummary>({
+    average: mix.rating_average,
+    count: mix.rating_count,
+    user_rating: null,
+    context: 'default',
+  });
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const activeRating = hoverRating ?? summary.user_rating ?? Math.round(summary.average);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getRatingSummary('mixes', mix.id)
+      .then((rating) => {
+        if (!isMounted) return;
+        setSummary(rating);
+        onRated(mix.id, rating);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setSummary({
+          average: mix.rating_average,
+          count: mix.rating_count,
+          user_rating: null,
+          context: 'default',
+        });
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [mix.id, mix.rating_average, mix.rating_count, onRated]);
+
+  const submitRating = (rating: number) => {
+    if (!canRate) {
+      setError('Log in to rate mixes.');
+      return;
+    }
+
+    setIsSaving(true);
+    setError('');
+
+    rateTarget('mixes', mix.id, rating)
+      .then((nextSummary) => {
+        setSummary(nextSummary);
+        onRated(mix.id, nextSummary);
+      })
+      .catch((ratingError) => {
+        setError(ratingError instanceof Error ? ratingError.message : 'Rating could not be saved.');
+      })
+      .finally(() => setIsSaving(false));
+  };
+
+  return (
+    <div className="grid gap-1">
+      <div className="flex items-center gap-1" onMouseLeave={() => setHoverRating(null)}>
+        {[1, 2, 3, 4, 5].map((rating) => (
+          <button
+            key={rating}
+            type="button"
+            onMouseEnter={() => setHoverRating(rating)}
+            onFocus={() => setHoverRating(rating)}
+            onClick={() => submitRating(rating)}
+            disabled={isSaving}
+            className="text-[#333333] transition-colors hover:text-[#FFB800] disabled:cursor-wait"
+            aria-label={`Rate ${mix.title} ${rating} star${rating === 1 ? '' : 's'}`}
+          >
+            <Star
+              size={16}
+              className={rating <= activeRating ? 'fill-[#FFB800] text-[#FFB800]' : 'text-[#333333]'}
+            />
+          </button>
+        ))}
+      </div>
+      <p className="text-[11px] text-[#777777]">
+        {summary.count > 0 ? `${summary.average.toFixed(1)} / 5 from ${summary.count} rating${summary.count === 1 ? '' : 's'}` : 'No ratings yet'}
+      </p>
+      {error && <p className="text-[11px] text-primary">{error}</p>}
+    </div>
+  );
+}
+
+function FeaturedMixCard({
+  mix,
+  canRate,
+  onPlay,
+  onRated,
+}: {
+  mix: PublicMix;
+  canRate: boolean;
+  onPlay: (mix: PublicMix) => void;
+  onRated: (mixId: number, rating: RatingSummary) => void;
+}) {
   return (
     <article className="group grid overflow-hidden border border-[#2a2a2a] bg-[#111] md:grid-cols-[0.9fr_1.1fr]">
       <div className="relative min-h-[260px] overflow-hidden">
@@ -87,7 +190,7 @@ function FeaturedMixCard({ mix, onPlay }: { mix: PublicMix; onPlay: (mix: Public
         <div>
           <div className="mb-4 flex items-center justify-between gap-4">
             <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#FFB800]">{mix.genre || 'Open Format'}</span>
-            <StarRatingContainer rating={Math.round(mix.rating_average)} animated />
+            <MixRatingStars mix={mix} canRate={canRate} onRated={onRated} />
           </div>
           <h3 className="text-4xl uppercase leading-none text-white" style={{ fontFamily: 'var(--font-heading)' }}>
             {mix.title}
@@ -114,7 +217,17 @@ function FeaturedMixCard({ mix, onPlay }: { mix: PublicMix; onPlay: (mix: Public
   );
 }
 
-function MixCard({ mix, onPlay }: { mix: PublicMix; onPlay: (mix: PublicMix) => void }) {
+function MixCard({
+  mix,
+  canRate,
+  onPlay,
+  onRated,
+}: {
+  mix: PublicMix;
+  canRate: boolean;
+  onPlay: (mix: PublicMix) => void;
+  onRated: (mixId: number, rating: RatingSummary) => void;
+}) {
   return (
     <article id={`mix-${mix.id}`} className="group overflow-hidden border border-[#242424] bg-[#121212] transition-colors hover:border-[#FFB800]/60">
       <div className="relative aspect-square overflow-hidden">
@@ -136,7 +249,7 @@ function MixCard({ mix, onPlay }: { mix: PublicMix; onPlay: (mix: PublicMix) => 
         <p className="mt-1 text-sm text-[#888]">by {mix.dj.name}</p>
 
         <div className="mt-5 flex items-center justify-between gap-3">
-          <StarRatingContainer rating={Math.round(mix.rating_average)} />
+          <MixRatingStars mix={mix} canRate={canRate} onRated={onRated} />
           <span className="text-xs text-[#777]">{formatNumber(mix.play_count)} plays</span>
         </div>
 
@@ -149,7 +262,15 @@ function MixCard({ mix, onPlay }: { mix: PublicMix; onPlay: (mix: PublicMix) => 
   );
 }
 
-function GenreRow({ genre, mixes, onPlay }: { genre: string; mixes: PublicMix[]; onPlay: (mix: PublicMix) => void }) {
+function GenreRow({
+  genre,
+  mixes,
+  onPlay,
+}: {
+  genre: string;
+  mixes: PublicMix[];
+  onPlay: (mix: PublicMix) => void;
+}) {
   return (
     <section>
       <div className="mb-4 flex items-center justify-between">
@@ -217,6 +338,7 @@ export default function MixesPage() {
   const stats = data?.stats ?? emptyStats;
   const hasMixes = Boolean(data?.mixes.length);
   const isDj = Boolean(user?.dj_profile);
+  const canRate = Boolean(user);
 
   const statCards = useMemo(
     () => [
@@ -262,6 +384,30 @@ export default function MixesPage() {
       setError('The mix is available, but play tracking failed.');
     }
   };
+
+  const handleRatingUpdate = useCallback((mixId: number, rating: RatingSummary) => {
+    setData((current) => {
+      if (!current) return current;
+
+      const updateMix = (item: PublicMix) =>
+        item.id === mixId ? { ...item, rating_average: rating.average, rating_count: rating.count } : item;
+      const nextMixes = current.mixes.map(updateMix);
+      const ratedMixes = nextMixes.filter((mix) => mix.rating_count > 0);
+
+      return {
+        ...current,
+        stats: {
+          ...current.stats,
+          average_rating: ratedMixes.length
+            ? Math.round((ratedMixes.reduce((total, mix) => total + mix.rating_average, 0) / ratedMixes.length) * 10) / 10
+            : 0,
+        },
+        featured: current.featured.map(updateMix),
+        mixes: nextMixes,
+        genres: current.genres.map((row) => ({ ...row, mixes: row.mixes.map(updateMix) })),
+      };
+    });
+  }, []);
 
   return (
     <>
@@ -347,7 +493,13 @@ export default function MixesPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                   {data?.featured.map((mix) => (
-                    <FeaturedMixCard key={mix.id} mix={mix} onPlay={handlePlay} />
+                    <FeaturedMixCard
+                      key={mix.id}
+                      mix={mix}
+                      canRate={canRate}
+                      onPlay={handlePlay}
+                      onRated={handleRatingUpdate}
+                    />
                   ))}
                 </div>
               </section>
@@ -368,7 +520,13 @@ export default function MixesPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {data?.mixes.map((mix) => (
-                    <MixCard key={mix.id} mix={mix} onPlay={handlePlay} />
+                    <MixCard
+                      key={mix.id}
+                      mix={mix}
+                      canRate={canRate}
+                      onPlay={handlePlay}
+                      onRated={handleRatingUpdate}
+                    />
                   ))}
                 </div>
               </div>
