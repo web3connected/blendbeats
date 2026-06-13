@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminCenter\AdminPermissionController;
 use App\Http\Controllers\Admin\AdminCenter\FeaturedSlotController;
 use App\Http\Controllers\Admin\AdminCenter\AdminRoleController;
+use App\Http\Controllers\Admin\AdminCenter\LoungePlaylistController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -75,6 +76,15 @@ Route::middleware('admin.auth')->group(function (): void {
     Route::delete('admincenter/featuredslots/options/{option}', [FeaturedSlotController::class, 'destroyCampaignOption'])
         ->middleware('permission:featuredslots.update,admin')
         ->name('admincenter.featuredslots.options.destroy');
+
+    Route::get('admincenter/loungeplaylist', [LoungePlaylistController::class, 'index'])
+        ->name('admincenter.loungeplaylist.index');
+    Route::post('admincenter/loungeplaylist', [LoungePlaylistController::class, 'store'])
+        ->name('admincenter.loungeplaylist.store');
+    Route::put('admincenter/loungeplaylist/{track}', [LoungePlaylistController::class, 'update'])
+        ->name('admincenter.loungeplaylist.update');
+    Route::delete('admincenter/loungeplaylist/{track}', [LoungePlaylistController::class, 'destroy'])
+        ->name('admincenter.loungeplaylist.destroy');
 
     Route::resource('users', UserController::class);
 

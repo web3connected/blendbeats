@@ -4,6 +4,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   Pencil,
+  PlayCircle,
   Radio,
   Repeat2,
   Bookmark,
@@ -18,6 +19,7 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import { usePlayer } from '@/components/player/PlayerProvider';
 import FeaturedDjSlotCard from '@/components/featured/FeaturedDjSlotCard';
 import { djLoungeTrends } from '@/config/djLounge';
 import { useFeaturedDjs } from '@/hooks/use-featured-djs';
@@ -36,6 +38,7 @@ import {
   toggleDjLoungePostRepost,
   updateDjLoungePost,
 } from '@/lib/dj-lounge';
+import { getLoungeLiveState } from '@/lib/lounge-live';
 
 function LoungeAvatar({
   src,
@@ -450,6 +453,12 @@ export default function DjLoungePage() {
   const [error, setError] = useState<string | null>(null);
   const { getSlot } = useFeaturedDjs();
   const loungeFeaturedSlot = getSlot(1);
+  const {
+    loadQueue,
+    mode: playerMode,
+    playbackBlocked,
+    togglePlay,
+  } = usePlayer();
 
   useEffect(() => {
     let isMounted = true;
@@ -478,6 +487,46 @@ export default function DjLoungePage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    let syncTimer: number | undefined;
+
+    async function syncLoungePlayer() {
+      try {
+        const liveState = await getLoungeLiveState();
+        if (!isMounted || liveState.playlist.length === 0 || !liveState.current_track) return;
+
+        loadQueue({
+          tracks: liveState.playlist.map((track) => ({
+            id: track.id,
+            title: track.title,
+            artist: track.artist,
+            src: track.src,
+            artwork: track.artwork,
+            meta: track.genre,
+            duration: track.duration,
+          })),
+          mode: liveState.mode,
+          currentTrackId: liveState.current_track.id,
+          currentPositionSeconds: liveState.current_position_seconds,
+          playlistVersion: liveState.playlist_version,
+          volume: 0.3,
+          autoplay: true,
+        });
+      } catch {
+        // The Lounge feed should remain usable even if music sync is unavailable.
+      }
+    }
+
+    void syncLoungePlayer();
+    syncTimer = window.setInterval(syncLoungePlayer, 30_000);
+
+    return () => {
+      isMounted = false;
+      if (syncTimer) window.clearInterval(syncTimer);
+    };
+  }, [loadQueue]);
 
   const feedStats = useMemo(
     () => [
@@ -724,6 +773,17 @@ export default function DjLoungePage() {
                 ))}
               </div>
             </div>
+            {playerMode === 'lounge_live' && playbackBlocked && (
+              <button
+                type="button"
+                onClick={togglePlay}
+                className="mt-6 inline-flex h-11 items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
+                style={{ fontFamily: 'var(--font-heading)' }}
+              >
+                <PlayCircle size={16} />
+                Start Lounge Music
+              </button>
+            )}
           </div>
         </section>
 

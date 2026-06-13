@@ -360,6 +360,11 @@ return [
                     'url' => 'admin/admincenter/featuredslots',
                     'icon' => 'fas fa-fw fa-star',
                 ],
+                [
+                    'text' => 'Lounge Playlist',
+                    'url' => 'admin/admincenter/loungeplaylist',
+                    'icon' => 'fas fa-fw fa-music',
+                ],
             ],
         ],
         ['header' => 'User Management'],

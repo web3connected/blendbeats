@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\DjHubController;
 use App\Http\Controllers\Api\DjLoungeController;
 use App\Http\Controllers\Api\DjProfileController;
+use App\Http\Controllers\Api\LoungeLiveStateController;
 use App\Http\Controllers\Api\MediaManagerController;
 use App\Http\Controllers\Api\MediaSetupController;
 use App\Http\Controllers\Api\RatingController;
@@ -49,6 +50,7 @@ Route::prefix('media')
 
 Route::get('dj-hub/djs', [DjHubController::class, 'index'])->name('api.dj-hub.index');
 Route::get('dj-hub/djs/{handle}', [DjHubController::class, 'show'])->name('api.dj-hub.show');
+Route::get('lounge/live-state', [LoungeLiveStateController::class, 'show'])->name('api.lounge.live-state');
 
 Route::get('billing/plans', [BillingController::class, 'plans'])
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])

@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { CircleStop, Pause, Play, Volume2, X } from 'lucide-react';
 
 export type PlayerTrack = {
@@ -8,13 +8,29 @@ export type PlayerTrack = {
   src: string;
   artwork?: string | null;
   meta?: string | null;
+  duration?: number | null;
+};
+
+export type PlayerMode = 'standard' | 'lounge_live';
+
+export type PlayerQueueOptions = {
+  tracks: PlayerTrack[];
+  mode?: PlayerMode;
+  currentTrackId?: string | number | null;
+  currentPositionSeconds?: number;
+  playlistVersion?: string | null;
+  volume?: number;
+  autoplay?: boolean;
 };
 
 type PlayerContextValue = {
   currentTrack: PlayerTrack | null;
   isPlaying: boolean;
   error: string | null;
+  mode: PlayerMode;
+  playbackBlocked: boolean;
   playTrack: (track: PlayerTrack) => void;
+  loadQueue: (options: PlayerQueueOptions) => void;
   togglePlay: () => void;
   stop: () => void;
 };
@@ -93,7 +109,17 @@ export function PlayerVisualizer({
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const currentTrackRef = useRef<PlayerTrack | null>(null);
+  const queueRef = useRef<PlayerTrack[]>([]);
+  const queueIndexRef = useRef(0);
+  const modeRef = useRef<PlayerMode>('standard');
+  const playlistVersionRef = useRef<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState<PlayerTrack | null>(null);
+  const [queue, setQueue] = useState<PlayerTrack[]>([]);
+  const [queueIndex, setQueueIndex] = useState(0);
+  const [mode, setMode] = useState<PlayerMode>('standard');
+  const [playlistVersion, setPlaylistVersion] = useState<string | null>(null);
+  const [playbackBlocked, setPlaybackBlocked] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
@@ -107,7 +133,48 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     audio.volume = volume;
   }, [volume]);
 
-  const playTrack = (track: PlayerTrack) => {
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+  }, [currentTrack]);
+
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
+
+  useEffect(() => {
+    queueIndexRef.current = queueIndex;
+  }, [queueIndex]);
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+
+  useEffect(() => {
+    playlistVersionRef.current = playlistVersion;
+  }, [playlistVersion]);
+
+  const startAudio = useCallback((autoplay = true) => {
+    const audio = audioRef.current;
+    if (!audio || !autoplay) return;
+
+    audio.play()
+      .then(() => {
+        setIsPlaying(true);
+        setPlaybackBlocked(false);
+      })
+      .catch((playError: unknown) => {
+        setIsPlaying(false);
+
+        if (playError instanceof DOMException && playError.name === 'NotAllowedError') {
+          setPlaybackBlocked(true);
+          return;
+        }
+
+        setError('Audio file could not be loaded.');
+      });
+  }, []);
+
+  const playQueuedTrack = useCallback((track: PlayerTrack, startAtSeconds = 0, autoplay = true) => {
     const audio = audioRef.current;
     if (!audio) return;
 
@@ -115,46 +182,119 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       ...track,
       src: resolvePlayableSource(track.src),
     };
-    const isSameTrack = currentTrack?.src === playableTrack.src;
+    const isSameTrack = currentTrackRef.current?.src === playableTrack.src;
+    const safeStartAtSeconds = Math.max(0, startAtSeconds);
 
     setError(null);
     setCurrentTrack(playableTrack);
 
     if (!isSameTrack) {
       audio.src = playableTrack.src;
-      audio.currentTime = 0;
       audio.load();
-      setCurrentTime(0);
       setDuration(0);
     }
 
-    audio.play()
-      .then(() => setIsPlaying(true))
-      .catch(() => {
-        setIsPlaying(false);
-        setError('Audio file could not be loaded.');
-      });
-  };
+    if (!isSameTrack || Math.abs(audio.currentTime - safeStartAtSeconds) > 8) {
+      try {
+        audio.currentTime = safeStartAtSeconds;
+      } catch {
+        audio.addEventListener('loadedmetadata', () => {
+          audio.currentTime = safeStartAtSeconds;
+        }, { once: true });
+      }
 
-  const togglePlay = () => {
+      setCurrentTime(safeStartAtSeconds);
+    }
+
+    startAudio(autoplay);
+  }, [startAudio]);
+
+  const playTrack = useCallback((track: PlayerTrack) => {
+    setQueue([]);
+    setQueueIndex(0);
+    setMode('standard');
+    setPlaylistVersion(null);
+    setPlaybackBlocked(false);
+    playQueuedTrack(track, 0, true);
+  }, [playQueuedTrack]);
+
+  const loadQueue = useCallback(({
+    tracks,
+    mode: nextMode = 'standard',
+    currentTrackId = null,
+    currentPositionSeconds = 0,
+    playlistVersion: nextPlaylistVersion = null,
+    volume: nextVolume,
+    autoplay = true,
+  }: PlayerQueueOptions) => {
+    const playableTracks = tracks
+      .filter((track) => track.src)
+      .map((track) => ({ ...track, src: resolvePlayableSource(track.src) }));
+
+    if (playableTracks.length === 0) return;
+
+    const foundIndex = playableTracks.findIndex((track) => String(track.id) === String(currentTrackId ?? playableTracks[0].id));
+    const nextIndex = foundIndex >= 0 ? foundIndex : 0;
+    const nextTrack = playableTracks[nextIndex] ?? playableTracks[0];
+    const isSameLiveState = nextMode === modeRef.current
+      && nextPlaylistVersion
+      && nextPlaylistVersion === playlistVersionRef.current
+      && currentTrackRef.current
+      && String(currentTrackRef.current.id) === String(nextTrack.id);
+
+    setQueue(playableTracks);
+    setQueueIndex(nextIndex);
+    setMode(nextMode);
+    setPlaylistVersion(nextPlaylistVersion);
+
+    if (typeof nextVolume === 'number') {
+      setVolume(Math.min(1, Math.max(0, nextVolume)));
+    }
+
+    if (isSameLiveState && audioRef.current) {
+      const drift = Math.abs(audioRef.current.currentTime - currentPositionSeconds);
+
+      if (drift > 8) {
+        audioRef.current.currentTime = Math.max(0, currentPositionSeconds);
+        setCurrentTime(Math.max(0, currentPositionSeconds));
+      }
+
+      return;
+    }
+
+    setPlaybackBlocked(false);
+    playQueuedTrack(nextTrack, currentPositionSeconds, autoplay);
+  }, [playQueuedTrack]);
+
+  const playNextQueuedTrack = useCallback(() => {
+    const currentQueue = queueRef.current;
+
+    if (currentQueue.length === 0) {
+      setIsPlaying(false);
+      return;
+    }
+
+    const nextIndex = (queueIndexRef.current + 1) % currentQueue.length;
+    const nextTrack = currentQueue[nextIndex];
+
+    setQueueIndex(nextIndex);
+    playQueuedTrack(nextTrack, 0, true);
+  }, [playQueuedTrack]);
+
+  const togglePlay = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
+    if (!audio || !currentTrackRef.current) return;
 
     if (audio.paused) {
-      audio.play()
-        .then(() => setIsPlaying(true))
-        .catch(() => {
-          setIsPlaying(false);
-          setError('Audio file could not be loaded.');
-        });
+      startAudio(true);
       return;
     }
 
     audio.pause();
     setIsPlaying(false);
-  };
+  }, [startAudio]);
 
-  const stop = () => {
+  const stop = useCallback(() => {
     const audio = audioRef.current;
     if (audio) {
       audio.pause();
@@ -163,18 +303,24 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
 
     setCurrentTrack(null);
+    setQueue([]);
+    setQueueIndex(0);
+    setMode('standard');
+    setPlaylistVersion(null);
+    setPlaybackBlocked(false);
     setIsPlaying(false);
     setError(null);
     setCurrentTime(0);
     setDuration(0);
-  };
+  }, []);
 
   const value = useMemo(
-    () => ({ currentTrack, isPlaying, error, playTrack, togglePlay, stop }),
-    [currentTrack, isPlaying, error],
+    () => ({ currentTrack, isPlaying, error, mode, playbackBlocked, playTrack, loadQueue, togglePlay, stop }),
+    [currentTrack, isPlaying, error, mode, playbackBlocked, playTrack, loadQueue, togglePlay, stop],
   );
 
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const displayDuration = duration || currentTrack?.duration || 0;
+  const progress = displayDuration > 0 ? (currentTime / displayDuration) * 100 : 0;
 
   return (
     <PlayerContext.Provider value={value}>
@@ -190,11 +336,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       </style>
       <audio
         ref={audioRef}
-        onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
+        onLoadedMetadata={(event) => {
+          const loadedDuration = event.currentTarget.duration;
+          setDuration(Number.isFinite(loadedDuration) ? loadedDuration : currentTrack?.duration ?? 0);
+        }}
         onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-        onPlay={() => setIsPlaying(true)}
+        onPlay={() => {
+          setIsPlaying(true);
+          setPlaybackBlocked(false);
+        }}
         onPause={() => setIsPlaying(false)}
-        onEnded={() => setIsPlaying(false)}
+        onEnded={playNextQueuedTrack}
         onError={() => {
           setIsPlaying(false);
           setError('Audio file could not be loaded.');
@@ -215,9 +367,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                 </div>
               )}
               <div className="min-w-0">
+                {mode === 'lounge_live' && (
+                  <p
+                    className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-[#FFB800]"
+                    style={{ fontFamily: 'var(--font-heading)' }}
+                  >
+                    DJ Lounge Live
+                  </p>
+                )}
                 <p className="truncate text-sm font-semibold text-white">{currentTrack.title}</p>
                 <p className="truncate text-xs text-[#888888]">
-                  {error || currentTrack.artist || currentTrack.meta || 'BlendBeats'}
+                  {error || (playbackBlocked ? 'Tap play to start lounge music.' : currentTrack.artist || currentTrack.meta || 'BlendBeats')}
                 </p>
               </div>
             </div>
@@ -238,7 +398,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                   <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
                 </div>
                 <span className="w-20 text-right text-xs text-[#888888]">
-                  {formatTime(currentTime)} / {formatTime(duration)}
+                  {formatTime(currentTime)} / {formatTime(displayDuration)}
                 </span>
               </div>
             </div>
