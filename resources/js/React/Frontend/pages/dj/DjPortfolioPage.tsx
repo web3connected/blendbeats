@@ -155,7 +155,7 @@ function MediaPreview({ file }: { file: MediaFileRecord }) {
 export default function DjPortfolioPage() {
   const { user, isLoading } = useAuth();
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [mediaAccount, setMediaAccount] = useState<MediaAccount | null>(null);
   const [mediaFiles, setMediaFiles] = useState<MediaFileRecord[]>([]);
   const [storageQuota, setStorageQuota] = useState<MediaStorageQuota | null>(null);
@@ -259,8 +259,13 @@ export default function DjPortfolioPage() {
   useEffect(() => {
     if (searchParams.get('upload') === '1' && mediaAccount) {
       setIsUploadModalOpen(true);
+      setSearchParams((currentParams) => {
+        const nextParams = new URLSearchParams(currentParams);
+        nextParams.delete('upload');
+        return nextParams;
+      }, { replace: true });
     }
-  }, [mediaAccount, searchParams]);
+  }, [mediaAccount, searchParams, setSearchParams]);
 
   const handleActivateMedia = () => {
     setIsActivatingSetup(true);
