@@ -56,6 +56,11 @@ class User extends Authenticatable
         return $this->hasMany(Mix::class);
     }
 
+    public function ratings(): HasMany
+    {
+        return $this->hasMany(Rating::class);
+    }
+
     public function djProfile(): HasOne
     {
         return $this->hasOne(DjProfile::class);

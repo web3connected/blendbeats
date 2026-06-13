@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\Rateable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DjProfile extends Model
 {
-    use SoftDeletes;
+    use Rateable, SoftDeletes;
 
     protected $fillable = [
         'user_id',

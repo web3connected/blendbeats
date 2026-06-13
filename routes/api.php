@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\DjLoungeController;
 use App\Http\Controllers\Api\DjProfileController;
 use App\Http\Controllers\Api\MediaManagerController;
 use App\Http\Controllers\Api\MediaSetupController;
+use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\Auth\UserAuthController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -64,3 +65,10 @@ Route::prefix('dj-lounge')->name('api.dj-lounge.')->group(function (): void {
 
 Route::get('mixes', [MixController::class, 'index'])->name('api.mixes.index');
 Route::post('mixes/{mix:slug}/play', [MixController::class, 'play'])->name('api.mixes.play');
+
+Route::get('ratings/{type}/{id}', [RatingController::class, 'show'])->name('api.ratings.show');
+Route::middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->group(function (): void {
+        Route::post('ratings/{type}/{id}', [RatingController::class, 'store'])->name('api.ratings.store');
+        Route::delete('ratings/{type}/{id}', [RatingController::class, 'destroy'])->name('api.ratings.destroy');
+    });

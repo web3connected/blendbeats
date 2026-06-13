@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\Rateable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,8 @@ use Illuminate\Support\Str;
 
 class Mix extends Model
 {
+    use Rateable;
+
     protected $fillable = [
         'user_id',
         'audio_media_file_id',

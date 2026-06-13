@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\Rateable;
 use App\Services\MediaManagerService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class MediaFile extends Model
 {
-    use SoftDeletes;
+    use Rateable, SoftDeletes;
 
     protected $fillable = [
         'user_id',
