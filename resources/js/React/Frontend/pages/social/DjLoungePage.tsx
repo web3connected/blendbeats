@@ -818,12 +818,7 @@ export default function DjLoungePage() {
             </div>
 
             <aside className="grid gap-5 self-start">
-              {loungeFeaturedSlot && (
-                <FeaturedDjSlotCard
-                  slot={loungeFeaturedSlot}
-                  emptyMessage="This spotlight is open for DJs who want premium visibility in DJLounge."
-                />
-              )}
+              {loungeFeaturedSlot?.dj && <FeaturedDjSlotCard slot={loungeFeaturedSlot} />}
 
               <section className="border border-[#2a2a2a] bg-[#111111] p-5">
                 <div className="mb-4 flex items-center gap-2">
