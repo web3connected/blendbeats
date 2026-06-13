@@ -451,6 +451,7 @@ export default function DjLoungePage() {
   const [isPosting, setIsPosting] = useState(false);
   const [replyingPostId, setReplyingPostId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loungeMusicStatus, setLoungeMusicStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
   const { getSlot } = useFeaturedDjs();
   const loungeFeaturedSlot = getSlot(1);
   const {
@@ -495,8 +496,14 @@ export default function DjLoungePage() {
     async function syncLoungePlayer() {
       try {
         const liveState = await getLoungeLiveState();
-        if (!isMounted || liveState.playlist.length === 0 || !liveState.current_track) return;
+        if (!isMounted) return;
 
+        if (liveState.playlist.length === 0 || !liveState.current_track) {
+          setLoungeMusicStatus('empty');
+          return;
+        }
+
+        setLoungeMusicStatus('ready');
         loadQueue({
           tracks: liveState.playlist.map((track) => ({
             id: track.id,
@@ -515,6 +522,7 @@ export default function DjLoungePage() {
           autoplay: true,
         });
       } catch {
+        if (isMounted) setLoungeMusicStatus('error');
         // The Lounge feed should remain usable even if music sync is unavailable.
       }
     }
@@ -783,6 +791,16 @@ export default function DjLoungePage() {
                 <PlayCircle size={16} />
                 Start Lounge Music
               </button>
+            )}
+            {loungeMusicStatus === 'empty' && (
+              <p className="mt-4 max-w-xl border border-[#2a2a2a] bg-[#111111] p-3 text-sm text-[#999999]">
+                DJ Lounge Live is waiting on approved public tracks.
+              </p>
+            )}
+            {loungeMusicStatus === 'error' && (
+              <p className="mt-4 max-w-xl border border-primary/40 bg-[#160909] p-3 text-sm text-primary">
+                DJ Lounge Live could not sync right now.
+              </p>
             )}
           </div>
         </section>
