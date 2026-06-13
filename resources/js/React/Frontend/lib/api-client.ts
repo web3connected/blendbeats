@@ -51,6 +51,12 @@ const apiClient = {
       method: 'POST',
       body: body instanceof FormData ? body : JSON.stringify(body || {}),
     }),
+  patch: <T>(path: string, body?: unknown, options: RequestOptions = {}) =>
+    request<T>(path, {
+      ...options,
+      method: 'PATCH',
+      body: body instanceof FormData ? body : JSON.stringify(body || {}),
+    }),
   delete: <T>(path: string, options: RequestOptions = {}) => request<T>(path, { ...options, method: 'DELETE' }),
 };
 

@@ -43,6 +43,7 @@ Route::prefix('media')
         Route::post('files', [MediaManagerController::class, 'store'])->name('files.store');
         Route::get('tree', [MediaManagerController::class, 'tree'])->name('tree');
         Route::get('files/{file}/stream', [MediaManagerController::class, 'stream'])->name('files.stream');
+        Route::patch('files/{file}', [MediaManagerController::class, 'update'])->name('files.update');
         Route::delete('files/{file}', [MediaManagerController::class, 'destroy'])->name('files.destroy');
     });
 

@@ -90,6 +90,32 @@ class MediaManagerController extends Controller
         return $mediaManager->downloadFile($file);
     }
 
+    public function update(
+        Request $request,
+        MediaFile $file,
+        MediaManagerService $mediaManager,
+        MediaStorageQuotaService $quotaService,
+    ): JsonResponse {
+        $attributes = $request->validate([
+            'title' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'genre' => ['nullable', 'string', 'max:120'],
+            'visibility' => ['nullable', Rule::in(['public', 'unlisted', 'private', 'draft'])],
+            'media_kind' => ['nullable', Rule::in(['mix', 'track', 'video', 'battle_entry', 'image'])],
+        ]);
+
+        $portfolio = collect($attributes)
+            ->filter(fn ($value): bool => $value !== null)
+            ->all();
+
+        $updatedFile = $mediaManager->updatePortfolioMetadata($file, $portfolio);
+
+        return response()->json([
+            'file' => $mediaManager->filePayload($updatedFile),
+            'quota' => $quotaService->quotaForOwner($request->user()),
+        ]);
+    }
+
     public function destroy(
         Request $request,
         MediaFile $file,

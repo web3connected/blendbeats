@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, Headphones, Menu, Music2, Radio, Users, X } from 'lucide-react';
+import { ChevronDown, Headphones, Menu, Music2, Radio, Upload, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -126,6 +126,14 @@ export default function Header() {
           {/* CTA + Mobile Toggle */}
           <div className="flex items-center gap-3">
             <Link
+              to="/dj/portfolio?upload=1"
+              className="hidden lg:inline-flex items-center gap-2 border border-[#333333] px-4 py-2 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+              style={{ fontFamily: 'var(--font-heading)', letterSpacing: '0.1em' }}
+            >
+              <Upload size={14} />
+              Upload A Mix
+            </Link>
+            <Link
               to="/battles"
               className="hidden md:inline-flex items-center px-5 py-2 bg-primary text-white text-xs font-bold tracking-widest uppercase hover:bg-primary/90 transition-colors"
               style={{ fontFamily: 'var(--font-heading)', letterSpacing: '0.1em' }}
@@ -183,6 +191,15 @@ export default function Header() {
                   );
                 })}
               </div>
+              <Link
+                to="/dj/portfolio?upload=1"
+                className="mt-3 inline-flex items-center justify-center gap-2 border border-[#333333] px-5 py-3 text-sm font-bold uppercase tracking-widest text-[#dddddd]"
+                style={{ fontFamily: 'var(--font-heading)' }}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Upload size={15} />
+                Upload A Mix
+              </Link>
               <Link
                 to="/battles"
                 className="mt-3 inline-flex items-center justify-center px-5 py-3 bg-primary text-white text-sm font-bold tracking-widest uppercase"

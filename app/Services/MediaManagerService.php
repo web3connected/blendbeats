@@ -242,6 +242,24 @@ class MediaManagerService
         }
     }
 
+    public function updatePortfolioMetadata(MediaFile $file, array $portfolio): MediaFile
+    {
+        $owner = $this->ownerForFile($file);
+        $this->validateDiskAccess($file->disk, 'update', $owner);
+        $this->authorizeFileOwner($file);
+
+        $metadata = $file->metadata ?? [];
+        $metadata['portfolio'] = [
+            ...($metadata['portfolio'] ?? []),
+            ...$portfolio,
+        ];
+
+        $file->forceFill(['metadata' => $metadata])->save();
+        $this->auditAction('update', $file->disk, $file->path, $owner);
+
+        return $file->refresh();
+    }
+
     public function downloadFile(MediaFile $file)
     {
         $this->validateDiskAccess($file->disk, 'view', $this->ownerForFile($file));
@@ -391,19 +409,19 @@ class MediaManagerService
     {
         $permissions = [
             'admin' => [
-                'public' => ['view', 'upload', 'delete', 'move', 'archive'],
-                'local' => ['view', 'upload', 'delete', 'move', 'archive'],
-                'media_s3' => ['view', 'upload', 'delete', 'move', 'archive'],
-                's3' => ['view', 'upload', 'delete', 'move', 'archive'],
+                'public' => ['view', 'upload', 'update', 'delete', 'move', 'archive'],
+                'local' => ['view', 'upload', 'update', 'delete', 'move', 'archive'],
+                'media_s3' => ['view', 'upload', 'update', 'delete', 'move', 'archive'],
+                's3' => ['view', 'upload', 'update', 'delete', 'move', 'archive'],
             ],
             'staff' => [
-                'public' => ['view', 'upload', 'delete'],
-                'local' => ['view', 'upload', 'delete'],
+                'public' => ['view', 'upload', 'update', 'delete'],
+                'local' => ['view', 'upload', 'update', 'delete'],
                 'media_s3' => ['view'],
                 's3' => ['view'],
             ],
             'user' => [
-                'public' => ['view', 'upload', 'delete'],
+                'public' => ['view', 'upload', 'update', 'delete'],
                 'local' => ['view'],
                 'media_s3' => [],
                 's3' => [],

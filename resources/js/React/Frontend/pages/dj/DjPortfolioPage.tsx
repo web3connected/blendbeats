@@ -23,7 +23,7 @@ import {
   X,
 } from 'lucide-react';
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import { usePlayer } from '@/components/player/PlayerProvider';
@@ -39,6 +39,7 @@ import {
   MediaManagerApiError,
   type MediaFileRecord,
   type MediaStorageQuota,
+  updateMediaFile,
   uploadMediaFile,
 } from '@/lib/media-manager';
 import MediaSetupSection from './comps/MediaSetupSection';
@@ -154,6 +155,7 @@ function MediaPreview({ file }: { file: MediaFileRecord }) {
 export default function DjPortfolioPage() {
   const { user, isLoading } = useAuth();
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
+  const [searchParams] = useSearchParams();
   const [mediaAccount, setMediaAccount] = useState<MediaAccount | null>(null);
   const [mediaFiles, setMediaFiles] = useState<MediaFileRecord[]>([]);
   const [storageQuota, setStorageQuota] = useState<MediaStorageQuota | null>(null);
@@ -162,6 +164,7 @@ export default function DjPortfolioPage() {
   const [isMediaLoading, setIsMediaLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingFileId, setDeletingFileId] = useState<number | null>(null);
+  const [updatingFileId, setUpdatingFileId] = useState<number | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadForm, setUploadForm] = useState({
@@ -252,6 +255,12 @@ export default function DjPortfolioPage() {
       })
       .finally(() => setIsMediaLoading(false));
   }, [user?.dj_profile, mediaAccount]);
+
+  useEffect(() => {
+    if (searchParams.get('upload') === '1' && mediaAccount) {
+      setIsUploadModalOpen(true);
+    }
+  }, [mediaAccount, searchParams]);
 
   const handleActivateMedia = () => {
     setIsActivatingSetup(true);
@@ -350,6 +359,27 @@ export default function DjPortfolioPage() {
         );
       })
       .finally(() => setDeletingFileId(null));
+  };
+
+  const handleVisibilityChange = (file: MediaFileRecord, visibility: 'public' | 'private') => {
+    setUpdatingFileId(file.id);
+    setError('');
+
+    updateMediaFile(file.id, { visibility })
+      .then((updateResponse) => {
+        setMediaFiles((currentFiles) =>
+          currentFiles.map((mediaFile) => (mediaFile.id === file.id ? updateResponse.file : mediaFile)),
+        );
+        setStorageQuota(updateResponse.quota);
+      })
+      .catch((updateError) => {
+        setError(
+          updateError instanceof MediaManagerApiError
+            ? updateError.message
+            : 'Unable to update media visibility right now.',
+        );
+      })
+      .finally(() => setUpdatingFileId(null));
   };
 
   if (isLoading) {
@@ -669,15 +699,27 @@ export default function DjPortfolioPage() {
                             </a>
                             <button
                               type="button"
-                              title="Public visibility"
-                              className="inline-flex h-9 w-9 items-center justify-center border border-[#333333] text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                              onClick={() => handleVisibilityChange(file, 'public')}
+                              disabled={updatingFileId === file.id || file.portfolio_visibility === 'public'}
+                              title="Make public"
+                              className={`inline-flex h-9 w-9 items-center justify-center border transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                                file.portfolio_visibility === 'public'
+                                  ? 'border-primary bg-primary text-white'
+                                  : 'border-[#333333] text-[#dddddd] hover:border-primary hover:text-primary'
+                              }`}
                             >
                               <Globe2 size={15} />
                             </button>
                             <button
                               type="button"
-                              title="Private visibility"
-                              className="inline-flex h-9 w-9 items-center justify-center border border-[#333333] text-[#777777] transition-colors hover:border-primary hover:text-primary"
+                              onClick={() => handleVisibilityChange(file, 'private')}
+                              disabled={updatingFileId === file.id || file.portfolio_visibility === 'private'}
+                              title="Make private"
+                              className={`inline-flex h-9 w-9 items-center justify-center border transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                                file.portfolio_visibility === 'private'
+                                  ? 'border-primary bg-primary text-white'
+                                  : 'border-[#333333] text-[#777777] hover:border-primary hover:text-primary'
+                              }`}
                             >
                               <LockKeyhole size={15} />
                             </button>

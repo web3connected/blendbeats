@@ -51,6 +51,11 @@ export type MediaDeleteResponse = {
   quota: MediaStorageQuota;
 };
 
+export type MediaUpdateResponse = {
+  file: MediaFileRecord;
+  quota: MediaStorageQuota;
+};
+
 export class MediaManagerApiError extends Error {
   status: number;
   errors: Record<string, string[]>;
@@ -128,6 +133,25 @@ export async function uploadMediaFile(
 export async function deleteMediaFile(fileId: number): Promise<MediaDeleteResponse> {
   try {
     const response = await apiClient.delete<MediaDeleteResponse>(`/media/files/${fileId}`);
+    return response.data;
+  } catch (error) {
+    toMediaManagerError(error);
+  }
+}
+
+export async function updateMediaFile(
+  fileId: number,
+  details: Partial<MediaUploadDetails>,
+): Promise<MediaUpdateResponse> {
+  try {
+    const response = await apiClient.patch<MediaUpdateResponse>(`/media/files/${fileId}`, {
+      title: details.title,
+      description: details.description,
+      genre: details.genre,
+      visibility: details.visibility,
+      media_kind: details.mediaKind,
+    });
+
     return response.data;
   } catch (error) {
     toMediaManagerError(error);
