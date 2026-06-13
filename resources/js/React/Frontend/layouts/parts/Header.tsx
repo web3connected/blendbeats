@@ -69,7 +69,7 @@ export default function Header() {
               <Link
                 key={item.href}
                 to={item.href}
-                className={`text-sm font-bold tracking-widest transition-colors hover:text-primary ${
+                className={`text-base font-bold tracking-widest transition-colors hover:text-primary ${
                   location.pathname === item.href
                     ? 'text-primary border-b-2 border-primary pb-0.5'
                     : 'text-[#aaaaaa]'
@@ -83,7 +83,7 @@ export default function Header() {
               <button
                 type="button"
                 onClick={() => setIsDjMenuOpen((current) => !current)}
-                className={`inline-flex items-center gap-1 text-sm font-bold tracking-widest transition-colors hover:text-primary ${
+                className={`inline-flex items-center gap-1 text-base font-bold tracking-widest transition-colors hover:text-primary ${
                   isDjNavActive ? 'text-primary border-b-2 border-primary pb-0.5' : 'text-[#aaaaaa]'
                 }`}
                 style={{ fontFamily: 'var(--font-heading)' }}
@@ -110,10 +110,10 @@ export default function Header() {
                       >
                         <Icon size={17} className="mt-0.5 shrink-0" />
                         <span className="min-w-0">
-                          <span className="block text-xs font-bold uppercase tracking-widest" style={{ fontFamily: 'var(--font-heading)' }}>
+                          <span className="block text-sm font-bold uppercase tracking-widest" style={{ fontFamily: 'var(--font-heading)' }}>
                             {item.label}
                           </span>
-                          <span className="mt-1 block text-xs leading-5 text-[#888888]">{item.description}</span>
+                          <span className="mt-1 block text-sm leading-5 text-[#888888]">{item.description}</span>
                         </span>
                       </Link>
                     );
@@ -151,7 +151,7 @@ export default function Header() {
                 <Link
                   key={item.href}
                   to={item.href}
-                  className={`text-sm font-bold tracking-widest py-3 px-2 border-b border-[#1a1a1a] transition-colors hover:text-primary ${
+                  className={`text-base font-bold tracking-widest py-3 px-2 border-b border-[#1a1a1a] transition-colors hover:text-primary ${
                     location.pathname === item.href ? 'text-primary' : 'text-[#aaaaaa]'
                   }`}
                   style={{ fontFamily: 'var(--font-heading)' }}
@@ -171,7 +171,7 @@ export default function Header() {
                     <Link
                       key={item.href}
                       to={item.href}
-                      className={`flex items-center gap-2 border-b border-[#1a1a1a] px-2 py-3 text-sm font-bold tracking-widest transition-colors last:border-b-0 hover:text-primary ${
+                      className={`flex items-center gap-2 border-b border-[#1a1a1a] px-2 py-3 text-base font-bold tracking-widest transition-colors last:border-b-0 hover:text-primary ${
                         location.pathname === item.href ? 'text-primary' : 'text-[#aaaaaa]'
                       }`}
                       style={{ fontFamily: 'var(--font-heading)' }}
