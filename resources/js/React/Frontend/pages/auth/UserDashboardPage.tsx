@@ -114,6 +114,7 @@ export default function UserDashboardPage() {
   if (!user) return <Navigate to="/login" replace />;
 
   const hasDjProfile = Boolean(user.dj_profile);
+  const avatarUrl = user.avatar_url || user.custom_avatar_url || user.gravatar_url || user.generated_avatar_url;
   const tierKey = user.media_storage_tier ?? 'free';
   const membership = membershipTiers[tierKey] ?? membershipTiers.free;
   const isFreeTier = ['free', 'starter'].includes(tierKey);
@@ -212,9 +213,17 @@ export default function UserDashboardPage() {
         <section className="px-4 py-10 lg:px-8">
           <div className="container mx-auto grid max-w-6xl gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
             <aside className="border border-[#2a2a2a] bg-[#111111] p-5">
-              <div className="mb-5 flex h-16 w-16 items-center justify-center bg-primary text-2xl font-black uppercase text-white">
-                {user.name.charAt(0)}
-              </div>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={user.name}
+                  className="mb-5 h-16 w-16 border border-[#333333] bg-[#080808] object-cover"
+                />
+              ) : (
+                <div className="mb-5 flex h-16 w-16 items-center justify-center bg-primary text-2xl font-black uppercase text-white">
+                  {user.name.charAt(0)}
+                </div>
+              )}
               <p className="text-lg font-semibold text-white">{user.name}</p>
               <p className="mt-1 break-all text-sm text-[#888888]">{user.email}</p>
               <div className="mt-6 grid gap-3 border-t border-[#252525] pt-5">
