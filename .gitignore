@@ -23,7 +23,8 @@
 /vendor
 /archive
 /_docs
-/docs
+/docs/*
+!/docs/stripe-subscriptions-audit.md
 /frontend
 _ide_helper.php
 Homestead.json
