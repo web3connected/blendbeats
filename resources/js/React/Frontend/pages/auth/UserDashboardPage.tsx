@@ -115,6 +115,7 @@ export default function UserDashboardPage() {
 
   const hasDjProfile = Boolean(user.dj_profile);
   const avatarUrl = user.avatar_url || user.custom_avatar_url || user.gravatar_url || user.generated_avatar_url;
+  const djProfileUrl = user.dj_profile?.handle ? `/djs/${user.dj_profile.handle}` : null;
   const tierKey = user.media_storage_tier ?? 'free';
   const membership = membershipTiers[tierKey] ?? membershipTiers.free;
   const isFreeTier = ['free', 'starter'].includes(tierKey);
@@ -226,6 +227,15 @@ export default function UserDashboardPage() {
               )}
               <p className="text-lg font-semibold text-white">{user.name}</p>
               <p className="mt-1 break-all text-sm text-[#888888]">{user.email}</p>
+              {djProfileUrl && (
+                <Link
+                  to={djProfileUrl}
+                  className="mt-4 inline-flex h-10 items-center justify-center border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                >
+                  View DJ Profile
+                </Link>
+              )}
               <div className="mt-6 grid gap-3 border-t border-[#252525] pt-5">
                 <div className="flex items-center gap-3 text-sm text-[#cccccc]">
                   <ShieldCheck size={16} className="text-primary" />
