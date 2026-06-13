@@ -3,7 +3,7 @@ import { CalendarCheck, Headphones, MapPin, Pause, Play, Search, SlidersHorizont
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import FeaturedDjAdSection from '@/components/featured/FeaturedDjAdSection';
+import FeaturedDjSidebarSpotlight from '@/components/featured/FeaturedDjSidebarSpotlight';
 import { usePlayer } from '@/components/player/PlayerProvider';
 import { getDjHubDjs, type DjHubDj, type DjHubFilters, type DjHubQuery } from '@/lib/dj-hub';
 
@@ -218,101 +218,103 @@ export default function DjsPage() {
           </div>
         </section>
 
-        <FeaturedDjAdSection placement="dj-hub" />
-
         <section className="px-4 py-8 lg:px-8">
           <div className="container mx-auto grid max-w-6xl gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-            <aside className="h-fit border border-[#2a2a2a] bg-[#111111] p-5">
-              <div className="mb-5 flex items-center gap-3 border-b border-[#242424] pb-4">
-                <SlidersHorizontal size={18} className="text-primary" />
-                <h2 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>Filters</h2>
-              </div>
+            <aside className="grid h-fit gap-5">
+              <FeaturedDjSidebarSpotlight />
 
-              <div className="grid gap-4">
-                <label className="grid gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Search</span>
-                  <div className="flex border border-[#333333] bg-[#080808]">
-                    <input
-                      value={searchInput}
-                      onChange={(event) => setSearchInput(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') submitSearch();
-                      }}
-                      placeholder="Name, genre, city"
-                      className="h-11 min-w-0 flex-1 bg-transparent px-3 text-sm text-white outline-none placeholder:text-[#555555]"
-                    />
-                    <button
-                      type="button"
-                      onClick={submitSearch}
-                      className="inline-flex h-11 w-11 items-center justify-center text-[#dddddd] transition-colors hover:text-primary"
-                      aria-label="Search DJs"
+              <section className="border border-[#2a2a2a] bg-[#111111] p-5">
+                <div className="mb-5 flex items-center gap-3 border-b border-[#242424] pb-4">
+                  <SlidersHorizontal size={18} className="text-primary" />
+                  <h2 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>Filters</h2>
+                </div>
+
+                <div className="grid gap-4">
+                  <label className="grid gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Search</span>
+                    <div className="flex border border-[#333333] bg-[#080808]">
+                      <input
+                        value={searchInput}
+                        onChange={(event) => setSearchInput(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') submitSearch();
+                        }}
+                        placeholder="Name, genre, city"
+                        className="h-11 min-w-0 flex-1 bg-transparent px-3 text-sm text-white outline-none placeholder:text-[#555555]"
+                      />
+                      <button
+                        type="button"
+                        onClick={submitSearch}
+                        className="inline-flex h-11 w-11 items-center justify-center text-[#dddddd] transition-colors hover:text-primary"
+                        aria-label="Search DJs"
+                      >
+                        <Search size={17} />
+                      </button>
+                    </div>
+                  </label>
+
+                  <label className="grid gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Genre</span>
+                    <select
+                      value={query.genre ?? ''}
+                      onChange={(event) => updateQuery({ genre: event.target.value || undefined })}
+                      className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
                     >
-                      <Search size={17} />
-                    </button>
-                  </div>
-                </label>
+                      <option value="">All genres</option>
+                      {filters.genres.map((genre) => (
+                        <option key={genre} value={genre}>{genre}</option>
+                      ))}
+                    </select>
+                  </label>
 
-                <label className="grid gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Genre</span>
-                  <select
-                    value={query.genre ?? ''}
-                    onChange={(event) => updateQuery({ genre: event.target.value || undefined })}
-                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
-                  >
-                    <option value="">All genres</option>
-                    {filters.genres.map((genre) => (
-                      <option key={genre} value={genre}>{genre}</option>
-                    ))}
-                  </select>
-                </label>
+                  <label className="grid gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">DJ Type</span>
+                    <select
+                      value={query.dj_type ?? ''}
+                      onChange={(event) => updateQuery({ dj_type: event.target.value || undefined })}
+                      className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
+                    >
+                      <option value="">All DJ types</option>
+                      {filters.dj_types.map((djType) => (
+                        <option key={djType} value={djType}>{formatDjType(djType)}</option>
+                      ))}
+                    </select>
+                  </label>
 
-                <label className="grid gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">DJ Type</span>
-                  <select
-                    value={query.dj_type ?? ''}
-                    onChange={(event) => updateQuery({ dj_type: event.target.value || undefined })}
-                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
-                  >
-                    <option value="">All DJ types</option>
-                    {filters.dj_types.map((djType) => (
-                      <option key={djType} value={djType}>{formatDjType(djType)}</option>
-                    ))}
-                  </select>
-                </label>
+                  <label className="grid gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Location</span>
+                    <input
+                      value={query.location ?? ''}
+                      onChange={(event) => updateQuery({ location: event.target.value || undefined })}
+                      placeholder="City, state, country"
+                      className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none placeholder:text-[#555555] focus:border-primary"
+                    />
+                  </label>
 
-                <label className="grid gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Location</span>
-                  <input
-                    value={query.location ?? ''}
-                    onChange={(event) => updateQuery({ location: event.target.value || undefined })}
-                    placeholder="City, state, country"
-                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none placeholder:text-[#555555] focus:border-primary"
-                  />
-                </label>
+                  <label className="flex items-center justify-between gap-4 border border-[#333333] bg-[#080808] p-4">
+                    <span className="text-sm font-semibold text-white">Open For Bookings</span>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(query.bookings)}
+                      onChange={(event) => updateQuery({ bookings: event.target.checked || undefined })}
+                      className="h-4 w-4 accent-primary"
+                    />
+                  </label>
 
-                <label className="flex items-center justify-between gap-4 border border-[#333333] bg-[#080808] p-4">
-                  <span className="text-sm font-semibold text-white">Open For Bookings</span>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(query.bookings)}
-                    onChange={(event) => updateQuery({ bookings: event.target.checked || undefined })}
-                    className="h-4 w-4 accent-primary"
-                  />
-                </label>
-
-                <label className="grid gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Sort</span>
-                  <select
-                    value={query.sort ?? 'featured'}
-                    onChange={(event) => updateQuery({ sort: event.target.value as DjHubQuery['sort'] })}
-                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
-                  >
-                    {sortOptions.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+                  <label className="grid gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Sort</span>
+                    <select
+                      value={query.sort ?? 'featured'}
+                      onChange={(event) => updateQuery({ sort: event.target.value as DjHubQuery['sort'] })}
+                      className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
+                    >
+                      {sortOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </section>
             </aside>
 
             <section className="min-w-0">
