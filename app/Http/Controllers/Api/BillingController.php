@@ -53,12 +53,15 @@ class BillingController extends Controller
 
         $planKey = $validated['plan'];
         $plan = $this->plans->plan($planKey, $request->user());
-        $priceId = $this->plans->stripePriceIdFor($planKey);
 
         abort_if($plan['is_free'] ?? false, 422, 'The free tier does not require checkout.');
-        abort_unless($priceId, 422, 'This membership plan is not connected to a Stripe test price yet.');
+        abort_if(((int) ($plan['price_cents'] ?? 0)) <= 0, 422, 'This membership plan does not have a configured price.');
 
         try {
+            $priceId = $this->plans->checkoutPriceIdFor($planKey);
+
+            abort_unless($priceId, 422, 'This membership plan could not be connected to a Stripe test price.');
+
             $checkout = $request->user()
                 ->newSubscription(config('billing.subscription.default_type', 'dj_membership'), $priceId)
                 ->checkout([
@@ -66,6 +69,11 @@ class BillingController extends Controller
                     'cancel_url' => url("/subscription/cancel?plan={$planKey}"),
                     'metadata' => [
                         'blendbeats_plan' => $planKey,
+                    ],
+                    'subscription_data' => [
+                        'metadata' => [
+                            'blendbeats_plan' => $planKey,
+                        ],
                     ],
                 ]);
         } catch (IncompletePayment $exception) {

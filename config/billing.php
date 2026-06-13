@@ -83,6 +83,7 @@ return [
             'dj_plus' => [
                 'name' => 'DJ Plus',
                 'stripe_price_id' => env('STRIPE_PRICE_DJ_PLUS'),
+                'stripe_lookup_key' => env('STRIPE_LOOKUP_DJ_PLUS', 'blendbeats_dj_plus_monthly_999'),
                 'price_cents' => 999,
                 'billing_interval' => 'monthly',
                 'storage_bytes' => 3 * $gigabyte,
@@ -103,6 +104,7 @@ return [
             'dj_pro' => [
                 'name' => 'DJ Pro',
                 'stripe_price_id' => env('STRIPE_PRICE_DJ_PRO'),
+                'stripe_lookup_key' => env('STRIPE_LOOKUP_DJ_PRO', 'blendbeats_dj_pro_monthly_4999'),
                 'price_cents' => 4999,
                 'billing_interval' => 'monthly',
                 'storage_bytes' => 10 * $gigabyte,
@@ -125,6 +127,7 @@ return [
             'dj_elite' => [
                 'name' => 'DJ Elite',
                 'stripe_price_id' => env('STRIPE_PRICE_DJ_ELITE'),
+                'stripe_lookup_key' => env('STRIPE_LOOKUP_DJ_ELITE', 'blendbeats_dj_elite_monthly_9999'),
                 'price_cents' => 9999,
                 'billing_interval' => 'monthly',
                 'storage_bytes' => 25 * $gigabyte,
