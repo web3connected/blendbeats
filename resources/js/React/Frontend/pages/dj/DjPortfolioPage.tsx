@@ -44,7 +44,7 @@ import {
 import MediaSetupSection from './comps/MediaSetupSection';
 
 const statusFilters = ['All', 'Published', 'Drafts', 'Unlisted', 'Private', 'Archived'];
-const mediaFilters = ['Mixes', 'Tracks', 'Videos', 'Battle Entries'];
+const mediaFilters = ['All', 'Mixes', 'Tracks', 'Videos', 'Battle Entries'];
 const genreOptions = ['Hip-Hop', 'House', 'Drum & Bass', 'Techno', 'Scratch Sets', 'Open Format', 'R&B', 'Afrobeats'];
 const kindOptions = [
   { value: 'mix', label: 'Mix' },
@@ -82,6 +82,38 @@ function mediaTypeLabel(file: MediaFileRecord) {
   if (file.is_image) return 'Image';
   if (file.is_pdf) return 'PDF';
   return 'File';
+}
+
+function normalizedVisibility(file: MediaFileRecord) {
+  return (file.portfolio_visibility || 'uploaded').toLowerCase();
+}
+
+function matchesStatusFilter(file: MediaFileRecord, filter: string) {
+  if (filter === 'All') return true;
+
+  const visibility = normalizedVisibility(file);
+  const filterMap: Record<string, string> = {
+    Published: 'public',
+    Drafts: 'draft',
+    Unlisted: 'unlisted',
+    Private: 'private',
+    Archived: 'archived',
+  };
+
+  return visibility === filterMap[filter];
+}
+
+function matchesMediaFilter(file: MediaFileRecord, filter: string) {
+  if (filter === 'All') return true;
+
+  const kind = (file.portfolio_kind || '').toLowerCase();
+
+  if (filter === 'Mixes') return kind === 'mix';
+  if (filter === 'Tracks') return kind === 'track';
+  if (filter === 'Videos') return kind === 'video' || file.is_video;
+  if (filter === 'Battle Entries') return kind === 'battle_entry';
+
+  return true;
 }
 
 function MediaPreview({ file }: { file: MediaFileRecord }) {
@@ -139,6 +171,9 @@ export default function DjPortfolioPage() {
     visibility: 'draft',
     mediaKind: 'mix',
   });
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [mediaFilter, setMediaFilter] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState('');
 
   const portfolioStats = useMemo(
@@ -150,6 +185,33 @@ export default function DjPortfolioPage() {
     ],
     [mediaFiles, storageQuota],
   );
+
+  const filteredMediaFiles = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return mediaFiles.filter((file) => {
+      const searchableText = [
+        file.portfolio_title,
+        file.portfolio_description,
+        file.portfolio_genre,
+        file.portfolio_visibility,
+        file.portfolio_kind,
+        file.original_name,
+        file.name,
+        file.path,
+        mediaTypeLabel(file),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return (
+        matchesStatusFilter(file, statusFilter) &&
+        matchesMediaFilter(file, mediaFilter) &&
+        (!query || searchableText.includes(query))
+      );
+    });
+  }, [mediaFiles, mediaFilter, searchQuery, statusFilter]);
 
   useEffect(() => {
     if (!user?.dj_profile) return;
@@ -441,12 +503,13 @@ export default function DjPortfolioPage() {
                   </h2>
                 </div>
                 <div className="grid gap-2">
-                  {statusFilters.map((filter, index) => (
+                  {statusFilters.map((filter) => (
                     <button
                       key={filter}
                       type="button"
+                      onClick={() => setStatusFilter(filter)}
                       className={`h-10 border px-3 text-left text-xs font-bold uppercase tracking-widest transition-colors ${
-                        index === 0
+                        statusFilter === filter
                           ? 'border-primary bg-primary text-white'
                           : 'border-[#333333] text-[#bbbbbb] hover:border-primary hover:text-primary'
                       }`}
@@ -487,23 +550,48 @@ export default function DjPortfolioPage() {
                     <input
                       type="search"
                       placeholder="Search media"
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
                       className="h-full min-w-0 bg-transparent text-sm text-white outline-none placeholder:text-[#555555]"
                     />
                   </div>
                 </div>
 
-                <div className="mt-5 flex flex-wrap gap-2">
+                <div className="mt-5 flex flex-wrap items-center gap-2">
                   {mediaFilters.map((filter) => (
                     <button
                       key={filter}
                       type="button"
-                      className="h-9 border border-[#333333] px-3 text-xs font-bold uppercase tracking-widest text-[#bbbbbb] transition-colors hover:border-primary hover:text-primary"
+                      onClick={() => setMediaFilter(filter)}
+                      className={`h-9 border px-3 text-xs font-bold uppercase tracking-widest transition-colors ${
+                        mediaFilter === filter
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-[#333333] text-[#bbbbbb] hover:border-primary hover:text-primary'
+                      }`}
                       style={{ fontFamily: 'var(--font-heading)' }}
                     >
                       {filter}
                     </button>
                   ))}
+                  {(statusFilter !== 'All' || mediaFilter !== 'All' || searchQuery) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter('All');
+                        setMediaFilter('All');
+                        setSearchQuery('');
+                      }}
+                      className="ml-auto h-9 border border-[#333333] px-3 text-xs font-bold uppercase tracking-widest text-[#888888] transition-colors hover:border-primary hover:text-primary"
+                      style={{ fontFamily: 'var(--font-heading)' }}
+                    >
+                      Clear
+                    </button>
+                  )}
                 </div>
+
+                <p className="mt-3 text-xs text-[#777777]">
+                  Showing {filteredMediaFiles.length} of {mediaFiles.length} media files
+                </p>
 
                 {error && (
                   <div className="mt-5 border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
@@ -525,9 +613,9 @@ export default function DjPortfolioPage() {
                     <div className="px-5 py-10 text-sm text-[#888888]">Loading portfolio media...</div>
                   )}
 
-                  {!isMediaLoading && mediaFiles.length > 0 && (
+                  {!isMediaLoading && filteredMediaFiles.length > 0 && (
                     <div className="divide-y divide-[#252525]">
-                      {mediaFiles.map((file) => (
+                      {filteredMediaFiles.map((file) => (
                         <div
                           key={file.id}
                           className="grid gap-4 px-4 py-4 lg:grid-cols-[72px_minmax(0,1.5fr)_120px_120px_120px_160px] lg:items-center"
@@ -638,6 +726,32 @@ export default function DjPortfolioPage() {
                           <ArrowRight size={15} />
                         </Link>
                       </div>
+                    </div>
+                  )}
+
+                  {!isMediaLoading && mediaFiles.length > 0 && filteredMediaFiles.length === 0 && (
+                    <div className="grid place-items-center px-5 py-14 text-center">
+                      <div className="flex h-16 w-16 items-center justify-center border border-[#333333] bg-[#080808] text-primary">
+                        <Search size={28} />
+                      </div>
+                      <h3 className="mt-5 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                        No Matching Media
+                      </h3>
+                      <p className="mt-3 max-w-md text-sm leading-6 text-[#888888]">
+                        Adjust the search, status, or media type filters to see more portfolio items.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter('All');
+                          setMediaFilter('All');
+                          setSearchQuery('');
+                        }}
+                        className="mt-6 inline-flex h-11 items-center justify-center border border-[#444444] px-5 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                        style={{ fontFamily: 'var(--font-heading)' }}
+                      >
+                        Clear Filters
+                      </button>
                     </div>
                   )}
                 </div>
