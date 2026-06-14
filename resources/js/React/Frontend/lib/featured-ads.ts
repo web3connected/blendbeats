@@ -138,6 +138,21 @@ export async function startFeaturedAdCheckout(
   }
 }
 
+export async function restartFeaturedAdCheckout(
+  campaignId: number,
+  campaignOptionId: number,
+): Promise<FeaturedAdCheckoutResponse> {
+  try {
+    const response = await apiClient.post<FeaturedAdCheckoutResponse>(`/featured-ads/campaigns/${campaignId}/checkout`, {
+      campaign_option_id: campaignOptionId,
+    });
+
+    return response.data;
+  } catch (error) {
+    toFeaturedAdsError(error);
+  }
+}
+
 export async function captureFeaturedAdCampaign(campaignId: number): Promise<{ campaign: FeaturedAdCampaign }> {
   try {
     const response = await apiClient.post<{ campaign: FeaturedAdCampaign }>(`/featured-ads/campaigns/${campaignId}/capture`);

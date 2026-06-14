@@ -20,7 +20,7 @@ import {
 
 function providerCopy(provider: PaymentMethodProvider): string {
   if (provider.provider === 'paypal') {
-    return 'Link a PayPal account for BlendBeats checkout, subscriptions, and promotional payments.';
+    return 'PayPal is available for checkout. User wallet linking is not enabled yet, so PayPal will ask you to log in during payment.';
   }
 
   if (provider.provider === 'stripe') {
@@ -112,7 +112,7 @@ export default function PaymentMethodsPage() {
                   Payment Methods
                 </h1>
                 <p className="mt-5 max-w-2xl text-base leading-7 text-[#aaaaaa]">
-                  Choose from the payment providers currently available on BlendBeats, then link the account you want to use for payments.
+                  Choose from the payment providers currently available on BlendBeats. Saved wallet linking will be added later.
                 </p>
               </div>
 
@@ -170,8 +170,8 @@ export default function PaymentMethodsPage() {
                           {method.is_primary && (
                             <span className="text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">Primary</span>
                           )}
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">
-                            {method.is_linked ? 'Linked' : method.status_label}
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">
+                              {method.is_linked ? 'Linked Wallet' : method.status_label}
                           </span>
                         </div>
                       </div>
@@ -199,7 +199,7 @@ export default function PaymentMethodsPage() {
                       style={{ fontFamily: 'var(--font-heading)' }}
                     >
                       {method.is_linked ? <BadgeCheck size={15} /> : <LinkIcon size={15} />}
-                      {method.is_linked ? 'Linked' : `Link ${method.display_name}`}
+                      {method.is_linked ? 'Linked Wallet' : `${method.display_name} Wallet Linking Coming Soon`}
                     </button>
                   </article>
                 ))}

@@ -75,6 +75,7 @@ Route::prefix('featured-ads')
     ->group(function (): void {
         Route::get('placements', [FeaturedAdController::class, 'placements'])->name('placements');
         Route::post('checkout', [FeaturedAdController::class, 'checkout'])->name('checkout');
+        Route::post('campaigns/{campaign}/checkout', [FeaturedAdController::class, 'restartCheckout'])->name('campaigns.checkout');
         Route::post('campaigns/{campaign}/capture', [FeaturedAdController::class, 'capture'])->name('campaigns.capture');
     });
 

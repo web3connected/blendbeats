@@ -16,6 +16,7 @@ import {
   captureFeaturedAdCampaign,
   FeaturedAdsApiError,
   getFeaturedAdPlacements,
+  restartFeaturedAdCheckout,
   startFeaturedAdCheckout,
   type FeaturedAdsPlacementsResponse,
   type FeaturedMarketplaceCampaign,
@@ -178,7 +179,6 @@ export default function FeaturedAdPlacementsPage() {
   const canResumePayment = Boolean(
     campaignSetupActiveCampaign?.is_mine
       && campaignSetupActiveCampaign.status === 'pending_payment'
-      && campaignSetupActiveCampaign.approval_url,
   );
   const canPayCampaignSetup = Boolean(
     canResumePayment
@@ -199,12 +199,30 @@ export default function FeaturedAdPlacementsPage() {
     const activeCampaign = slot.active_campaign;
 
     if (activeCampaign?.is_mine && activeCampaign.status === 'pending_payment') {
-      if (activeCampaign.approval_url) {
-        window.location.href = activeCampaign.approval_url;
+      const selectedOptionId = selectedOptionBySlot[slot.id] || slot.options[0]?.id;
+
+      if (!selectedOptionId) {
+        setPlacementsError('Choose a campaign option before checkout.');
         return;
       }
 
-      setPlacementsError('This campaign is pending payment, but the payment link could not be found. Please start a new campaign or contact support.');
+      setCheckoutSlot(slot.id);
+      setPlacementsError('');
+
+      restartFeaturedAdCheckout(activeCampaign.id, selectedOptionId)
+        .then((response) => {
+          if (response.checkout_url) {
+            window.location.href = response.checkout_url;
+            return;
+          }
+
+          setPlacementsError('Checkout restarted, but the payment provider did not return a checkout URL.');
+          loadPlacements();
+        })
+        .catch((error) => {
+          setPlacementsError(error instanceof FeaturedAdsApiError ? error.message : 'Unable to restart featured placement checkout.');
+        })
+        .finally(() => setCheckoutSlot(null));
       return;
     }
 
@@ -628,37 +646,37 @@ export default function FeaturedAdPlacementsPage() {
                 </div>
               </div>
 
-              {campaignSetupActiveCampaign?.is_mine && campaignSetupActiveCampaign.status === 'pending_payment' ? (
+              {campaignSetupActiveCampaign?.is_mine && campaignSetupActiveCampaign.status === 'pending_payment' && (
                 <div className="border border-[#FFB800]/40 bg-[#151106] p-4 text-sm leading-6 text-[#dddddd]">
-                  This campaign is already started and waiting for payment. You can review the details here, then continue to PayPal.
+                  This campaign is already started and waiting for payment. You can still adjust the campaign length below before continuing to PayPal.
                 </div>
-              ) : (
-                <label className="grid gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">How many days?</span>
-                  <select
-                    value={campaignSetupOptionId}
-                    onChange={(event) =>
-                      setSelectedOptionBySlot((current) => ({
-                        ...current,
-                        [campaignSetupSlot.id]: Number(event.target.value),
-                      }))
-                    }
-                    className="h-12 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
-                  >
-                    {campaignSetupSlot.options.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.name} - {option.price_label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
               )}
+
+              <label className="grid gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">How many days?</span>
+                <select
+                  value={campaignSetupOptionId}
+                  onChange={(event) =>
+                    setSelectedOptionBySlot((current) => ({
+                      ...current,
+                      [campaignSetupSlot.id]: Number(event.target.value),
+                    }))
+                  }
+                  className="h-12 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
+                >
+                  {campaignSetupSlot.options.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.name} - {option.price_label}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
               <div className="grid gap-3 border border-[#2a2a2a] bg-[#111111] p-4 sm:grid-cols-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Campaign Length</p>
                   <p className="mt-2 text-xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                    {campaignSetupActiveCampaign?.duration_days ?? campaignSetupOption?.duration_days ?? 0} day{(campaignSetupActiveCampaign?.duration_days ?? campaignSetupOption?.duration_days) === 1 ? '' : 's'}
+                    {campaignSetupOption?.duration_days ?? 0} day{campaignSetupOption?.duration_days === 1 ? '' : 's'}
                   </p>
                 </div>
                 <div>
@@ -670,7 +688,7 @@ export default function FeaturedAdPlacementsPage() {
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Total Due</p>
                   <p className="mt-2 text-3xl text-[#FFB800]" style={{ fontFamily: 'var(--font-heading)' }}>
-                    {campaignSetupActiveCampaign?.amount_label ?? campaignSetupOption?.price_label ?? '$0.00'}
+                    {campaignSetupOption?.price_label ?? '$0.00'}
                   </p>
                 </div>
               </div>
@@ -682,6 +700,11 @@ export default function FeaturedAdPlacementsPage() {
               {!placements?.payment_provider?.credentials_ready && (
                 <div className="border border-primary bg-[#160808] p-3 text-sm leading-6 text-[#dddddd]">
                   Payment provider is not ready yet. Configure payment methods before checkout.
+                </div>
+              )}
+              {placements?.payment_provider?.provider === 'paypal' && placements.payment_provider.mode === 'sandbox' && (
+                <div className="border border-[#2a2a2a] bg-[#080808] p-3 text-sm leading-6 text-[#aaaaaa]">
+                  PayPal is in sandbox mode. Use a PayPal sandbox buyer account at checkout; a real PayPal account will not stay logged in there.
                 </div>
               )}
 
@@ -702,7 +725,7 @@ export default function FeaturedAdPlacementsPage() {
                   style={{ fontFamily: 'var(--font-heading)' }}
                 >
                   {checkoutSlot === campaignSetupSlot.id ? <Loader2 className="animate-spin" size={15} /> : <CreditCard size={15} />}
-                  {canResumePayment ? 'Continue To PayPal' : `Pay ${campaignSetupOption?.price_label ?? ''}`}
+                  {canResumePayment ? `Update & Pay ${campaignSetupOption?.price_label ?? ''}` : `Pay ${campaignSetupOption?.price_label ?? ''}`}
                 </button>
               </div>
             </div>

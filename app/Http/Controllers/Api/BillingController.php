@@ -64,7 +64,7 @@ class BillingController extends Controller
                 'supported_features' => $provider->supported_features ?? [],
                 'linking_enabled' => false,
                 'is_linked' => false,
-                'status_label' => 'Available',
+                'status_label' => 'Provider Active',
             ]);
 
         return response()->json([

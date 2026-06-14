@@ -190,6 +190,65 @@ class FeaturedAdController extends Controller
         ]);
     }
 
+    public function restartCheckout(Request $request, DjFeaturedStatus $campaign): JsonResponse
+    {
+        abort_unless($campaign->djProfile?->user_id === $request->user()->id, 403);
+        abort_unless($campaign->status === 'pending_payment', 422, 'Only pending campaigns can be edited before payment.');
+
+        $validated = $request->validate([
+            'campaign_option_id' => [
+                'required',
+                'integer',
+                Rule::exists('featured_slot_campaign_options', 'id')->where(fn ($query) => $query->where('is_active', true)),
+            ],
+        ]);
+
+        $campaignSlot = $campaign->campaignSlot?->loadMissing('campaign.slotGroup');
+        $marketplaceCampaign = $campaignSlot?->campaign;
+        $slotGroup = $marketplaceCampaign?->slotGroup;
+
+        abort_unless($campaignSlot && $marketplaceCampaign && $slotGroup, 422, 'This campaign slot is no longer available.');
+        abort_unless($this->campaignSlotHasOption($campaignSlot, (int) $validated['campaign_option_id']), 422, 'That campaign option is not available for this slot.');
+
+        $provider = $this->primaryPaymentProvider();
+
+        abort_unless($provider, 422, 'No active payment provider is configured.');
+        abort_unless($provider->provider === 'paypal', 422, "{$provider->display_name} promotion checkout is not connected yet.");
+        abort_unless($provider->hasEffectiveValueFor('client_id') && $provider->hasEffectiveSecret(), 422, 'PayPal credentials are not ready.');
+
+        $option = FeaturedSlotCampaignOption::query()->findOrFail($validated['campaign_option_id']);
+        $groupNumber = (int) $slotGroup->sort_order;
+        $groupSlotNumber = (int) $campaignSlot->group_slot_number;
+        $amountCents = $this->placementPricing->dailyPriceCents($groupNumber, $groupSlotNumber) * $option->duration_days;
+
+        $campaign->forceFill([
+            'featured_slot_campaign_option_id' => $option->id,
+            'rotation_weight' => $this->placementPricing->rotationWeight($groupNumber, $groupSlotNumber),
+            'amount_cents' => $amountCents,
+            'currency' => 'USD',
+            'payment_provider' => 'paypal',
+            'payment_status' => 'pending',
+        ]);
+
+        try {
+            $order = $this->createPaypalOrder($provider, $campaign, $option);
+        } catch (RequestException $exception) {
+            abort(422, $exception->response?->json('message') ?: 'PayPal checkout could not be restarted.');
+        }
+
+        $campaign->forceFill([
+            'payment_reference' => $order['id'] ?? null,
+            'payment_metadata' => $order,
+        ])->save();
+
+        $approvalLink = collect($order['links'] ?? [])->firstWhere('rel', 'approve');
+
+        return response()->json([
+            'campaign' => $this->campaignPayload($campaign->refresh(), $campaign->dj_profile_id),
+            'checkout_url' => is_array($approvalLink) ? ($approvalLink['href'] ?? null) : null,
+        ]);
+    }
+
     private function campaignOptionsForSlot(int $templateSlotNumber, int $dailyPrice): array
     {
         $configuredOptionIds = DB::table('featured_slot_campaign_option_slot')
@@ -289,12 +348,18 @@ class FeaturedAdController extends Controller
                         'value' => $amount,
                     ],
                 ]],
-                'application_context' => [
-                    'brand_name' => 'The Blend Battlegrounds',
-                    'landing_page' => 'LOGIN',
-                    'user_action' => 'PAY_NOW',
-                    'return_url' => url("/account/featured-ads/placements?campaign={$campaign->id}&payment=paypal-return"),
-                    'cancel_url' => url("/account/featured-ads/placements?campaign={$campaign->id}&payment=cancelled"),
+                'payment_source' => [
+                    'paypal' => [
+                        'experience_context' => [
+                            'payment_method_preference' => 'IMMEDIATE_PAYMENT_REQUIRED',
+                            'brand_name' => 'The Blend Battlegrounds',
+                            'landing_page' => 'LOGIN',
+                            'shipping_preference' => 'NO_SHIPPING',
+                            'user_action' => 'PAY_NOW',
+                            'return_url' => url("/account/featured-ads/placements?campaign={$campaign->id}&payment=paypal-return"),
+                            'cancel_url' => url("/account/featured-ads/placements?campaign={$campaign->id}&payment=cancelled"),
+                        ],
+                    ],
                 ],
             ])
             ->throw()
