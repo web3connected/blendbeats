@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminCenter\AdminPermissionController;
 use App\Http\Controllers\Admin\AdminCenter\FeaturedSlotController;
 use App\Http\Controllers\Admin\AdminCenter\AdminRoleController;
 use App\Http\Controllers\Admin\AdminCenter\LoungePlaylistController;
+use App\Http\Controllers\Admin\AdminCenter\PaymentProviderController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -85,6 +86,14 @@ Route::middleware('admin.auth')->group(function (): void {
         ->name('admincenter.loungeplaylist.update');
     Route::delete('admincenter/loungeplaylist/{track}', [LoungePlaylistController::class, 'destroy'])
         ->name('admincenter.loungeplaylist.destroy');
+
+    Route::get('admincenter/paymentproviders', [PaymentProviderController::class, 'index'])
+        ->middleware('permission:paymentproviders.view,admin')
+        ->name('admincenter.paymentproviders.index');
+    Route::put('admincenter/paymentproviders/{provider}', [PaymentProviderController::class, 'update'])
+        ->middleware('permission:paymentproviders.update,admin')
+        ->name('admincenter.paymentproviders.update');
+    Route::get('admin_center/paymentproviders', fn () => redirect()->route('admin.admincenter.paymentproviders.index'));
 
     Route::resource('users', UserController::class);
 

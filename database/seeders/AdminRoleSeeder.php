@@ -22,6 +22,8 @@ class AdminRoleSeeder extends Seeder
             'adminusers.manage-avatar',
             'featuredslots.view',
             'featuredslots.update',
+            'paymentproviders.view',
+            'paymentproviders.update',
         ];
 
         foreach ($permissions as $permission) {
@@ -47,6 +49,8 @@ class AdminRoleSeeder extends Seeder
                     'adminusers.manage-avatar',
                     'featuredslots.view',
                     'featuredslots.update',
+                    'paymentproviders.view',
+                    'paymentproviders.update',
                 ],
             ],
             'manager' => [

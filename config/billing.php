@@ -8,6 +8,14 @@ return [
         'mode' => env('STRIPE_MODE', 'test'),
     ],
 
+    'paypal' => [
+        'mode' => env('PAYPAL_MODE', 'sandbox'),
+        'client_id' => env('PAYPAL_CLIENT_ID'),
+        'secret' => env('PAYPAL_SECRET'),
+        'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
+        'merchant_id' => env('PAYPAL_MERCHANT_ID'),
+    ],
+
     'promotion' => [
         'campaign_types' => [
             'one_day' => [

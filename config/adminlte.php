@@ -365,6 +365,11 @@ return [
                     'url' => 'admin/admincenter/loungeplaylist',
                     'icon' => 'fas fa-fw fa-music',
                 ],
+                [
+                    'text' => 'Payment Providers',
+                    'url' => 'admin/admincenter/paymentproviders',
+                    'icon' => 'fas fa-fw fa-credit-card',
+                ],
             ],
         ],
         ['header' => 'User Management'],
