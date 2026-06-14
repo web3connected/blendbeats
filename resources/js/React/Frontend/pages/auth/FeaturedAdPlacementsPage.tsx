@@ -402,10 +402,10 @@ export default function FeaturedAdPlacementsPage() {
                   <article className="border border-[#2a2a2a] bg-[#080808] p-5">
                     <Radio className="text-[#FFB800]" size={22} />
                     <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                      Active Campaigns Running
+                      Active Campaigns
                     </h3>
                     <p className="mt-3 text-sm leading-6 text-[#888888]">
-                      {activeCampaignCount} running now. {pendingCampaignCount} waiting for payment.
+                      {activeCampaignCount} active. {pendingCampaignCount} waiting for payment.
                     </p>
                   </article>
                   <article className="border border-[#2a2a2a] bg-[#080808] p-5">
@@ -655,13 +655,13 @@ export default function FeaturedAdPlacementsPage() {
                                     )}
                                     <div className="grid grid-cols-3 gap-2">
                                       <div className="border border-[#333333] bg-[#080808] px-3 py-3">
-                                        <span className="block text-[10px] font-bold uppercase tracking-widest text-[#777777]">Total Running</span>
+                                        <span className="block text-[10px] font-bold uppercase tracking-widest text-[#777777]">Total</span>
                                         <span className="mt-2 block text-xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
                                           {slot.active_campaign_count}
                                         </span>
                                       </div>
                                       <div className="border border-[#333333] bg-[#080808] px-3 py-3">
-                                        <span className="block text-[10px] font-bold uppercase tracking-widest text-[#777777]">Your Ads</span>
+                                        <span className="block text-[10px] font-bold uppercase tracking-widest text-[#777777]">Ads</span>
                                         <span className="mt-2 block text-xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
                                           {slot.my_active_campaign_count}
                                         </span>

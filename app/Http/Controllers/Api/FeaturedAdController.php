@@ -452,8 +452,7 @@ class FeaturedAdController extends Controller
                     $options = $this->campaignOptionsForSlot($templateSlotNumber, $dailyPrice);
                     $statuses = $slot->featuredStatuses
                         ->filter(fn (DjFeaturedStatus $status): bool => ! $status->end_date || $status->end_date >= now());
-                    $activeStatuses = $statuses->filter(fn (DjFeaturedStatus $status): bool => $status->status === 'active'
-                        && (! $status->start_date || $status->start_date <= now()));
+                    $activeStatuses = $statuses->filter(fn (DjFeaturedStatus $status): bool => $status->status === 'active');
                     $pendingStatuses = $statuses->filter(fn (DjFeaturedStatus $status): bool => $status->status === 'pending_payment');
                     $myActiveStatuses = $activeStatuses->filter(fn (DjFeaturedStatus $status): bool => $currentDjProfileId !== null
                         && (int) $status->dj_profile_id === $currentDjProfileId);
