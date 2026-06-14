@@ -18,7 +18,7 @@ import {
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import UniversalAdCard from '@/components/advertising/UniversalAdCard';
+import GroupAAndBDisplay from '@/components/advertising/GroupAAndBDisplay';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { usePlayer } from '@/components/player/PlayerProvider';
 import { djLoungeTrends } from '@/config/djLounge';
@@ -893,7 +893,7 @@ export default function DjLoungePage() {
             </div>
 
             <aside className="grid gap-5 self-start">
-              <UniversalAdCard placement="dj-lounge-sidebar" title="Lounge Spotlight" />
+              <GroupAAndBDisplay />
 
               <section className="border border-[#2a2a2a] bg-[#111111] p-5">
                 <div className="mb-4 flex items-center gap-2">

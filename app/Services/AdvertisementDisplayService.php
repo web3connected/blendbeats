@@ -63,7 +63,7 @@ class AdvertisementDisplayService
      */
     private function discover(?string $placement = null): Collection
     {
-        return DjFeaturedStatus::query()
+        $ads = DjFeaturedStatus::query()
             ->with([
                 'campaignOption:id,name,duration_days',
                 'campaignSlot.campaign.slotGroup:id,name,group_key,sort_order',
@@ -77,6 +77,16 @@ class AdvertisementDisplayService
             ->limit(self::MAX_DISCOVERY)
             ->get()
             ->filter(fn (DjFeaturedStatus $campaign): bool => $campaign->djProfile !== null)
+            ->values();
+
+        $allowedGroups = $this->allowedGroupNumbersForPlacement($placement);
+
+        if ($allowedGroups === null) {
+            return $ads;
+        }
+
+        return $ads
+            ->filter(fn (DjFeaturedStatus $campaign): bool => in_array($this->groupNumber($campaign), $allowedGroups, true))
             ->values();
     }
 
@@ -222,6 +232,14 @@ class AdvertisementDisplayService
     private function slotWeight(DjFeaturedStatus $ad): int
     {
         return self::SLOT_WEIGHTS[$this->slotPosition($ad)] ?? 60;
+    }
+
+    private function allowedGroupNumbersForPlacement(?string $placement): ?array
+    {
+        return match (strtolower((string) $placement)) {
+            'group-a-and-b-display', 'group-a-b-display' => [1, 2],
+            default => null,
+        };
     }
 
     private function groupNumber(DjFeaturedStatus $ad): int
