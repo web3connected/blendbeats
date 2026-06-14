@@ -555,6 +555,14 @@ export default function FeaturedAdsPage() {
                               0,
                             )} slots are open for your current tier.
                           </p>
+                          <a
+                            href="#featured-ad-placements"
+                            className="mt-5 inline-flex h-10 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#d91515]"
+                            style={{ fontFamily: 'var(--font-heading)' }}
+                          >
+                            View Placements
+                            <ArrowRight size={14} />
+                          </a>
                         </article>
                         <article className="border border-[#2a2a2a] bg-[#080808] p-5">
                           <Radio className="text-[#FFB800]" size={22} />
@@ -576,7 +584,7 @@ export default function FeaturedAdsPage() {
                         </article>
                       </div>
 
-                      <section className="border border-[#2a2a2a] bg-[#080808] p-5">
+                      <section id="featured-ad-placements" className="scroll-mt-28 border border-[#2a2a2a] bg-[#080808] p-5">
                         <div className="mb-5 flex flex-col gap-3 border-b border-[#262626] pb-5 md:flex-row md:items-end md:justify-between">
                           <div>
                             <p className="text-xs font-bold uppercase tracking-widest text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
