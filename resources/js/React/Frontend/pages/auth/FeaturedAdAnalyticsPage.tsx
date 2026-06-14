@@ -8,6 +8,7 @@ import MaintenanceGate from '@/components/site/MaintenanceGate';
 import {
   FeaturedAdsApiError,
   getFeaturedAdAnalytics,
+  type FeaturedAdAnalyticsCampaign,
   type FeaturedAdAnalyticsResponse,
 } from '@/lib/featured-ads';
 
@@ -19,6 +20,10 @@ function formatDate(date: string | null) {
     day: 'numeric',
     year: 'numeric',
   }).format(new Date(date));
+}
+
+function campaignLabel(campaign: FeaturedAdAnalyticsCampaign) {
+  return campaign.campaign_title || `Group ${campaign.group} / Slot ${campaign.slot_position}`;
 }
 
 export default function FeaturedAdAnalyticsPage() {
@@ -65,6 +70,23 @@ export default function FeaturedAdAnalyticsPage() {
   if (!user) return <Navigate to="/login" replace />;
 
   const summary = analytics?.summary;
+  const campaigns = analytics?.campaigns ?? [];
+  const maxCampaignActivity = Math.max(...campaigns.map((campaign) => Math.max(campaign.impressions, campaign.clicks)), 1);
+  const groupTotals = campaigns.reduce<Record<string, { impressions: number; clicks: number }>>((totals, campaign) => {
+    const key = `Group ${campaign.group}`;
+    const current = totals[key] ?? { impressions: 0, clicks: 0 };
+
+    return {
+      ...totals,
+      [key]: {
+        impressions: current.impressions + campaign.impressions,
+        clicks: current.clicks + campaign.clicks,
+      },
+    };
+  }, {});
+  const groupRows = Object.entries(groupTotals);
+  const maxGroupImpressions = Math.max(...groupRows.map(([, totals]) => totals.impressions), 1);
+  const ctrGauge = Math.min(Math.max(summary?.ctr ?? 0, 0), 100);
 
   return (
     <MaintenanceGate
@@ -139,6 +161,110 @@ export default function FeaturedAdAnalyticsPage() {
                     );
                   })}
                 </div>
+
+                {campaigns.length > 0 && (
+                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.85fr)]">
+                    <section className="border border-[#2a2a2a] bg-[#080808] p-5">
+                      <div className="mb-5 flex items-center gap-3 border-b border-[#262626] pb-5">
+                        <BarChart3 className="text-[#FFB800]" size={22} />
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Campaign Activity</p>
+                          <h2 className="mt-1 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                            Impressions vs Clicks
+                          </h2>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4">
+                        {campaigns.map((campaign) => {
+                          const impressionWidth = Math.max((campaign.impressions / maxCampaignActivity) * 100, campaign.impressions > 0 ? 6 : 0);
+                          const clickWidth = Math.max((campaign.clicks / maxCampaignActivity) * 100, campaign.clicks > 0 ? 6 : 0);
+
+                          return (
+                            <article key={campaign.id} className="grid gap-3 border border-[#1f1f1f] bg-[#101010] p-4">
+                              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                  <p className="text-sm font-semibold text-white">{campaignLabel(campaign)}</p>
+                                  <p className="mt-1 text-xs uppercase tracking-widest text-[#777777]">
+                                    Group {campaign.group} / Slot {campaign.slot_position}
+                                  </p>
+                                </div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-[#FFB800]">{campaign.ctr}% CTR</p>
+                              </div>
+
+                              <div className="grid gap-2">
+                                <div className="grid grid-cols-[92px_minmax(0,1fr)_48px] items-center gap-3">
+                                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#888888]">Impressions</span>
+                                  <div className="h-3 bg-[#1c1c1c]">
+                                    <div className="h-full bg-[#FFB800]" style={{ width: `${impressionWidth}%` }} />
+                                  </div>
+                                  <span className="text-right text-xs text-white">{campaign.impressions}</span>
+                                </div>
+                                <div className="grid grid-cols-[92px_minmax(0,1fr)_48px] items-center gap-3">
+                                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#888888]">Clicks</span>
+                                  <div className="h-3 bg-[#1c1c1c]">
+                                    <div className="h-full bg-primary" style={{ width: `${clickWidth}%` }} />
+                                  </div>
+                                  <span className="text-right text-xs text-white">{campaign.clicks}</span>
+                                </div>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                    <div className="grid gap-6">
+                      <section className="border border-[#2a2a2a] bg-[#080808] p-5">
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Engagement</p>
+                            <h2 className="mt-1 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                              CTR Meter
+                            </h2>
+                          </div>
+                          <p className="text-4xl text-[#FFB800]" style={{ fontFamily: 'var(--font-heading)' }}>
+                            {summary?.ctr ?? 0}%
+                          </p>
+                        </div>
+                        <div className="mt-6 h-5 border border-[#303030] bg-[#101010] p-1">
+                          <div className="h-full bg-primary" style={{ width: `${ctrGauge}%` }} />
+                        </div>
+                        <div className="mt-3 flex justify-between text-[10px] font-bold uppercase tracking-widest text-[#666666]">
+                          <span>0%</span>
+                          <span>50%</span>
+                          <span>100%</span>
+                        </div>
+                      </section>
+
+                      <section className="border border-[#2a2a2a] bg-[#080808] p-5">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Placement Mix</p>
+                        <h2 className="mt-1 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                          Group Reach
+                        </h2>
+                        <div className="mt-5 grid gap-3">
+                          {groupRows.map(([group, totals]) => {
+                            const width = Math.max((totals.impressions / maxGroupImpressions) * 100, totals.impressions > 0 ? 8 : 0);
+
+                            return (
+                              <div key={group} className="grid gap-2">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="font-bold uppercase tracking-widest text-white">{group}</span>
+                                  <span className="text-[#888888]">
+                                    {totals.impressions} impressions / {totals.clicks} clicks
+                                  </span>
+                                </div>
+                                <div className="h-4 bg-[#1c1c1c]">
+                                  <div className="h-full bg-[#FFB800]" style={{ width: `${width}%` }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+                )}
 
                 <section className="border border-[#2a2a2a] bg-[#080808] p-5">
                   <div className="mb-5 flex items-center gap-3 border-b border-[#262626] pb-5">
