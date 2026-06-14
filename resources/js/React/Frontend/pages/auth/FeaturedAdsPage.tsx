@@ -32,6 +32,8 @@ type Requirement = {
   href: string;
 };
 
+const steps = ['Getting Started', 'Requirements', 'Agreement', 'Dashboard'];
+
 const dashboardCards = [
   ['Available Placements', 'Browse claimable featured DJ and mix slots.', LayoutGrid],
   ['Campaign History', 'Review active, pending, and completed promotions.', Radio],
@@ -43,6 +45,9 @@ export default function FeaturedAdsPage() {
   const [paymentProfile, setPaymentProfile] = useState<PaymentProfile | null>(null);
   const [isPaymentLoading, setIsPaymentLoading] = useState(true);
   const [paymentError, setPaymentError] = useState('');
+  const [currentStep, setCurrentStep] = useState(0);
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -67,6 +72,16 @@ export default function FeaturedAdsPage() {
     return () => {
       cancelled = true;
     };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const storageKey = `blendbeats.featuredAds.onboarding.${user.id}`;
+    const saved = window.localStorage.getItem(storageKey) === 'complete';
+
+    setOnboardingComplete(saved);
+    setCurrentStep(saved ? 3 : 0);
   }, [user]);
 
   const requirements = useMemo<Requirement[]>(() => {
@@ -138,6 +153,28 @@ export default function FeaturedAdsPage() {
 
   const completedCount = requirements.filter((requirement) => requirement.complete).length;
   const isReady = completedCount === requirements.length && !isPaymentLoading;
+  const storageKey = `blendbeats.featuredAds.onboarding.${user.id}`;
+
+  const goNext = () => {
+    if (currentStep === 1 && !isReady) return;
+    if (currentStep === 2 && !agreementAccepted) return;
+
+    if (currentStep === 2 && agreementAccepted) {
+      window.localStorage.setItem(storageKey, 'complete');
+      setOnboardingComplete(true);
+      setCurrentStep(3);
+      return;
+    }
+
+    setCurrentStep((step) => Math.min(step + 1, 3));
+  };
+
+  const resetOnboarding = () => {
+    window.localStorage.removeItem(storageKey);
+    setAgreementAccepted(false);
+    setOnboardingComplete(false);
+    setCurrentStep(0);
+  };
 
   return (
     <>
@@ -186,7 +223,7 @@ export default function FeaturedAdsPage() {
                   {completedCount}/{requirements.length}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[#888888]">
-                  {isReady ? 'Onboarding complete. Advertising dashboard is available.' : 'Complete onboarding before launching campaigns.'}
+                  {onboardingComplete ? 'Onboarding complete. Advertising dashboard is available.' : 'Complete onboarding before launching campaigns.'}
                 </p>
               </div>
             </div>
@@ -217,61 +254,169 @@ export default function FeaturedAdsPage() {
             </aside>
 
             <div className="space-y-6">
-              {!isReady ? (
+              {!onboardingComplete ? (
                 <section className="border border-[#2a2a2a] bg-[#111111] p-5">
                   <div className="mb-6 flex items-center justify-between gap-4">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-widest text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
-                        Onboarding
+                        Step {currentStep + 1} / 4
                       </p>
                       <h2 className="mt-2 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                        Get Ready To Advertise
+                        {steps[currentStep]}
                       </h2>
                     </div>
                     {isPaymentLoading && <Loader2 className="animate-spin text-primary" size={22} />}
                   </div>
 
+                  <div className="mb-6 grid gap-2 sm:grid-cols-4">
+                    {steps.map((step, index) => (
+                      <button
+                        key={step}
+                        type="button"
+                        onClick={() => setCurrentStep(index)}
+                        className={`border px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest ${
+                          index === currentStep
+                            ? 'border-primary bg-primary text-white'
+                            : index < currentStep
+                              ? 'border-[#FFB800] bg-[#151106] text-[#FFB800]'
+                              : 'border-[#2a2a2a] bg-[#080808] text-[#777777]'
+                        }`}
+                        style={{ fontFamily: 'var(--font-heading)' }}
+                      >
+                        {index + 1}. {step}
+                      </button>
+                    ))}
+                  </div>
+
                   {paymentError && <div className="mb-4 border border-primary bg-[#160808] p-4 text-sm text-[#dddddd]">{paymentError}</div>}
 
-                  <div className="grid gap-3">
-                    {requirements.map((requirement) => (
-                      <article key={requirement.key} className="grid gap-4 border border-[#2a2a2a] bg-[#080808] p-4 md:grid-cols-[1fr_auto] md:items-center">
-                        <div className="flex gap-4">
-                          {requirement.complete ? (
-                            <CheckCircle2 className="mt-1 shrink-0 text-[#FFB800]" size={22} />
-                          ) : (
-                            <XCircle className="mt-1 shrink-0 text-primary" size={22} />
-                          )}
-                          <div>
-                            <h3 className="text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                              {requirement.title}
-                            </h3>
-                            <p className="mt-2 text-sm leading-6 text-[#888888]">{requirement.description}</p>
+                  {currentStep === 0 && (
+                    <div className="border border-[#2a2a2a] bg-[#080808] p-6">
+                      <Megaphone className="text-primary" size={28} />
+                      <h3 className="mt-5 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                        Featured Placement Setup
+                      </h3>
+                      <p className="mt-4 max-w-3xl text-sm leading-6 text-[#aaaaaa]">
+                        Featured Ads help DJs get extra visibility in premium BlendBeats areas. Before you can claim paid placements, we need to confirm your public DJ profile, contact details, payment readiness, and agreement to the advertising terms.
+                      </p>
+                      <div className="mt-6 grid gap-3 md:grid-cols-3">
+                        {['Validate account readiness', 'Review ad responsibilities', 'Unlock campaign dashboard'].map((item) => (
+                          <div key={item} className="border border-[#2a2a2a] bg-[#111111] p-4">
+                            <CheckCircle2 className="text-[#FFB800]" size={18} />
+                            <p className="mt-3 text-sm font-bold uppercase tracking-widest text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                              {item}
+                            </p>
                           </div>
-                        </div>
-                        <Link
-                          to={requirement.href}
-                          className={`inline-flex h-11 items-center justify-center gap-2 px-4 text-xs font-bold uppercase tracking-widest ${
-                            requirement.complete
-                              ? 'border border-[#333333] text-[#777777]'
-                              : 'bg-primary text-white'
-                          }`}
-                          style={{ fontFamily: 'var(--font-heading)' }}
-                        >
-                          {requirement.complete ? 'Review' : requirement.action}
-                          <ArrowRight size={15} />
-                        </Link>
-                      </article>
-                    ))}
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {currentStep === 1 && (
+                    <div className="grid gap-3">
+                      {requirements.map((requirement) => (
+                        <article key={requirement.key} className="grid gap-4 border border-[#2a2a2a] bg-[#080808] p-4 md:grid-cols-[1fr_auto] md:items-center">
+                          <div className="flex gap-4">
+                            {requirement.complete ? (
+                              <CheckCircle2 className="mt-1 shrink-0 text-[#FFB800]" size={22} />
+                            ) : (
+                              <XCircle className="mt-1 shrink-0 text-primary" size={22} />
+                            )}
+                            <div>
+                              <h3 className="text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                                {requirement.title}
+                              </h3>
+                              <p className="mt-2 text-sm leading-6 text-[#888888]">{requirement.description}</p>
+                            </div>
+                          </div>
+                          <Link
+                            to={requirement.href}
+                            className={`inline-flex h-11 items-center justify-center gap-2 px-4 text-xs font-bold uppercase tracking-widest ${
+                              requirement.complete
+                                ? 'border border-[#333333] text-[#777777]'
+                                : 'bg-primary text-white'
+                            }`}
+                            style={{ fontFamily: 'var(--font-heading)' }}
+                          >
+                            {requirement.complete ? 'Review' : requirement.action}
+                            <ArrowRight size={15} />
+                          </Link>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+
+                  {currentStep === 2 && (
+                    <div className="border border-[#2a2a2a] bg-[#080808] p-6">
+                      <ShieldCheck className="text-[#FFB800]" size={28} />
+                      <h3 className="mt-5 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                        Advertising Agreement
+                      </h3>
+                      <div className="mt-4 space-y-3 text-sm leading-6 text-[#aaaaaa]">
+                        <p>You agree that submitted campaigns must represent your own DJ profile, mix, event, or approved brand placement.</p>
+                        <p>You agree not to promote misleading, abusive, illegal, private, unpublished, or rights-infringing content.</p>
+                        <p>You understand featured placement increases visibility but does not guarantee plays, followers, ratings, bookings, or revenue.</p>
+                        <p>You understand campaigns may be reviewed, paused, rejected, or removed if they violate BlendBeats rules.</p>
+                      </div>
+                      <label className="mt-6 flex cursor-pointer gap-3 border border-[#333333] bg-[#111111] p-4 text-sm text-white">
+                        <input
+                          type="checkbox"
+                          checked={agreementAccepted}
+                          onChange={(event) => setAgreementAccepted(event.target.checked)}
+                          className="mt-1"
+                        />
+                        <span>I agree to the BlendBeats featured advertising terms and understand campaign approval requirements.</span>
+                      </label>
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex items-center justify-between border-t border-[#262626] pt-5">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))}
+                      disabled={currentStep === 0}
+                      className="inline-flex h-11 items-center justify-center border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#aaaaaa] disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ fontFamily: 'var(--font-heading)' }}
+                    >
+                      Back
+                    </button>
+                    <div className="text-right">
+                      {currentStep === 1 && !isReady && (
+                        <p className="mb-2 text-xs text-[#888888]">Complete all requirements before continuing.</p>
+                      )}
+                      {currentStep === 2 && !agreementAccepted && (
+                        <p className="mb-2 text-xs text-[#888888]">Accept the agreement to unlock the dashboard.</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={goNext}
+                        disabled={(currentStep === 1 && !isReady) || (currentStep === 2 && !agreementAccepted)}
+                        className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        style={{ fontFamily: 'var(--font-heading)' }}
+                      >
+                        {currentStep === 2 ? 'Finish Setup' : 'Continue'}
+                        <ArrowRight size={15} />
+                      </button>
+                    </div>
                   </div>
                 </section>
               ) : (
                 <section className="border border-[#2a2a2a] bg-[#111111] p-5">
-                  <div className="mb-6 flex items-center gap-3">
-                    <BadgeCheck className="text-[#FFB800]" size={24} />
-                    <h2 className="text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                      Advertising Dashboard
-                    </h2>
+                  <div className="mb-6 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <BadgeCheck className="text-[#FFB800]" size={24} />
+                      <h2 className="text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                        Advertising Dashboard
+                      </h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={resetOnboarding}
+                      className="border border-[#333333] px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#aaaaaa]"
+                      style={{ fontFamily: 'var(--font-heading)' }}
+                    >
+                      Review Setup
+                    </button>
                   </div>
                   <div className="grid gap-4 md:grid-cols-3">
                     {dashboardCards.map(([title, body, Icon]) => (
