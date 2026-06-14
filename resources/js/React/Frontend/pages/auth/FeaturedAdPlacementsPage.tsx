@@ -454,6 +454,7 @@ export default function FeaturedAdPlacementsPage() {
                             const selectedOptionId = selectedOptionBySlot[slot.id] || slot.options[0]?.id || 0;
                             const selectedOption = slot.options.find((option) => option.id === selectedOptionId) || slot.options[0];
                             const canCheckout = Boolean(slot.is_unlocked && slot.is_available && selectedOption && placements.payment_provider?.credentials_ready);
+                            const isPendingCampaign = slot.active_campaign?.status === 'pending_payment';
 
                             return (
                               <div
@@ -461,9 +462,11 @@ export default function FeaturedAdPlacementsPage() {
                                 className={`border p-4 transition-colors ${
                                   selectedSlotId === slot.id
                                     ? 'border-primary bg-[#140909]'
-                                    : canCheckout
-                                      ? 'border-[#333333] bg-[#080808]'
-                                      : 'border-[#222222] bg-[#0b0b0b] opacity-75'
+                                    : isPendingCampaign
+                                      ? 'border-[#FFB800]/60 bg-[#191303]'
+                                      : canCheckout
+                                        ? 'border-[#333333] bg-[#080808]'
+                                        : 'border-[#222222] bg-[#0b0b0b] opacity-75'
                                 }`}
                               >
                                 <div className="mb-4">
@@ -493,9 +496,19 @@ export default function FeaturedAdPlacementsPage() {
 
                                 {slot.active_campaign ? (
                                   <div className="grid gap-3">
-                                    <div className="border border-[#2a2a2a] bg-[#111111] p-3 text-sm leading-6 text-[#aaaaaa]">
+                                    <div className={`border p-3 text-sm leading-6 ${
+                                      isPendingCampaign
+                                        ? 'border-[#FFB800]/50 bg-[#231a05] text-[#dddddd]'
+                                        : 'border-[#2a2a2a] bg-[#111111] text-[#aaaaaa]'
+                                    }`}
+                                    >
+                                      {isPendingCampaign && (
+                                        <span className="mb-2 inline-flex border border-[#FFB800]/50 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">
+                                          In Progress
+                                        </span>
+                                      )}
                                       Claimed by {slot.active_campaign.dj?.name || 'a DJ'}.
-                                      <span className="mt-1 block text-[11px] uppercase tracking-widest text-[#777777]">
+                                      <span className={`mt-1 block text-[11px] uppercase tracking-widest ${isPendingCampaign ? 'text-[#FFB800]' : 'text-[#777777]'}`}>
                                         {slot.active_campaign.status.replaceAll('_', ' ')}
                                       </span>
                                     </div>
