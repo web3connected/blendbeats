@@ -187,12 +187,26 @@ export default function FeaturedAdPlacementsPage() {
       0,
     )
     : 0;
-  const activeCampaignCount = placements
-    ? placements.my_campaigns.filter((campaign) => campaign.status === 'active').length
-    : 0;
-  const pendingCampaignCount = placements
-    ? placements.my_campaigns.filter((campaign) => campaign.status === 'pending_payment').length
-    : 0;
+  const activeCampaignIds = new Set<number>();
+  const pendingCampaignIds = new Set<number>();
+  if (placements) {
+    placements.my_campaigns.forEach((campaign) => {
+      if (campaign.status === 'active') activeCampaignIds.add(campaign.id);
+      if (campaign.status === 'pending_payment') pendingCampaignIds.add(campaign.id);
+    });
+    placements.campaigns.forEach((campaign) => {
+      campaign.slots.forEach((slot) => {
+        if (slot.active_campaign?.is_mine && slot.active_campaign.status === 'active') {
+          activeCampaignIds.add(slot.active_campaign.id);
+        }
+        if (slot.active_campaign?.is_mine && slot.active_campaign.status === 'pending_payment') {
+          pendingCampaignIds.add(slot.active_campaign.id);
+        }
+      });
+    });
+  }
+  const activeCampaignCount = activeCampaignIds.size;
+  const pendingCampaignCount = pendingCampaignIds.size;
   const nextAvailableSlot = placements
     ? placements.campaigns
         .flatMap((campaign) => campaign.slots)
@@ -388,7 +402,7 @@ export default function FeaturedAdPlacementsPage() {
                   <article className="border border-[#2a2a2a] bg-[#080808] p-5">
                     <Radio className="text-[#FFB800]" size={22} />
                     <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                      Active Campaigns
+                      Active Campaigns Running
                     </h3>
                     <p className="mt-3 text-sm leading-6 text-[#888888]">
                       {activeCampaignCount} running now. {pendingCampaignCount} waiting for payment.
@@ -491,16 +505,9 @@ export default function FeaturedAdPlacementsPage() {
                             </div>
                           )}
                           {selectedSlot.active_campaign?.is_mine && selectedSlot.active_campaign.status === 'active' && (
-                            <button
-                              type="button"
-                              onClick={startNewCampaign}
-                              disabled={!nextAvailableSlot}
-                              className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#d91515] disabled:cursor-not-allowed disabled:opacity-50"
-                              style={{ fontFamily: 'var(--font-heading)' }}
-                            >
-                              <CreditCard size={15} />
-                              Create New Ad
-                            </button>
+                            <div className="border border-[#2a2a2a] bg-[#080808] p-3 text-xs leading-5 text-[#888888]">
+                              Use the Create New Ad button in Available Placements to claim the next open slot.
+                            </div>
                           )}
                           {selectedSlot.active_campaign?.is_mine && selectedSlot.active_campaign.status === 'pending_payment' && (
                             <button
@@ -636,17 +643,6 @@ export default function FeaturedAdPlacementsPage() {
                                       >
                                         <CreditCard size={15} />
                                         Continue Campaign
-                                      </button>
-                                    )}
-                                    {slot.active_campaign.is_mine && slot.active_campaign.status === 'active' && nextAvailableSlot && (
-                                      <button
-                                        type="button"
-                                        onClick={startNewCampaign}
-                                        className="inline-flex h-11 items-center justify-center gap-2 border border-primary px-4 text-xs font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary hover:text-white"
-                                        style={{ fontFamily: 'var(--font-heading)' }}
-                                      >
-                                        <CreditCard size={15} />
-                                        Create New Ad
                                       </button>
                                     )}
                                   </div>
