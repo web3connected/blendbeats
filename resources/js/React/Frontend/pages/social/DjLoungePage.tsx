@@ -19,6 +19,7 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import GroupAAndBDisplay from '@/components/advertising/GroupAAndBDisplay';
+import GroupEAndFDisplay from '@/components/advertising/GroupEAndFDisplay';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { usePlayer } from '@/components/player/PlayerProvider';
 import { djLoungeTrends } from '@/config/djLounge';
@@ -925,6 +926,8 @@ export default function DjLoungePage() {
                   <p>No spam, harassment, or fake battle claims.</p>
                 </div>
               </section>
+
+              <GroupEAndFDisplay />
             </aside>
           </div>
         </section>
