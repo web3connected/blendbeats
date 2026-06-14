@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MediaFile;
+use App\Notifications\PortfolioAudioUploadedNotification;
 use App\Services\MediaManagerService;
 use App\Services\MediaStorageQuotaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
 class MediaManagerController extends Controller
@@ -75,6 +77,15 @@ class MediaManagerController extends Controller
                 ],
             ],
         ])->save();
+
+        $portfolioKind = $attributes['media_kind'] ?? null;
+        if (
+            Schema::hasTable('notifications')
+            && $file->isAudio()
+            && in_array($portfolioKind, ['mix', 'track'], true)
+        ) {
+            $request->user()->notify(new PortfolioAudioUploadedNotification($file->refresh()));
+        }
 
         return response()->json([
             'file' => $mediaManager->filePayload($file->refresh()),
