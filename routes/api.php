@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\MixController;
 use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\CounterController;
 use App\Http\Controllers\Api\DjHubController;
 use App\Http\Controllers\Api\DjLoungeController;
 use App\Http\Controllers\Api\DjProfileController;
@@ -84,6 +85,7 @@ Route::prefix('dj-lounge')->name('api.dj-lounge.')->group(function (): void {
 
 Route::get('mixes', [MixController::class, 'index'])->name('api.mixes.index');
 Route::post('mixes/{mix:slug}/play', [MixController::class, 'play'])->name('api.mixes.play');
+Route::post('counters/{type}/{id}/{action?}', [CounterController::class, 'increment'])->name('api.counters.increment');
 
 Route::get('ratings/{type}/{id}', [RatingController::class, 'show'])
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])

@@ -1,3 +1,5 @@
+import { incrementCounter } from '@/lib/counters';
+
 const API_BASE = import.meta.env?.VITE_API_BASE || '/api';
 
 export type PublicMix = {
@@ -60,12 +62,6 @@ export async function getMixesIndex(): Promise<MixesIndexResponse> {
 }
 
 export async function trackMixPlay(slug: string): Promise<number> {
-  const response = await fetch(`${API_BASE}/mixes/${slug}/play`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { Accept: 'application/json' },
-  });
-
-  const data = await parseJson<{ play_count: number }>(response);
-  return data.play_count;
+  const data = await incrementCounter('mixes', slug, 'play');
+  return data.count;
 }

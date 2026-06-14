@@ -5,7 +5,8 @@ import { CalendarDays, Disc3, Eye, Headphones, Play, Radio, Star } from 'lucide-
 import HeaderTitle from '@/layouts/HeaderTitle';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { usePlayer } from '@/components/player/PlayerProvider';
-import { getMixesIndex, trackMixPlay, type MixesIndexResponse, type PublicMix } from '@/lib/mixes';
+import { useCounter } from '@/hooks/useCounter';
+import { getMixesIndex, type MixesIndexResponse, type PublicMix } from '@/lib/mixes';
 import { getRatingSummary, rateTarget, type RatingSummary } from '@/lib/ratings';
 
 const emptyStats = {
@@ -308,7 +309,8 @@ function GenreRow({
 
 export default function MixesPage() {
   const { user } = useAuth();
-  const { playTrack } = usePlayer();
+  const { playTrack, updateCurrentTrack } = usePlayer();
+  const { count: countTarget } = useCounter();
   const [data, setData] = useState<MixesIndexResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -359,11 +361,20 @@ export default function MixesPage() {
         src: mix.audio_url,
         artwork: mix.cover_image_url,
         meta: mix.genre || 'Mix',
+        countLabel: 'plays',
+        countValue: mix.play_count,
       });
     }
 
     try {
-      const playCount = await trackMixPlay(mix.slug);
+      const counter = await countTarget({ type: 'mixes', id: mix.slug, action: 'play' });
+      const playCount = counter.count;
+
+      updateCurrentTrack({
+        countLabel: counter.label,
+        countValue: playCount,
+      });
+
       setData((current) => {
         if (!current) return current;
 

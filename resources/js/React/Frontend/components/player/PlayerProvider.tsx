@@ -9,6 +9,8 @@ export type PlayerTrack = {
   artwork?: string | null;
   meta?: string | null;
   duration?: number | null;
+  countLabel?: string | null;
+  countValue?: number | null;
 };
 
 export type PlayerMode = 'standard' | 'lounge_live';
@@ -30,6 +32,7 @@ type PlayerContextValue = {
   mode: PlayerMode;
   playbackBlocked: boolean;
   playTrack: (track: PlayerTrack) => void;
+  updateCurrentTrack: (patch: Partial<PlayerTrack>) => void;
   loadQueue: (options: PlayerQueueOptions) => void;
   togglePlay: () => void;
   stop: () => void;
@@ -218,6 +221,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     playQueuedTrack(track, 0, true);
   }, [playQueuedTrack]);
 
+  const updateCurrentTrack = useCallback((patch: Partial<PlayerTrack>) => {
+    setCurrentTrack((track) => (track ? { ...track, ...patch } : track));
+  }, []);
+
   const loadQueue = useCallback(({
     tracks,
     mode: nextMode = 'standard',
@@ -315,8 +322,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ currentTrack, isPlaying, error, mode, playbackBlocked, playTrack, loadQueue, togglePlay, stop }),
-    [currentTrack, isPlaying, error, mode, playbackBlocked, playTrack, loadQueue, togglePlay, stop],
+    () => ({ currentTrack, isPlaying, error, mode, playbackBlocked, playTrack, updateCurrentTrack, loadQueue, togglePlay, stop }),
+    [currentTrack, isPlaying, error, mode, playbackBlocked, playTrack, updateCurrentTrack, loadQueue, togglePlay, stop],
   );
 
   const displayDuration = duration || currentTrack?.duration || 0;
@@ -379,6 +386,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                 <p className="truncate text-xs text-[#888888]">
                   {error || (playbackBlocked ? 'Tap play to start lounge music.' : currentTrack.artist || currentTrack.meta || 'BlendBeats')}
                 </p>
+                {typeof currentTrack.countValue === 'number' && (
+                  <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-[#777777]">
+                    {new Intl.NumberFormat('en', { notation: currentTrack.countValue >= 10000 ? 'compact' : 'standard' }).format(currentTrack.countValue)}{' '}
+                    {currentTrack.countLabel || 'plays'}
+                  </p>
+                )}
               </div>
             </div>
 
