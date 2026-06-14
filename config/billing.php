@@ -13,6 +13,7 @@ return [
         'client_id' => env('PAYPAL_CLIENT_ID'),
         'secret' => env('PAYPAL_SECRET'),
         'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
+        'webhook_secret' => env('PAYPAL_WEBHOOK_SECRET'),
         'merchant_id' => env('PAYPAL_MERCHANT_ID'),
     ],
 

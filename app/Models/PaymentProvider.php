@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class PaymentProvider extends Model
 {
@@ -54,10 +55,26 @@ class PaymentProvider extends Model
             'paypal.client_id' => 'billing.paypal.client_id',
             'paypal.secret' => 'billing.paypal.secret',
             'paypal.webhook_id' => 'billing.paypal.webhook_id',
+            'paypal.webhook_secret' => 'billing.paypal.webhook_secret',
             'paypal.merchant_id' => 'billing.paypal.merchant_id',
             'stripe.client_id' => 'cashier.key',
             'stripe.secret' => 'cashier.secret',
             'stripe.webhook_secret' => 'cashier.webhook.secret',
+            default => null,
+        };
+    }
+
+    public function envKeyFor(string $field): ?string
+    {
+        return match ($this->provider.'.'.$field) {
+            'paypal.client_id' => 'PAYPAL_CLIENT_ID',
+            'paypal.secret' => 'PAYPAL_SECRET',
+            'paypal.webhook_id' => 'PAYPAL_WEBHOOK_ID',
+            'paypal.webhook_secret' => 'PAYPAL_WEBHOOK_SECRET',
+            'paypal.merchant_id' => 'PAYPAL_MERCHANT_ID',
+            'stripe.client_id' => 'STRIPE_KEY',
+            'stripe.secret' => 'STRIPE_SECRET',
+            'stripe.webhook_secret' => 'STRIPE_WEBHOOK_SECRET',
             default => null,
         };
     }
@@ -75,6 +92,64 @@ class PaymentProvider extends Model
         return filled($value) ? (string) $value : null;
     }
 
+    public function settingValueFor(string $field): ?string
+    {
+        return $this->configValueFor($field)
+            ?? $this->runtimeEnvironmentValueFor($field)
+            ?? $this->dotenvFileValueFor($field);
+    }
+
+    private function runtimeEnvironmentValueFor(string $field): ?string
+    {
+        $key = $this->envKeyFor($field);
+
+        if (! $key) {
+            return null;
+        }
+
+        foreach ([$_ENV[$key] ?? null, $_SERVER[$key] ?? null, getenv($key) ?: null] as $value) {
+            if (filled($value)) {
+                return (string) $value;
+            }
+        }
+
+        return null;
+    }
+
+    private function dotenvFileValueFor(string $field): ?string
+    {
+        $key = $this->envKeyFor($field);
+        $path = base_path('.env');
+
+        if (! $key || ! is_readable($path)) {
+            return null;
+        }
+
+        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+        foreach ($lines ?: [] as $line) {
+            $line = trim($line);
+
+            if ($line === '' || str_starts_with($line, '#') || ! str_starts_with($line, $key.'=')) {
+                continue;
+            }
+
+            $value = Str::after($line, '=');
+            $value = trim($value);
+
+            if (
+                (str_starts_with($value, '"') && str_ends_with($value, '"'))
+                || (str_starts_with($value, "'") && str_ends_with($value, "'"))
+            ) {
+                $value = substr($value, 1, -1);
+            }
+
+            return filled($value) ? $value : null;
+        }
+
+        return null;
+    }
+
     public function effectiveValueFor(string $field): ?string
     {
         $databaseValue = $this->{$field} ?? null;
@@ -83,7 +158,7 @@ class PaymentProvider extends Model
             return (string) $databaseValue;
         }
 
-        return $this->configValueFor($field);
+        return $this->settingValueFor($field);
     }
 
     public function valueSourceFor(string $field): string
@@ -92,7 +167,7 @@ class PaymentProvider extends Model
             return 'database';
         }
 
-        if (filled($this->configValueFor($field))) {
+        if (filled($this->settingValueFor($field))) {
             return 'env';
         }
 
