@@ -444,10 +444,10 @@ export default function FeaturedAdsPage() {
                 <article className="border border-[#2a2a2a] bg-[#111111] p-5">
                   <CreditCard className="text-[#FFB800]" size={22} />
                   <h3 className="mt-5 text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                    Payment First
+                    Payment Method
                   </h3>
                   <p className="mt-3 text-sm leading-6 text-[#888888]">
-                    Campaign purchases need an active configured payment provider before users can claim paid placement.
+                    Campaign purchases need an active configured payment method before users can claim paid placement.
                   </p>
                 </article>
                 <article className="border border-[#2a2a2a] bg-[#111111] p-5">
