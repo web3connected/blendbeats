@@ -653,12 +653,26 @@ export default function FeaturedAdPlacementsPage() {
                                         Continue Pending Ad
                                       </button>
                                     )}
-                                    <label className="grid gap-2">
-                                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Campaign Length</span>
-                                      <div className="border border-[#333333] bg-[#080808] px-3 py-3 text-sm text-[#dddddd]">
-                                        Choose days in setup
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <div className="border border-[#333333] bg-[#080808] px-3 py-3">
+                                        <span className="block text-[10px] font-bold uppercase tracking-widest text-[#777777]">Total Running</span>
+                                        <span className="mt-2 block text-xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                                          {slot.active_campaign_count}
+                                        </span>
                                       </div>
-                                    </label>
+                                      <div className="border border-[#333333] bg-[#080808] px-3 py-3">
+                                        <span className="block text-[10px] font-bold uppercase tracking-widest text-[#777777]">Your Ads</span>
+                                        <span className="mt-2 block text-xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                                          {slot.my_active_campaign_count}
+                                        </span>
+                                      </div>
+                                      <div className="border border-[#333333] bg-[#080808] px-3 py-3">
+                                        <span className="block text-[10px] font-bold uppercase tracking-widest text-[#777777]">Pending</span>
+                                        <span className="mt-2 block text-xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                                          {slot.pending_campaign_count}
+                                        </span>
+                                      </div>
+                                    </div>
                                     <p className="text-xs leading-5 text-[#888888]">
                                       Preview this slot, then set up campaign duration and payment.
                                     </p>
