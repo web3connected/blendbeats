@@ -23,6 +23,8 @@ class DjFeaturedStatus extends Model
         'payment_reference',
         'claimed_at',
         'payment_metadata',
+        'impression_count',
+        'click_count',
         'start_date',
         'end_date',
         'status',
@@ -36,6 +38,8 @@ class DjFeaturedStatus extends Model
             'slot_number' => 'integer',
             'rotation_weight' => 'integer',
             'amount_cents' => 'integer',
+            'impression_count' => 'integer',
+            'click_count' => 'integer',
             'claimed_at' => 'datetime',
             'payment_metadata' => 'array',
         ];

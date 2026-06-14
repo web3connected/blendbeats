@@ -1,7 +1,7 @@
 import { ExternalLink, Megaphone } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { getDisplayAdvertisement, type UniversalAdvertisement } from '@/lib/advertisements';
+import { getDisplayAdvertisement, trackAdvertisementEvent, type UniversalAdvertisement } from '@/lib/advertisements';
 
 type UniversalAdCardProps = {
   placement: string;
@@ -11,6 +11,9 @@ type UniversalAdCardProps = {
 export default function UniversalAdCard({ placement, title = 'Featured Ad' }: UniversalAdCardProps) {
   const [ad, setAd] = useState<UniversalAdvertisement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const containerRef = useRef<HTMLElement | null>(null);
+  const isInViewRef = useRef(false);
+  const impressionTrackedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,12 +35,44 @@ export default function UniversalAdCard({ placement, title = 'Featured Ad' }: Un
     };
   }, [placement]);
 
+  useEffect(() => {
+    impressionTrackedRef.current = false;
+    isInViewRef.current = false;
+  }, [ad?.id, placement]);
+
+  useEffect(() => {
+    if (!ad || !containerRef.current || impressionTrackedRef.current) return;
+
+    const trackIfFocused = () => {
+      if (!ad || impressionTrackedRef.current || !isInViewRef.current || document.visibilityState !== 'visible') return;
+
+      impressionTrackedRef.current = true;
+      trackAdvertisementEvent(ad, placement, 'impression');
+    };
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isInViewRef.current = Boolean(entry?.isIntersecting && entry.intersectionRatio >= 0.5);
+        trackIfFocused();
+      },
+      { threshold: [0.5] },
+    );
+
+    observer.observe(containerRef.current);
+    document.addEventListener('visibilitychange', trackIfFocused);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('visibilitychange', trackIfFocused);
+    };
+  }, [ad, placement]);
+
   if (isLoading || !ad) {
     return null;
   }
 
   return (
-    <section className="border border-[#2a2a2a] bg-[#111111] p-5">
+    <section ref={containerRef} className="border border-[#2a2a2a] bg-[#111111] p-5">
       <div className="mb-4 flex items-center gap-2">
         <Megaphone size={18} className="text-primary" />
         <h2 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -45,7 +80,11 @@ export default function UniversalAdCard({ placement, title = 'Featured Ad' }: Un
         </h2>
       </div>
 
-      <a href={ad.url} className="group block border border-[#282828] bg-[#090909] transition-colors hover:border-primary">
+      <a
+        href={ad.url}
+        onClick={() => trackAdvertisementEvent(ad, placement, 'click')}
+        className="group block border border-[#282828] bg-[#090909] transition-colors hover:border-primary"
+      >
         <div className="aspect-square overflow-hidden bg-[#050505]">
           {ad.image_url ? (
             <img src={ad.image_url} alt={ad.title || title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />

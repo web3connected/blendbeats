@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\MixController;
 use App\Http\Controllers\Api\AdvertisementDisplayController;
+use App\Http\Controllers\Api\AdvertisementEventController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\CounterController;
 use App\Http\Controllers\Api\DjHubController;
@@ -138,6 +139,9 @@ Route::prefix('dj-lounge')->name('api.dj-lounge.')->group(function (): void {
 Route::get('mixes', [MixController::class, 'index'])->name('api.mixes.index');
 Route::post('mixes/{mix:slug}/play', [MixController::class, 'play'])->name('api.mixes.play');
 Route::get('ads/display', [AdvertisementDisplayController::class, 'show'])->name('api.ads.display');
+Route::post('ads/events', [AdvertisementEventController::class, 'store'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
+    ->name('api.ads.events.store');
 Route::post('counters/{type}/{id}/{action?}', [CounterController::class, 'increment'])->name('api.counters.increment');
 
 Route::get('ratings/{type}/{id}', [RatingController::class, 'show'])

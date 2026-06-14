@@ -25,3 +25,35 @@ export async function getDisplayAdvertisement(placement: string): Promise<Univer
 
   return response.data.ad;
 }
+
+export function trackAdvertisementEvent(ad: UniversalAdvertisement, placement: string, eventType: 'impression' | 'click') {
+  const payload = JSON.stringify({
+    ad_id: ad.id,
+    ad_type: ad.type,
+    event_type: eventType,
+    placement,
+    metadata: {
+      group: ad.campaign.group,
+      group_number: ad.campaign.group_number,
+      slot: ad.campaign.slot,
+      placement_score: ad.campaign.placement_score,
+      path: window.location.pathname,
+    },
+  });
+
+  if (navigator.sendBeacon) {
+    const blob = new Blob([payload], { type: 'application/json' });
+    if (navigator.sendBeacon('/api/ads/events', blob)) return;
+  }
+
+  void fetch('/api/ads/events', {
+    method: 'POST',
+    credentials: 'include',
+    keepalive: true,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: payload,
+  }).catch(() => undefined);
+}
