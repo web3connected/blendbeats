@@ -149,11 +149,11 @@ class FeaturedAdController extends Controller
             'payment_metadata' => $order,
         ])->save();
 
-        $approvalLink = collect($order['links'] ?? [])->firstWhere('rel', 'approve');
+        $approvalUrl = $this->approvalUrlFromMetadata($order);
 
         return response()->json([
             'campaign' => $this->campaignPayload($campaign->refresh(), $profile->id),
-            'checkout_url' => is_array($approvalLink) ? ($approvalLink['href'] ?? null) : null,
+            'checkout_url' => $approvalUrl,
         ], 201);
     }
 
@@ -252,11 +252,11 @@ class FeaturedAdController extends Controller
             'payment_metadata' => $order,
         ])->save();
 
-        $approvalLink = collect($order['links'] ?? [])->firstWhere('rel', 'approve');
+        $approvalUrl = $this->approvalUrlFromMetadata($order);
 
         return response()->json([
             'campaign' => $this->campaignPayload($campaign->refresh(), $campaign->dj_profile_id),
-            'checkout_url' => is_array($approvalLink) ? ($approvalLink['href'] ?? null) : null,
+            'checkout_url' => $approvalUrl,
         ]);
     }
 
@@ -506,7 +506,20 @@ class FeaturedAdController extends Controller
 
     private function approvalUrlFromMetadata(array $metadata): ?string
     {
-        $approvalLink = collect($metadata['links'] ?? [])->firstWhere('rel', 'approve');
+        $links = collect($metadata['links'] ?? []);
+        $approvalLink = $links->first(function ($link): bool {
+            return is_array($link)
+                && in_array($link['rel'] ?? '', ['approve', 'payer-action', 'checkout', 'approval_url'], true)
+                && ! empty($link['href']);
+        });
+
+        if (! $approvalLink) {
+            $approvalLink = $links->first(function ($link): bool {
+                return is_array($link)
+                    && ! empty($link['href'])
+                    && str_contains((string) $link['href'], 'paypal.com');
+            });
+        }
 
         return is_array($approvalLink) ? ($approvalLink['href'] ?? null) : null;
     }

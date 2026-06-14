@@ -154,8 +154,9 @@ export default function FeaturedAdPlacementsPage() {
 
     startFeaturedAdCheckout(slot.id, selectedOptionId, selectedStartDate)
       .then((response) => {
-        if (response.checkout_url) {
-          window.location.href = response.checkout_url;
+        const checkoutUrl = response.checkout_url || response.campaign.approval_url;
+        if (checkoutUrl) {
+          window.location.href = checkoutUrl;
           return;
         }
 
@@ -251,8 +252,9 @@ export default function FeaturedAdPlacementsPage() {
 
       restartFeaturedAdCheckout(activeCampaign.id, selectedOptionId, selectedStartDate)
         .then((response) => {
-          if (response.checkout_url) {
-            window.location.href = response.checkout_url;
+          const checkoutUrl = response.checkout_url || response.campaign.approval_url;
+          if (checkoutUrl) {
+            window.location.href = checkoutUrl;
             return;
           }
 
