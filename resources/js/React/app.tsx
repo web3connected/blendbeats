@@ -12,6 +12,7 @@ import FeaturedAdPlacementsPage from './Frontend/pages/auth/FeaturedAdPlacements
 import FeaturedAdsPage from './Frontend/pages/auth/FeaturedAdsPage';
 import ForgotPasswordPage from './Frontend/pages/auth/ForgotPasswordPage';
 import LoginPage from './Frontend/pages/auth/LoginPage';
+import NotificationsPage from './Frontend/pages/auth/NotificationsPage';
 import PaymentMethodsPage from './Frontend/pages/auth/PaymentMethodsPage';
 import RegisterPage from './Frontend/pages/auth/RegisterPage';
 import SettingsPage from './Frontend/pages/auth/SettingsPage';
@@ -75,6 +76,7 @@ createRoot(rootElement).render(
                 <Route path="/account/featured-ads/analytics" element={<FeaturedAdAnalyticsPage />} />
                 <Route path="/account/featured-ads/placements" element={<FeaturedAdPlacementsPage />} />
                 <Route path="/account/payment-methods" element={<PaymentMethodsPage />} />
+                <Route path="/account/notifications" element={<NotificationsPage />} />
                 <Route path="/account/settings" element={<SettingsPage />} />
                 <Route path="/account/storage" element={<StoragePage />} />
                 <Route path="/account/support" element={<SupportPage />} />

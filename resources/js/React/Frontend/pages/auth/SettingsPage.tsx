@@ -56,7 +56,7 @@ const settingsCards = [
   {
     title: 'Notifications',
     description: 'Choose how BlendBeats contacts you about posts, mixes, battles, and billing.',
-    href: '/account/settings',
+    href: '/account/notifications',
     icon: Bell,
   },
   {

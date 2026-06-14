@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\FeaturedAdController;
 use App\Http\Controllers\Api\LoungeLiveStateController;
 use App\Http\Controllers\Api\MediaManagerController;
 use App\Http\Controllers\Api\MediaSetupController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\Auth\UserAuthController;
 use Illuminate\Http\Request;
@@ -120,6 +121,17 @@ Route::prefix('featured-ads')
         Route::post('checkout', [FeaturedAdController::class, 'checkout'])->name('checkout');
         Route::post('campaigns/{campaign}/checkout', [FeaturedAdController::class, 'restartCheckout'])->name('campaigns.checkout');
         Route::post('campaigns/{campaign}/capture', [FeaturedAdController::class, 'capture'])->name('campaigns.capture');
+    });
+
+Route::prefix('notifications')
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.notifications.')
+    ->group(function (): void {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
+        Route::patch('read-all', [NotificationController::class, 'markAllRead'])->name('read-all');
+        Route::patch('{notificationId}/read', [NotificationController::class, 'markRead'])->name('read');
+        Route::delete('{notificationId}', [NotificationController::class, 'destroy'])->name('destroy');
     });
 
 Route::prefix('dj-lounge')->name('api.dj-lounge.')->group(function (): void {
