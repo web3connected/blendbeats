@@ -187,6 +187,12 @@ export default function FeaturedAdPlacementsPage() {
       0,
     )
     : 0;
+  const activeCampaignCount = placements
+    ? placements.my_campaigns.filter((campaign) => campaign.status === 'active').length
+    : 0;
+  const pendingCampaignCount = placements
+    ? placements.my_campaigns.filter((campaign) => campaign.status === 'pending_payment').length
+    : 0;
   const selectedPlacement = placements
     ? placements.campaigns.reduce<{
       campaign: FeaturedMarketplaceCampaign;
@@ -310,10 +316,13 @@ export default function FeaturedAdPlacementsPage() {
                 </p>
               </div>
               <div className="border border-[#303030] bg-[#111111] p-5">
-                <LayoutGrid className="text-primary" size={24} />
-                <p className="mt-5 text-[11px] font-bold uppercase tracking-widest text-[#FFB800]">Open Slots</p>
+                <Radio className="text-primary" size={24} />
+                <p className="mt-5 text-[11px] font-bold uppercase tracking-widest text-[#FFB800]">Active Campaigns</p>
                 <p className="mt-2 text-4xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                  {isPlacementsLoading ? '...' : openSlotCount}
+                  {isPlacementsLoading ? '...' : activeCampaignCount}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[#888888]">
+                  {openSlotCount} open slot{openSlotCount === 1 ? '' : 's'} still available for your current tier.
                 </p>
               </div>
             </div>
@@ -354,10 +363,10 @@ export default function FeaturedAdPlacementsPage() {
                   <article className="border border-[#2a2a2a] bg-[#080808] p-5">
                     <Radio className="text-[#FFB800]" size={22} />
                     <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                      Campaign History
+                      Active Campaigns
                     </h3>
                     <p className="mt-3 text-sm leading-6 text-[#888888]">
-                      {placements.my_campaigns.length} campaign{placements.my_campaigns.length === 1 ? '' : 's'} attached to your DJ profile.
+                      {activeCampaignCount} running now. {pendingCampaignCount} waiting for payment.
                     </p>
                   </article>
                   <article className="border border-[#2a2a2a] bg-[#080808] p-5">
