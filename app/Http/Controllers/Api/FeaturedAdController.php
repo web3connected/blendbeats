@@ -34,8 +34,8 @@ class FeaturedAdController extends Controller
         $campaigns = FeaturedCampaign::query()
             ->with([
                 'slotGroup:id,name,group_key,slot_count,template_type,rotation_weight,daily_price_cents,sort_order,is_active',
-                'slots.featuredStatus.djProfile:id,dj_name,handle,user_id',
-                'slots.featuredStatus.campaignOption:id,name,duration_days',
+                'slots.featuredStatuses.djProfile:id,dj_name,handle,user_id',
+                'slots.featuredStatuses.campaignOption:id,name,duration_days',
             ])
             ->where('status', 'active')
             ->where(fn ($query) => $query->whereNull('start_date')->orWhere('start_date', '<=', now()))
@@ -96,7 +96,6 @@ class FeaturedAdController extends Controller
         $groupKey = (string) $slotGroup->group_key;
         abort_unless($this->membershipTiers->canAccessAdvertisingGroup($user, $groupKey), 403, "Your membership does not include Group {$groupKey} advertising.");
         abort_unless($this->campaignSlotHasOption($campaignSlot, (int) $validated['campaign_option_id']), 422, 'That campaign option is not available for this slot.');
-        abort_if($this->campaignSlotHasActiveOrPendingCampaign($campaignSlot), 422, 'That campaign slot is already claimed or pending payment.');
 
         $option = FeaturedSlotCampaignOption::query()->findOrFail($validated['campaign_option_id']);
         $groupSlotNumber = (int) $campaignSlot->group_slot_number;
@@ -127,19 +126,10 @@ class FeaturedAdController extends Controller
             'end_date' => $endDate,
         ]);
 
-        $campaignSlot->forceFill([
-            'claim_status' => 'pending_payment',
-            'claimed_by_user_id' => $user->id,
-        ])->save();
-
         try {
             $order = $this->createPaypalOrder($provider, $campaign, $option);
         } catch (RequestException $exception) {
             $campaign->delete();
-            $campaignSlot->forceFill([
-                'claim_status' => 'open',
-                'claimed_by_user_id' => null,
-            ])->save();
 
             abort(422, $exception->response?->json('message') ?: 'PayPal checkout could not be started.');
         }
@@ -188,8 +178,6 @@ class FeaturedAdController extends Controller
                 'capture' => $capture,
             ],
         ])->save();
-
-        $campaign->campaignSlot?->forceFill(['claim_status' => 'claimed'])->save();
 
         return response()->json([
             'campaign' => $this->campaignPayload($campaign->refresh(), $campaign->dj_profile_id),
@@ -302,19 +290,6 @@ class FeaturedAdController extends Controller
         return DB::table('featured_slot_campaign_option_slot')
             ->where('slot_number', $templateSlotNumber)
             ->where('featured_slot_campaign_option_id', $optionId)
-            ->exists();
-    }
-
-    private function campaignSlotHasActiveOrPendingCampaign(FeaturedCampaignSlot $campaignSlot): bool
-    {
-        if ($campaignSlot->claim_status !== 'open') {
-            return true;
-        }
-
-        return DjFeaturedStatus::query()
-            ->where('featured_campaign_slot_id', $campaignSlot->id)
-            ->whereIn('status', ['active', 'pending_payment'])
-            ->where(fn ($query) => $query->whereNull('end_date')->orWhere('end_date', '>=', now()))
             ->exists();
     }
 
@@ -470,12 +445,23 @@ class FeaturedAdController extends Controller
             'slots' => $campaign->slots
                 ->sortBy('group_slot_number')
                 ->map(function (FeaturedCampaignSlot $slot) use ($campaign, $slotGroup, $isUnlocked, $currentDjProfileId): array {
-                    $featuredStatus = $slot->featuredStatus;
                     $groupNumber = (int) $slotGroup->sort_order;
                     $groupSlotNumber = (int) $slot->group_slot_number;
                     $templateSlotNumber = $this->placementPricing->templateSlotNumber($groupNumber, $groupSlotNumber);
                     $dailyPrice = $this->placementPricing->dailyPriceCents($groupNumber, $groupSlotNumber);
                     $options = $this->campaignOptionsForSlot($templateSlotNumber, $dailyPrice);
+                    $statuses = $slot->featuredStatuses
+                        ->filter(fn (DjFeaturedStatus $status): bool => ! $status->end_date || $status->end_date >= now());
+                    $activeStatuses = $statuses->filter(fn (DjFeaturedStatus $status): bool => $status->status === 'active'
+                        && (! $status->start_date || $status->start_date <= now()));
+                    $pendingStatuses = $statuses->filter(fn (DjFeaturedStatus $status): bool => $status->status === 'pending_payment');
+                    $myActiveStatuses = $activeStatuses->filter(fn (DjFeaturedStatus $status): bool => $currentDjProfileId !== null
+                        && (int) $status->dj_profile_id === $currentDjProfileId);
+                    $myPendingStatuses = $pendingStatuses->filter(fn (DjFeaturedStatus $status): bool => $currentDjProfileId !== null
+                        && (int) $status->dj_profile_id === $currentDjProfileId);
+                    $displayStatus = $myPendingStatuses->sortByDesc('claimed_at')->first()
+                        ?? $myActiveStatuses->sortByDesc('start_date')->first()
+                        ?? $activeStatuses->sortByDesc('start_date')->first();
 
                     return [
                         'id' => $slot->id,
@@ -488,10 +474,14 @@ class FeaturedAdController extends Controller
                         'daily_price_label' => $this->formatMoney($dailyPrice),
                         'exposure_percent' => $this->placementPricing->exposurePercent($groupNumber, $groupSlotNumber),
                         'rotation_weight' => $this->placementPricing->rotationWeight($groupNumber, $groupSlotNumber),
-                        'claim_status' => $slot->claim_status,
+                        'claim_status' => 'open',
                         'is_unlocked' => $isUnlocked,
-                        'is_available' => $slot->claim_status === 'open' && count($options) > 0 && ! $featuredStatus,
-                        'active_campaign' => $featuredStatus ? $this->campaignPayload($featuredStatus, $currentDjProfileId) : null,
+                        'is_available' => $isUnlocked && count($options) > 0,
+                        'active_campaign_count' => $activeStatuses->count(),
+                        'my_active_campaign_count' => $myActiveStatuses->count(),
+                        'pending_campaign_count' => $pendingStatuses->count(),
+                        'my_pending_campaign_count' => $myPendingStatuses->count(),
+                        'active_campaign' => $displayStatus ? $this->campaignPayload($displayStatus, $currentDjProfileId) : null,
                         'options' => $options,
                     ];
                 })

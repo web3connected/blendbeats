@@ -496,17 +496,15 @@ export default function FeaturedAdPlacementsPage() {
                           )}
                           {selectedSlot.active_campaign && (
                             <div className="border border-[#2a2a2a] bg-[#080808] p-3 text-sm leading-6 text-[#aaaaaa]">
-                              Claimed by {selectedSlot.active_campaign.dj?.name || 'a DJ'}.
-                              {selectedSlot.active_campaign.is_mine && selectedSlot.active_campaign.status === 'active' && (
-                                <span className="mt-2 block text-xs leading-5 text-[#888888]">
-                                  This placement is running. You can create another ad in an open slot.
-                                </span>
-                              )}
+                              {selectedSlot.my_active_campaign_count} of your Position {selectedSlot.group_slot_number} ad{selectedSlot.my_active_campaign_count === 1 ? '' : 's'} running.
+                              <span className="mt-2 block text-xs leading-5 text-[#888888]">
+                                {selectedSlot.active_campaign_count} total active campaign{selectedSlot.active_campaign_count === 1 ? '' : 's'} use this position template.
+                              </span>
                             </div>
                           )}
-                          {selectedSlot.active_campaign?.is_mine && selectedSlot.active_campaign.status === 'active' && (
-                            <div className="border border-[#2a2a2a] bg-[#080808] p-3 text-xs leading-5 text-[#888888]">
-                              Use the Create New Ad button in Available Placements to claim the next open slot.
+                          {!selectedSlot.active_campaign && selectedSlot.my_active_campaign_count > 0 && (
+                            <div className="border border-[#2a2a2a] bg-[#080808] p-3 text-sm leading-6 text-[#aaaaaa]">
+                              {selectedSlot.my_active_campaign_count} of your Position {selectedSlot.group_slot_number} ad{selectedSlot.my_active_campaign_count === 1 ? '' : 's'} running.
                             </div>
                           )}
                           {selectedSlot.active_campaign?.is_mine && selectedSlot.active_campaign.status === 'pending_payment' && (
@@ -529,7 +527,7 @@ export default function FeaturedAdPlacementsPage() {
                                 style={{ fontFamily: 'var(--font-heading)' }}
                               >
                                 <CreditCard size={15} />
-                                Set Up Campaign
+                                Create Position {selectedSlot.group_slot_number} Ad
                               </button>
                             </>
                           )}
@@ -616,37 +614,7 @@ export default function FeaturedAdPlacementsPage() {
                                   </button>
                                 </div>
 
-                                {slot.active_campaign ? (
-                                  <div className="grid gap-3">
-                                    <div className={`border p-3 text-sm leading-6 ${
-                                      isPendingCampaign
-                                        ? 'border-[#FFB800]/50 bg-[#231a05] text-[#dddddd]'
-                                        : 'border-[#2a2a2a] bg-[#111111] text-[#aaaaaa]'
-                                    }`}
-                                    >
-                                      {isPendingCampaign && (
-                                        <span className="mb-2 inline-flex border border-[#FFB800]/50 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">
-                                          In Progress
-                                        </span>
-                                      )}
-                                      Claimed by {slot.active_campaign.dj?.name || 'a DJ'}.
-                                      <span className={`mt-1 block text-[11px] uppercase tracking-widest ${isPendingCampaign ? 'text-[#FFB800]' : 'text-[#777777]'}`}>
-                                        {slot.active_campaign.status.replaceAll('_', ' ')}
-                                      </span>
-                                    </div>
-                                    {slot.active_campaign.is_mine && slot.active_campaign.status === 'pending_payment' && (
-                                      <button
-                                        type="button"
-                                        onClick={() => openCampaignSetup(slot)}
-                                        className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#d91515]"
-                                        style={{ fontFamily: 'var(--font-heading)' }}
-                                      >
-                                        <CreditCard size={15} />
-                                        Continue Campaign
-                                      </button>
-                                    )}
-                                  </div>
-                                ) : !slot.is_unlocked ? (
+                                {!slot.is_unlocked ? (
                                   <div className="border border-[#2a2a2a] bg-[#111111] p-3 text-sm leading-6 text-[#888888]">
                                     Locked for your current tier.
                                   </div>
@@ -656,6 +624,35 @@ export default function FeaturedAdPlacementsPage() {
                                   </div>
                                 ) : (
                                   <div className="grid gap-3">
+                                    {(slot.active_campaign_count > 0 || slot.pending_campaign_count > 0) && (
+                                      <div className={`border p-3 text-sm leading-6 ${
+                                        isPendingCampaign
+                                          ? 'border-[#FFB800]/50 bg-[#231a05] text-[#dddddd]'
+                                          : 'border-[#2a2a2a] bg-[#111111] text-[#aaaaaa]'
+                                      }`}
+                                      >
+                                        {slot.my_pending_campaign_count > 0 && (
+                                          <span className="mb-2 inline-flex border border-[#FFB800]/50 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">
+                                            {slot.my_pending_campaign_count} In Progress
+                                          </span>
+                                        )}
+                                        {slot.my_active_campaign_count} of your Position {slot.group_slot_number} ad{slot.my_active_campaign_count === 1 ? '' : 's'} running.
+                                        <span className="mt-1 block text-[11px] uppercase tracking-widest text-[#777777]">
+                                          {slot.active_campaign_count} total active
+                                        </span>
+                                      </div>
+                                    )}
+                                    {slot.active_campaign?.is_mine && slot.active_campaign.status === 'pending_payment' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => openCampaignSetup(slot)}
+                                        className="inline-flex h-11 items-center justify-center gap-2 border border-[#FFB800] px-4 text-xs font-bold uppercase tracking-widest text-[#FFB800] transition-colors hover:bg-[#FFB800] hover:text-black"
+                                        style={{ fontFamily: 'var(--font-heading)' }}
+                                      >
+                                        <CreditCard size={15} />
+                                        Continue Pending Ad
+                                      </button>
+                                    )}
                                     <label className="grid gap-2">
                                       <span className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Campaign Length</span>
                                       <div className="border border-[#333333] bg-[#080808] px-3 py-3 text-sm text-[#dddddd]">
@@ -673,7 +670,7 @@ export default function FeaturedAdPlacementsPage() {
                                       style={{ fontFamily: 'var(--font-heading)' }}
                                     >
                                       <CreditCard size={15} />
-                                      Set Up Campaign
+                                      Create Position {slot.group_slot_number} Ad
                                     </button>
                                   </div>
                                 )}

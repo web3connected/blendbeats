@@ -49,6 +49,10 @@ export type FeaturedCampaignSlot = {
   claim_status: string;
   is_unlocked: boolean;
   is_available: boolean;
+  active_campaign_count: number;
+  my_active_campaign_count: number;
+  pending_campaign_count: number;
+  my_pending_campaign_count: number;
   active_campaign: FeaturedAdCampaign | null;
   options: FeaturedAdOption[];
 };

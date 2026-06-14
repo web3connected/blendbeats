@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class FeaturedCampaignSlot extends Model
@@ -36,5 +37,10 @@ class FeaturedCampaignSlot extends Model
     public function featuredStatus(): HasOne
     {
         return $this->hasOne(DjFeaturedStatus::class);
+    }
+
+    public function featuredStatuses(): HasMany
+    {
+        return $this->hasMany(DjFeaturedStatus::class);
     }
 }
