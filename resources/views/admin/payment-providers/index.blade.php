@@ -5,6 +5,16 @@
 ])
 
 @section('admin_content')
+    @php
+        $modeBadge = fn (?string $mode): string => match ($mode) {
+            'live', 'production' => 'danger',
+            'sandbox' => 'info',
+            'test' => 'secondary',
+            default => 'dark',
+        };
+        $modeLabel = fn (?string $mode): string => str((string) ($mode ?: 'unknown'))->replace('_', ' ')->headline()->toString();
+    @endphp
+
     @if (session('status'))
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
@@ -66,6 +76,7 @@
                                         <h4 class="mb-1">
                                             <i class="fas fa-{{ $provider->provider === 'paypal' ? 'wallet' : 'credit-card' }} mr-1"></i>
                                             {{ $provider->display_name }}
+                                            <span class="badge badge-{{ $modeBadge($provider->mode) }} ml-2">{{ $modeLabel($provider->mode) }}</span>
                                         </h4>
                                         <p class="text-muted mb-0">
                                             {{ $provider->provider === 'paypal' ? 'PayPal checkout, subscriptions, and promotion payments.' : 'Stripe subscriptions, checkout, billing portal, and future payment flows.' }}
@@ -140,6 +151,7 @@
                                 aria-selected="{{ $loop->first ? 'true' : 'false' }}"
                             >
                                 {{ $provider->display_name }}
+                                <span class="badge badge-{{ $modeBadge($provider->mode) }} ml-1">{{ $modeLabel($provider->mode) }}</span>
                                 @if ($provider->is_primary)
                                     <span class="badge badge-warning ml-1">Primary</span>
                                 @endif
@@ -184,10 +196,12 @@
                                         <h4 class="mb-1">{{ $provider->display_name }} Settings</h4>
                                         <p class="text-muted mb-0">
                                             Configure credentials and webhook details for this active service.
+                                            <span class="badge badge-{{ $modeBadge($provider->mode) }} ml-1">{{ $modeLabel($provider->mode) }} Mode</span>
                                         </p>
                                     </div>
                                     <div>
                                         <span class="badge badge-success">Active</span>
+                                        <span class="badge badge-{{ $modeBadge($provider->mode) }}">Mode: {{ $modeLabel($provider->mode) }}</span>
                                         @if ($provider->is_primary)
                                             <span class="badge badge-warning">Primary</span>
                                         @endif
