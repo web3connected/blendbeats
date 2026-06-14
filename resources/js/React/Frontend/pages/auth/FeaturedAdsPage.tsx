@@ -250,6 +250,14 @@ export default function FeaturedAdsPage() {
                       ? `${paymentProfile.primary_provider.display_name} (${paymentProfile.primary_provider.mode})`
                       : 'No active provider configured.'}
                 </p>
+                <Link
+                  to="/account/payment-methods"
+                  className="mt-4 inline-flex h-10 items-center justify-center gap-2 border border-[#333333] px-4 text-[11px] font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                >
+                  Manage Methods
+                  <ArrowRight size={14} />
+                </Link>
               </div>
             </aside>
 
@@ -449,6 +457,14 @@ export default function FeaturedAdsPage() {
                   <p className="mt-3 text-sm leading-6 text-[#888888]">
                     Campaign purchases need an active configured payment method before users can claim paid placement.
                   </p>
+                  <Link
+                    to="/account/payment-methods"
+                    className="mt-5 inline-flex h-11 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#d91515]"
+                    style={{ fontFamily: 'var(--font-heading)' }}
+                  >
+                    Manage Payment Methods
+                    <ArrowRight size={15} />
+                  </Link>
                 </article>
                 <article className="border border-[#2a2a2a] bg-[#111111] p-5">
                   <Megaphone className="text-primary" size={22} />
