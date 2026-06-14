@@ -27,6 +27,10 @@ class DjFeaturedStatus extends Model
         'click_count',
         'start_date',
         'end_date',
+        'pending_payment_notified_at',
+        'activated_notified_at',
+        'ending_soon_notified_at',
+        'expired_notified_at',
         'status',
     ];
 
@@ -35,6 +39,10 @@ class DjFeaturedStatus extends Model
         return [
             'start_date' => 'datetime',
             'end_date' => 'datetime',
+            'pending_payment_notified_at' => 'datetime',
+            'activated_notified_at' => 'datetime',
+            'ending_soon_notified_at' => 'datetime',
+            'expired_notified_at' => 'datetime',
             'slot_number' => 'integer',
             'rotation_weight' => 'integer',
             'amount_cents' => 'integer',

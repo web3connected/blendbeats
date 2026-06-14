@@ -9,6 +9,7 @@ use App\Models\FeaturedCampaignSlot;
 use App\Models\DjFeaturedStatus;
 use App\Models\FeaturedSlotCampaignOption;
 use App\Models\PaymentProvider;
+use App\Services\FeaturedAdNotificationService;
 use App\Services\FeaturedPlacementPricingService;
 use App\Services\MembershipTierService;
 use Illuminate\Http\Client\RequestException;
@@ -24,6 +25,7 @@ class FeaturedAdController extends Controller
     public function __construct(
         private readonly MembershipTierService $membershipTiers,
         private readonly FeaturedPlacementPricingService $placementPricing,
+        private readonly FeaturedAdNotificationService $adNotifications,
     ) {}
 
     public function placements(Request $request): JsonResponse
@@ -209,6 +211,8 @@ class FeaturedAdController extends Controller
             'payment_metadata' => $order,
         ])->save();
 
+        $this->adNotifications->notifyPendingPayment($campaign);
+
         $approvalUrl = $this->approvalUrlFromMetadata($order);
 
         return response()->json([
@@ -248,6 +252,8 @@ class FeaturedAdController extends Controller
                 'capture' => $capture,
             ],
         ])->save();
+
+        $this->adNotifications->notifyActivated($campaign);
 
         return response()->json([
             'campaign' => $this->campaignPayload($campaign->refresh(), $campaign->dj_profile_id),
