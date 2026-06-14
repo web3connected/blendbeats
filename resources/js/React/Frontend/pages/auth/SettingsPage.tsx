@@ -38,7 +38,7 @@ const settingsCards = [
   {
     title: 'Featured Ads',
     description: 'Manage featured placement campaigns and promotional visibility.',
-    href: '/account/settings',
+    href: '/account/featured-ads',
     icon: Megaphone,
   },
   {
