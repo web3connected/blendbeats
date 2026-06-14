@@ -18,11 +18,10 @@ import {
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import UniversalAdCard from '@/components/advertising/UniversalAdCard';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { usePlayer } from '@/components/player/PlayerProvider';
-import FeaturedDjSlotCard from '@/components/featured/FeaturedDjSlotCard';
 import { djLoungeTrends } from '@/config/djLounge';
-import { useFeaturedDjs } from '@/hooks/use-featured-djs';
 import {
   createDjLoungePost,
   createDjLoungeReply,
@@ -452,8 +451,6 @@ export default function DjLoungePage() {
   const [replyingPostId, setReplyingPostId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loungeMusicStatus, setLoungeMusicStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
-  const { getSlot } = useFeaturedDjs();
-  const loungeFeaturedSlot = getSlot(1);
   const {
     loadQueue,
     mode: playerMode,
@@ -896,7 +893,7 @@ export default function DjLoungePage() {
             </div>
 
             <aside className="grid gap-5 self-start">
-              {loungeFeaturedSlot?.dj && <FeaturedDjSlotCard slot={loungeFeaturedSlot} />}
+              <UniversalAdCard placement="dj-lounge-sidebar" title="Lounge Spotlight" />
 
               <section className="border border-[#2a2a2a] bg-[#111111] p-5">
                 <div className="mb-4 flex items-center gap-2">
