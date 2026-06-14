@@ -236,6 +236,7 @@ class AdvertisementDisplayService
     {
         return match (strtolower((string) $placement)) {
             'group-a-and-b-display', 'group-a-b-display' => [1, 2],
+            'group-c-and-d-display', 'group-c-d-display' => [3, 4],
             'group-e-and-f-display', 'group-e-f-display' => [5, 6],
             default => null,
         };

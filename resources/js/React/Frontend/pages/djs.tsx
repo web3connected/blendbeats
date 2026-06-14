@@ -3,7 +3,8 @@ import { CalendarCheck, Headphones, MapPin, Pause, Play, Search, SlidersHorizont
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import FeaturedDjSidebarSpotlight from '@/components/featured/FeaturedDjSidebarSpotlight';
+import GroupAAndBDisplay from '@/components/advertising/GroupAAndBDisplay';
+import GroupCAndDDisplay from '@/components/advertising/GroupCAndDDisplay';
 import { usePlayer } from '@/components/player/PlayerProvider';
 import { getDjHubDjs, type DjHubDj, type DjHubFilters, type DjHubQuery } from '@/lib/dj-hub';
 
@@ -221,7 +222,7 @@ export default function DjsPage() {
         <section className="px-4 py-8 lg:px-8">
           <div className="container mx-auto grid max-w-6xl gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
             <aside className="grid h-fit gap-5">
-              <FeaturedDjSidebarSpotlight />
+              <GroupAAndBDisplay />
 
               <section className="border border-[#2a2a2a] bg-[#111111] p-5">
                 <div className="mb-5 flex items-center gap-3 border-b border-[#242424] pb-4">
@@ -315,6 +316,8 @@ export default function DjsPage() {
                   </label>
                 </div>
               </section>
+
+              <GroupCAndDDisplay />
             </aside>
 
             <section className="min-w-0">
