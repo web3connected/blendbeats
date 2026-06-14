@@ -150,6 +150,23 @@
 
                 <div class="tab-content border border-top-0 p-3" id="payment-provider-tab-content">
                     @foreach ($activeProviders as $provider)
+                        @php
+                            $clientIdSource = $provider->valueSourceFor('client_id');
+                            $secretSource = $provider->valueSourceFor('secret');
+                            $webhookIdSource = $provider->valueSourceFor('webhook_id');
+                            $webhookSecretSource = $provider->valueSourceFor('webhook_secret');
+                            $merchantIdSource = $provider->valueSourceFor('merchant_id');
+                            $sourceBadge = fn (string $source): string => match ($source) {
+                                'database' => 'Saved in admin',
+                                'env' => 'Loaded from .env',
+                                default => 'Missing',
+                            };
+                            $sourceBadgeClass = fn (string $source): string => match ($source) {
+                                'database' => 'success',
+                                'env' => 'info',
+                                default => 'secondary',
+                            };
+                        @endphp
                         <div
                             class="tab-pane fade @if ($loop->first) show active @endif"
                             id="provider-panel-{{ $provider->provider }}"
@@ -195,18 +212,27 @@
                                         <label for="provider_{{ $provider->id }}_client_id">
                                             {{ $provider->provider === 'paypal' ? 'PayPal Client ID' : 'Stripe Publishable Key' }}
                                         </label>
-                                        <input id="provider_{{ $provider->id }}_client_id" type="text" name="client_id" value="{{ old('client_id', $provider->client_id) }}" class="form-control" autocomplete="off">
+                                        <input id="provider_{{ $provider->id }}_client_id" type="text" name="client_id" value="{{ old('client_id', $provider->client_id ?: $provider->effectiveValueFor('client_id')) }}" class="form-control" autocomplete="off">
+                                        <small class="text-muted">
+                                            Source:
+                                            <span class="badge badge-{{ $sourceBadgeClass($clientIdSource) }}">{{ $sourceBadge($clientIdSource) }}</span>
+                                        </small>
                                     </div>
                                     <div class="form-group col-md-6">
                                         <label for="provider_{{ $provider->id }}_secret">
                                             {{ $provider->provider === 'paypal' ? 'PayPal Secret' : 'Stripe Secret Key' }}
                                         </label>
-                                        <input id="provider_{{ $provider->id }}_secret" type="password" name="secret" class="form-control" placeholder="{{ $provider->hasSecret() ? 'Saved. Enter a new value to replace.' : 'Not saved yet.' }}" autocomplete="new-password">
+                                        <input
+                                            id="provider_{{ $provider->id }}_secret"
+                                            type="password"
+                                            name="secret"
+                                            class="form-control"
+                                            placeholder="{{ $provider->hasEffectiveSecret() ? $sourceBadge($secretSource).'. Enter a new value to save in admin.' : 'Not saved yet.' }}"
+                                            autocomplete="new-password"
+                                        >
                                         <small class="text-muted">
                                             Status:
-                                            <span class="badge badge-{{ $provider->hasSecret() ? 'success' : 'secondary' }}">
-                                                {{ $provider->hasSecret() ? 'Saved' : 'Missing' }}
-                                            </span>
+                                            <span class="badge badge-{{ $sourceBadgeClass($secretSource) }}">{{ $sourceBadge($secretSource) }}</span>
                                         </small>
                                     </div>
                                 </div>
@@ -214,16 +240,25 @@
                                 <div class="row">
                                     <div class="form-group col-md-6">
                                         <label for="provider_{{ $provider->id }}_webhook_id">Webhook ID</label>
-                                        <input id="provider_{{ $provider->id }}_webhook_id" type="text" name="webhook_id" value="{{ old('webhook_id', $provider->webhook_id) }}" class="form-control" autocomplete="off">
+                                        <input id="provider_{{ $provider->id }}_webhook_id" type="text" name="webhook_id" value="{{ old('webhook_id', $provider->webhook_id ?: $provider->effectiveValueFor('webhook_id')) }}" class="form-control" autocomplete="off">
+                                        <small class="text-muted">
+                                            Source:
+                                            <span class="badge badge-{{ $sourceBadgeClass($webhookIdSource) }}">{{ $sourceBadge($webhookIdSource) }}</span>
+                                        </small>
                                     </div>
                                     <div class="form-group col-md-6">
                                         <label for="provider_{{ $provider->id }}_webhook_secret">Webhook Secret</label>
-                                        <input id="provider_{{ $provider->id }}_webhook_secret" type="password" name="webhook_secret" class="form-control" placeholder="{{ $provider->hasWebhookSecret() ? 'Saved. Enter a new value to replace.' : 'Not saved yet.' }}" autocomplete="new-password">
+                                        <input
+                                            id="provider_{{ $provider->id }}_webhook_secret"
+                                            type="password"
+                                            name="webhook_secret"
+                                            class="form-control"
+                                            placeholder="{{ $provider->hasEffectiveWebhookSecret() ? $sourceBadge($webhookSecretSource).'. Enter a new value to save in admin.' : 'Not saved yet.' }}"
+                                            autocomplete="new-password"
+                                        >
                                         <small class="text-muted">
                                             Status:
-                                            <span class="badge badge-{{ $provider->hasWebhookSecret() ? 'success' : 'secondary' }}">
-                                                {{ $provider->hasWebhookSecret() ? 'Saved' : 'Missing' }}
-                                            </span>
+                                            <span class="badge badge-{{ $sourceBadgeClass($webhookSecretSource) }}">{{ $sourceBadge($webhookSecretSource) }}</span>
                                         </small>
                                     </div>
                                 </div>
@@ -231,7 +266,11 @@
                                 <div class="row">
                                     <div class="form-group col-md-6">
                                         <label for="provider_{{ $provider->id }}_merchant_id">Merchant / Account ID</label>
-                                        <input id="provider_{{ $provider->id }}_merchant_id" type="text" name="merchant_id" value="{{ old('merchant_id', $provider->merchant_id) }}" class="form-control" autocomplete="off">
+                                        <input id="provider_{{ $provider->id }}_merchant_id" type="text" name="merchant_id" value="{{ old('merchant_id', $provider->merchant_id ?: $provider->effectiveValueFor('merchant_id')) }}" class="form-control" autocomplete="off">
+                                        <small class="text-muted">
+                                            Source:
+                                            <span class="badge badge-{{ $sourceBadgeClass($merchantIdSource) }}">{{ $sourceBadge($merchantIdSource) }}</span>
+                                        </small>
                                     </div>
                                     <div class="form-group col-md-6">
                                         <label for="provider_{{ $provider->id }}_dashboard_url">Dashboard URL</label>
@@ -254,13 +293,13 @@
                                     <div class="col-md-6">
                                         <div class="custom-control custom-checkbox mb-2">
                                             <input id="provider_{{ $provider->id }}_clear_secret" type="checkbox" name="clear_secret" value="1" class="custom-control-input">
-                                            <label for="provider_{{ $provider->id }}_clear_secret" class="custom-control-label">Clear saved secret</label>
+                                            <label for="provider_{{ $provider->id }}_clear_secret" class="custom-control-label">Clear admin saved secret</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="custom-control custom-checkbox mb-2">
                                             <input id="provider_{{ $provider->id }}_clear_webhook_secret" type="checkbox" name="clear_webhook_secret" value="1" class="custom-control-input">
-                                            <label for="provider_{{ $provider->id }}_clear_webhook_secret" class="custom-control-label">Clear webhook secret</label>
+                                            <label for="provider_{{ $provider->id }}_clear_webhook_secret" class="custom-control-label">Clear admin webhook secret</label>
                                         </div>
                                     </div>
                                 </div>

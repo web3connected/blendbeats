@@ -23,7 +23,7 @@ class PaymentProviderController extends Controller
         return view('admin.payment-providers.index', [
             'providers' => $providers,
             'activeProviders' => $providers->where('is_active', true)->values(),
-            'configuredCount' => $providers->filter(fn (PaymentProvider $provider): bool => filled($provider->client_id) && $provider->hasSecret())->count(),
+            'configuredCount' => $providers->filter(fn (PaymentProvider $provider): bool => $provider->hasEffectiveValueFor('client_id') && $provider->hasEffectiveSecret())->count(),
             'activeCount' => $providers->where('is_active', true)->count(),
             'primaryProvider' => $providers->firstWhere('is_primary', true),
         ]);
@@ -120,9 +120,9 @@ class PaymentProviderController extends Controller
                 'mode' => config('billing.paypal.mode', 'sandbox'),
                 'is_active' => true,
                 'is_primary' => true,
-                'client_id' => config('billing.paypal.client_id'),
-                'webhook_id' => config('billing.paypal.webhook_id'),
-                'merchant_id' => config('billing.paypal.merchant_id'),
+                'client_id' => null,
+                'webhook_id' => null,
+                'merchant_id' => null,
                 'dashboard_url' => 'https://www.paypal.com/businessmanage/account',
                 'supported_features' => ['checkout', 'subscriptions', 'promotion_payments'],
             ],
@@ -131,7 +131,7 @@ class PaymentProviderController extends Controller
                 'mode' => config('billing.stripe.mode', 'test'),
                 'is_active' => false,
                 'is_primary' => false,
-                'client_id' => config('cashier.key'),
+                'client_id' => null,
                 'webhook_id' => null,
                 'merchant_id' => null,
                 'dashboard_url' => 'https://dashboard.stripe.com/test/dashboard',
@@ -141,14 +141,6 @@ class PaymentProviderController extends Controller
 
         collect($defaults)->each(function (array $data, string $provider): void {
             $paymentProvider = PaymentProvider::query()->firstOrCreate(['provider' => $provider], $data);
-
-            $updates = collect(['client_id', 'webhook_id', 'merchant_id'])
-                ->filter(fn (string $field): bool => blank($paymentProvider->{$field}) && filled($data[$field] ?? null))
-                ->mapWithKeys(fn (string $field): array => [$field => $data[$field]]);
-
-            if ($updates->isNotEmpty()) {
-                $paymentProvider->forceFill($updates->all())->save();
-            }
         });
     }
 

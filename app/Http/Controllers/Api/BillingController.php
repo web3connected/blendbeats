@@ -89,8 +89,8 @@ class BillingController extends Controller
                 'mode' => $primaryProvider->mode,
                 'is_primary' => $primaryProvider->is_primary,
                 'supported_features' => $primaryProvider->supported_features ?? [],
-                'credentials_ready' => filled($primaryProvider->client_id) && $primaryProvider->hasSecret(),
-                'checkout_ready' => $primaryProvider->provider === 'stripe' && filled($primaryProvider->client_id) && $primaryProvider->hasSecret(),
+                'credentials_ready' => $primaryProvider->hasEffectiveValueFor('client_id') && $primaryProvider->hasEffectiveSecret(),
+                'checkout_ready' => $primaryProvider->provider === 'stripe' && $primaryProvider->hasEffectiveValueFor('client_id') && $primaryProvider->hasEffectiveSecret(),
             ] : null,
             'active_providers' => $activeProviders
                 ->map(fn (PaymentProvider $provider): array => [
@@ -99,8 +99,8 @@ class BillingController extends Controller
                     'mode' => $provider->mode,
                     'is_primary' => $provider->is_primary,
                     'supported_features' => $provider->supported_features ?? [],
-                    'credentials_ready' => filled($provider->client_id) && $provider->hasSecret(),
-                    'checkout_ready' => $provider->provider === 'stripe' && filled($provider->client_id) && $provider->hasSecret(),
+                    'credentials_ready' => $provider->hasEffectiveValueFor('client_id') && $provider->hasEffectiveSecret(),
+                    'checkout_ready' => $provider->provider === 'stripe' && $provider->hasEffectiveValueFor('client_id') && $provider->hasEffectiveSecret(),
                 ])
                 ->values(),
         ];
