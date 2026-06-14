@@ -23,6 +23,48 @@ const futureFeatures: Array<[LucideIcon, string, string]> = [
   [Sparkles, 'Automation', 'Follow-ups, lead nurturing, opportunity tracking, and future AI agent workflows.'],
 ];
 
+const tierStyles: Record<string, {
+  card: string;
+  eyebrow: string;
+  price: string;
+  stat: string;
+  cta: string;
+  check: string;
+}> = {
+  free: {
+    card: 'border-[#2f3a46] bg-[linear-gradient(180deg,rgba(45,58,70,0.34),rgba(17,17,17,0.98)_38%)]',
+    eyebrow: 'bg-[#273746] text-[#9ec5ff]',
+    price: 'text-[#8ec5ff]',
+    stat: 'border-[#304253] bg-[#0a1118]',
+    cta: 'border border-[#304253] text-[#d9ecff] hover:border-[#8ec5ff]',
+    check: 'text-[#8ec5ff]',
+  },
+  dj_plus: {
+    card: 'border-[#5a4820] bg-[linear-gradient(180deg,rgba(255,184,0,0.16),rgba(17,17,17,0.98)_38%)]',
+    eyebrow: 'bg-[#33270b] text-[#FFB800]',
+    price: 'text-[#FFB800]',
+    stat: 'border-[#4a3a15] bg-[#151106]',
+    cta: 'border border-[#4a3a15] text-[#ffe39a] hover:border-[#FFB800]',
+    check: 'text-[#FFB800]',
+  },
+  dj_pro: {
+    card: 'border-primary bg-[linear-gradient(180deg,rgba(255,32,32,0.18),rgba(17,17,17,0.98)_38%)] shadow-[0_0_0_1px_rgba(255,32,32,0.35)]',
+    eyebrow: 'bg-primary text-white',
+    price: 'text-primary',
+    stat: 'border-[#5b2222] bg-[#190909]',
+    cta: 'bg-primary text-white',
+    check: 'text-primary',
+  },
+  dj_elite: {
+    card: 'border-[#5a315f] bg-[linear-gradient(180deg,rgba(184,92,255,0.16),rgba(17,17,17,0.98)_38%)]',
+    eyebrow: 'bg-[#321936] text-[#e0a6ff]',
+    price: 'text-[#e0a6ff]',
+    stat: 'border-[#4a2a52] bg-[#140917]',
+    cta: 'border border-[#4a2a52] text-[#f1d2ff] hover:border-[#e0a6ff]',
+    check: 'text-[#e0a6ff]',
+  },
+};
+
 function ctaLabel(plan: BillingPlan, signedIn: boolean) {
   if (plan.is_current) return 'Current Plan';
   if (plan.is_free) return signedIn ? 'Use Free Tier' : 'Start Free';
@@ -157,24 +199,23 @@ export default function PricingPage() {
 
             {!isLoading && !error && (
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-                {plans.map((plan) => (
+                {plans.map((plan) => {
+                  const style = tierStyles[plan.key] ?? tierStyles.free;
+
+                  return (
                   <article
                     key={plan.key}
-                    className={`relative flex min-h-[560px] flex-col border bg-[#111] p-5 ${
-                      plan.key === 'dj_pro' ? 'border-primary shadow-[0_0_0_1px_rgba(255,32,32,0.35)]' : 'border-[#2a2a2a]'
-                    }`}
+                    className={`relative flex min-h-[560px] flex-col overflow-hidden border p-5 ${style.card}`}
                   >
-                    {plan.key === 'dj_pro' ? (
-                      <div className="absolute right-4 top-4 inline-flex items-center gap-1 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                        <Star size={12} />
-                        Popular
-                      </div>
-                    ) : null}
+                    <div className={`mb-5 inline-flex w-fit items-center gap-2 px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${style.eyebrow}`} style={{ fontFamily: 'var(--font-heading)' }}>
+                      {plan.key === 'dj_pro' ? <Star size={12} /> : null}
+                      {plan.key === 'dj_pro' ? 'Popular' : plan.advertising_groups_label}
+                    </div>
                     <h3 className="text-3xl uppercase" style={{ fontFamily: 'var(--font-heading)' }}>
                       {plan.name}
                     </h3>
                     <div className="mt-5">
-                      <span className="text-5xl text-[#FFB800]" style={{ fontFamily: 'var(--font-heading)' }}>
+                      <span className={`text-5xl ${style.price}`} style={{ fontFamily: 'var(--font-heading)' }}>
                         {plan.price_label}
                       </span>
                       {!plan.is_free ? <span className="ml-2 text-sm text-[#777]">{plan.interval_label}</span> : null}
@@ -182,11 +223,11 @@ export default function PricingPage() {
                     <p className="mt-4 min-h-12 text-sm leading-6 text-[#aaa]">{plan.purpose}</p>
 
                     <div className="mt-5 grid grid-cols-2 gap-2">
-                      <div className="border border-[#2a2a2a] p-3">
+                      <div className={`border p-3 ${style.stat}`}>
                         <p className="text-[10px] uppercase tracking-widest text-[#777]" style={{ fontFamily: 'var(--font-heading)' }}>Storage</p>
                         <p className="mt-1 text-lg text-white" style={{ fontFamily: 'var(--font-heading)' }}>{plan.storage_label}</p>
                       </div>
-                      <div className="border border-[#2a2a2a] p-3">
+                      <div className={`border p-3 ${style.stat}`}>
                         <p className="text-[10px] uppercase tracking-widest text-[#777]" style={{ fontFamily: 'var(--font-heading)' }}>Ads</p>
                         <p className="mt-1 text-lg text-white" style={{ fontFamily: 'var(--font-heading)' }}>{plan.advertising_groups_label}</p>
                       </div>
@@ -195,7 +236,7 @@ export default function PricingPage() {
                     <ul className="mt-6 flex-1 space-y-3">
                       {plan.features.map((feature) => (
                         <li key={feature} className="flex gap-3 text-sm leading-5 text-[#d0d0d0]">
-                          <Check size={16} className="mt-0.5 shrink-0 text-primary" />
+                          <Check size={16} className={`mt-0.5 shrink-0 ${style.check}`} />
                           <span>{feature}</span>
                         </li>
                       ))}
@@ -203,16 +244,15 @@ export default function PricingPage() {
 
                     <Link
                       to={user ? `/subscription?plan=${plan.key}` : '/register'}
-                      className={`mt-7 inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-opacity hover:opacity-90 ${
-                        plan.key === 'dj_pro' ? 'bg-primary text-white' : 'border border-[#333] text-white hover:border-primary'
-                      } ${plan.is_current ? 'pointer-events-none opacity-70' : ''}`}
+                      className={`mt-7 inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-opacity hover:opacity-90 ${style.cta} ${plan.is_current ? 'pointer-events-none opacity-70' : ''}`}
                       style={{ fontFamily: 'var(--font-heading)' }}
                     >
                       {ctaLabel(plan, Boolean(user))}
                       <ArrowRight size={14} />
                     </Link>
                   </article>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
