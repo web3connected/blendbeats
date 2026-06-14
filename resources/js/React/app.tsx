@@ -7,6 +7,7 @@ import { PlayerProvider } from './Frontend/components/player/PlayerProvider';
 import SiteWrapper from './Frontend/layouts/SiteWrapper';
 import AccountPage from './Frontend/pages/auth/AccountPage';
 import BillingPaymentsPage from './Frontend/pages/auth/BillingPaymentsPage';
+import FeaturedAdPlacementsPage from './Frontend/pages/auth/FeaturedAdPlacementsPage';
 import FeaturedAdsPage from './Frontend/pages/auth/FeaturedAdsPage';
 import ForgotPasswordPage from './Frontend/pages/auth/ForgotPasswordPage';
 import LoginPage from './Frontend/pages/auth/LoginPage';
@@ -67,6 +68,7 @@ createRoot(rootElement).render(
                 <Route path="/account/profile" element={<AccountPage />} />
                 <Route path="/account/billing" element={<BillingPaymentsPage />} />
                 <Route path="/account/featured-ads" element={<FeaturedAdsPage />} />
+                <Route path="/account/featured-ads/placements" element={<FeaturedAdPlacementsPage />} />
                 <Route path="/account/payment-methods" element={<PaymentMethodsPage />} />
                 <Route path="/account/settings" element={<SettingsPage />} />
                 <Route path="/settings" element={<Navigate to="/account/settings" replace />} />

@@ -14,7 +14,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import {
@@ -22,14 +22,6 @@ import {
   getPaymentMethods,
   type PaymentProfile,
 } from '@/lib/billing';
-import {
-  captureFeaturedAdCampaign,
-  FeaturedAdsApiError,
-  getFeaturedAdPlacements,
-  startFeaturedAdCheckout,
-  type FeaturedAdsPlacementsResponse,
-  type FeaturedCampaignSlot,
-} from '@/lib/featured-ads';
 
 type Requirement = {
   key: string;
@@ -44,19 +36,12 @@ const steps = ['Getting Started', 'Requirements', 'Agreement', 'Dashboard'];
 
 export default function FeaturedAdsPage() {
   const { user, isLoading } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [paymentProfile, setPaymentProfile] = useState<PaymentProfile | null>(null);
   const [isPaymentLoading, setIsPaymentLoading] = useState(true);
   const [paymentError, setPaymentError] = useState('');
   const [currentStep, setCurrentStep] = useState(0);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
-  const [placements, setPlacements] = useState<FeaturedAdsPlacementsResponse | null>(null);
-  const [isPlacementsLoading, setIsPlacementsLoading] = useState(false);
-  const [placementsError, setPlacementsError] = useState('');
-  const [selectedOptionBySlot, setSelectedOptionBySlot] = useState<Record<number, number>>({});
-  const [checkoutSlot, setCheckoutSlot] = useState<number | null>(null);
-  const [captureMessage, setCaptureMessage] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -82,65 +67,6 @@ export default function FeaturedAdsPage() {
       cancelled = true;
     };
   }, [user]);
-
-  const loadPlacements = () => {
-    if (!user || !onboardingComplete) return;
-
-    setIsPlacementsLoading(true);
-    setPlacementsError('');
-    getFeaturedAdPlacements()
-      .then((response) => {
-        setPlacements(response);
-        setSelectedOptionBySlot((current) => {
-          const next = { ...current };
-          response.campaigns.forEach((campaign) => {
-            campaign.slots.forEach((slot) => {
-              if (!next[slot.id] && slot.options[0]) {
-                next[slot.id] = slot.options[0].id;
-              }
-            });
-          });
-
-          return next;
-        });
-      })
-      .catch((error) => {
-        setPlacementsError(error instanceof FeaturedAdsApiError ? error.message : 'Unable to load featured placements.');
-      })
-      .finally(() => setIsPlacementsLoading(false));
-  };
-
-  useEffect(() => {
-    loadPlacements();
-  }, [user, onboardingComplete]);
-
-  useEffect(() => {
-    if (!user || !onboardingComplete) return;
-    if (searchParams.get('payment') !== 'paypal-return') return;
-
-    const campaignId = Number(searchParams.get('campaign'));
-    if (!campaignId) return;
-
-    setCaptureMessage('Finalizing PayPal payment...');
-    captureFeaturedAdCampaign(campaignId)
-      .then(() => {
-        setCaptureMessage('Payment complete. Your featured placement is now active.');
-        loadPlacements();
-      })
-      .catch((error) => {
-        setCaptureMessage(error instanceof FeaturedAdsApiError ? error.message : 'PayPal payment could not be finalized.');
-      })
-      .finally(() => {
-        setSearchParams((currentParams) => {
-          const nextParams = new URLSearchParams(currentParams);
-          nextParams.delete('campaign');
-          nextParams.delete('payment');
-          nextParams.delete('token');
-          nextParams.delete('PayerID');
-          return nextParams;
-        }, { replace: true });
-      });
-  }, [user, onboardingComplete, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!user) return;
@@ -242,33 +168,6 @@ export default function FeaturedAdsPage() {
     setAgreementAccepted(false);
     setOnboardingComplete(false);
     setCurrentStep(0);
-  };
-
-  const handleCheckout = (slot: FeaturedCampaignSlot) => {
-    const selectedOptionId = selectedOptionBySlot[slot.id] || slot.options[0]?.id;
-
-    if (!selectedOptionId) {
-      setPlacementsError('Choose a campaign option before checkout.');
-      return;
-    }
-
-    setCheckoutSlot(slot.id);
-    setPlacementsError('');
-
-    startFeaturedAdCheckout(slot.id, selectedOptionId)
-      .then((response) => {
-        if (response.checkout_url) {
-          window.location.href = response.checkout_url;
-          return;
-        }
-
-        setPlacementsError('Checkout started, but the payment provider did not return a checkout URL.');
-        loadPlacements();
-      })
-      .catch((error) => {
-        setPlacementsError(error instanceof FeaturedAdsApiError ? error.message : 'Unable to start featured placement checkout.');
-      })
-      .finally(() => setCheckoutSlot(null));
   };
 
   return (
@@ -522,221 +421,43 @@ export default function FeaturedAdsPage() {
                     </button>
                   </div>
 
-                  {captureMessage && (
-                    <div className="mb-5 border border-[#FFB800]/40 bg-[#151106] p-4 text-sm leading-6 text-[#dddddd]">
-                      {captureMessage}
-                    </div>
-                  )}
-
-                  {placementsError && (
-                    <div className="mb-5 border border-primary bg-[#160808] p-4 text-sm leading-6 text-[#dddddd]">
-                      {placementsError}
-                    </div>
-                  )}
-
-                  {isPlacementsLoading && (
-                    <div className="flex min-h-32 items-center justify-center border border-[#2a2a2a] bg-[#080808] text-[#888888]">
-                      <Loader2 className="mr-3 animate-spin text-primary" size={20} />
-                      Loading available placements
-                    </div>
-                  )}
-
-                  {!isPlacementsLoading && placements && (
-                    <div className="grid gap-6">
-                      <div className="grid gap-4 md:grid-cols-3">
-                        <article className="border border-[#2a2a2a] bg-[#080808] p-5">
-                          <LayoutGrid className="text-primary" size={22} />
-                          <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                            Available Placements
-                          </h3>
-                          <p className="mt-3 text-sm leading-6 text-[#888888]">
-                            {placements.campaigns.reduce(
-                              (total, campaign) => total + campaign.slots.filter((slot) => slot.is_available && slot.is_unlocked).length,
-                              0,
-                            )} slots are open for your current tier.
-                          </p>
-                          <a
-                            href="#featured-ad-placements"
-                            className="mt-5 inline-flex h-10 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#d91515]"
-                            style={{ fontFamily: 'var(--font-heading)' }}
-                          >
-                            View Placements
-                            <ArrowRight size={14} />
-                          </a>
-                        </article>
-                        <article className="border border-[#2a2a2a] bg-[#080808] p-5">
-                          <Radio className="text-[#FFB800]" size={22} />
-                          <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                            Campaign History
-                          </h3>
-                          <p className="mt-3 text-sm leading-6 text-[#888888]">
-                            {placements.my_campaigns.length} campaign{placements.my_campaigns.length === 1 ? '' : 's'} attached to your DJ profile.
-                          </p>
-                        </article>
-                        <article className="border border-[#2a2a2a] bg-[#080808] p-5">
-                          <ShieldCheck className="text-primary" size={22} />
-                          <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                            Promotion Access
-                          </h3>
-                          <p className="mt-3 text-sm leading-6 text-[#888888]">
-                            Your tier can claim Groups {placements.membership.groups.join(', ') || 'none'}.
-                          </p>
-                        </article>
-                      </div>
-
-                      <section id="featured-ad-placements" className="scroll-mt-28 border border-[#2a2a2a] bg-[#080808] p-5">
-                        <div className="mb-5 flex flex-col gap-3 border-b border-[#262626] pb-5 md:flex-row md:items-end md:justify-between">
-                          <div>
-                            <p className="text-xs font-bold uppercase tracking-widest text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
-                              Available Placements
-                            </p>
-                            <h3 className="mt-2 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                              Claim A Featured Slot
-                            </h3>
-                          </div>
-                          <p className="max-w-md text-sm leading-6 text-[#888888]">
-                            Browse campaign offers. Each campaign reuses a group template with its own claimable slots.
-                          </p>
-                        </div>
-
-                        <div className="grid gap-5">
-                          {placements.campaigns.map((campaign) => (
-                            <article key={campaign.id} className="border border-[#2a2a2a] bg-[#101010] p-4">
-                              <div className="mb-4 flex flex-col gap-3 border-b border-[#262626] pb-4 md:flex-row md:items-start md:justify-between">
-                                <div>
-                                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">
-                                    Campaign / Group {campaign.group} Template
-                                  </p>
-                                  <h4 className="mt-2 text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                                    {campaign.title}
-                                  </h4>
-                                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[#888888]">
-                                    {campaign.description || `${campaign.group_name} with ${campaign.slot_count} claimable positions.`}
-                                  </p>
-                                </div>
-                                <span className="border border-[#333333] px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">
-                                  {campaign.daily_price_label}/day
-                                </span>
-                              </div>
-
-                              {!campaign.is_unlocked && (
-                                <div className="mb-4 border border-[#2a2a2a] bg-[#080808] p-3 text-sm leading-6 text-[#888888]">
-                                  Upgrade your membership to access Group {campaign.group} campaigns.
-                                </div>
-                              )}
-
-                              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                                {campaign.slots.map((slot) => {
-                                  const selectedOptionId = selectedOptionBySlot[slot.id] || slot.options[0]?.id || 0;
-                                  const selectedOption = slot.options.find((option) => option.id === selectedOptionId) || slot.options[0];
-                                  const canCheckout = Boolean(slot.is_unlocked && slot.is_available && selectedOption && placements.payment_provider?.credentials_ready);
-
-                                  return (
-                                    <div
-                                      key={slot.id}
-                                      className={`border p-4 ${
-                                        canCheckout
-                                          ? 'border-[#333333] bg-[#080808]'
-                                          : 'border-[#222222] bg-[#0b0b0b] opacity-75'
-                                      }`}
-                                    >
-                                      <div className="mb-4">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">
-                                          Group {slot.group} / Slot {slot.group_slot_number}
-                                        </p>
-                                        <h5 className="mt-2 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                                          Position {slot.group_slot_number}
-                                        </h5>
-                                      </div>
-
-                                      {slot.active_campaign ? (
-                                        <div className="border border-[#2a2a2a] bg-[#111111] p-3 text-sm leading-6 text-[#aaaaaa]">
-                                          Claimed by {slot.active_campaign.dj?.name || 'a DJ'}.
-                                          <span className="mt-1 block text-[11px] uppercase tracking-widest text-[#777777]">
-                                            {slot.active_campaign.status.replaceAll('_', ' ')}
-                                          </span>
-                                        </div>
-                                      ) : !slot.is_unlocked ? (
-                                        <div className="border border-[#2a2a2a] bg-[#111111] p-3 text-sm leading-6 text-[#888888]">
-                                          Locked for your current tier.
-                                        </div>
-                                      ) : slot.options.length === 0 ? (
-                                        <div className="border border-[#2a2a2a] bg-[#111111] p-3 text-sm leading-6 text-[#888888]">
-                                          This position is not configured for claims yet.
-                                        </div>
-                                      ) : (
-                                        <div className="grid gap-3">
-                                          <label className="grid gap-2">
-                                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Campaign Length</span>
-                                            <select
-                                              value={selectedOptionId}
-                                              onChange={(event) =>
-                                                setSelectedOptionBySlot((current) => ({
-                                                  ...current,
-                                                  [slot.id]: Number(event.target.value),
-                                                }))
-                                              }
-                                              className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
-                                            >
-                                              {slot.options.map((option) => (
-                                                <option key={option.id} value={option.id}>
-                                                  {option.name} - {option.price_label}
-                                                </option>
-                                              ))}
-                                            </select>
-                                          </label>
-                                          <p className="text-xs leading-5 text-[#888888]">
-                                            {selectedOption?.description || `${selectedOption?.duration_days ?? 1} day featured placement.`}
-                                          </p>
-                                          <button
-                                            type="button"
-                                            onClick={() => handleCheckout(slot)}
-                                            disabled={!canCheckout || checkoutSlot === slot.id}
-                                            className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#d91515] disabled:cursor-not-allowed disabled:opacity-50"
-                                            style={{ fontFamily: 'var(--font-heading)' }}
-                                          >
-                                            {checkoutSlot === slot.id ? <Loader2 className="animate-spin" size={15} /> : <CreditCard size={15} />}
-                                            {selectedOption ? `Buy ${selectedOption.price_label}` : 'Buy Slot'}
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </article>
-                          ))}
-                        </div>
-                      </section>
-
-                      <section className="border border-[#2a2a2a] bg-[#080808] p-5">
-                        <p className="text-xs font-bold uppercase tracking-widest text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
-                          My Campaigns
-                        </p>
-                        <div className="mt-4 grid gap-3">
-                          {placements.my_campaigns.length === 0 ? (
-                            <p className="border border-[#2a2a2a] p-4 text-sm text-[#888888]">No featured ad campaigns yet.</p>
-                          ) : (
-                            placements.my_campaigns.map((campaign) => (
-                              <div key={campaign.id} className="grid gap-3 border border-[#2a2a2a] p-4 md:grid-cols-[1fr_auto] md:items-center">
-                                <div>
-                                  <h4 className="text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                                    {campaign.campaign_title || `Group ${campaign.group} Campaign`}
-                                  </h4>
-                                  <p className="mt-1 text-sm text-[#888888]">
-                                    Group {campaign.group} / Slot {campaign.group_slot_number || campaign.slot_number} / {campaign.option_name || 'Campaign'} / {campaign.amount_label} / {campaign.payment_status}
-                                  </p>
-                                </div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">
-                                  {campaign.status.replaceAll('_', ' ')}
-                                </span>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </section>
-                    </div>
-                  )}
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <article className="border border-[#2a2a2a] bg-[#080808] p-5">
+                      <LayoutGrid className="text-primary" size={22} />
+                      <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                        Available Placements
+                      </h3>
+                      <p className="mt-3 text-sm leading-6 text-[#888888]">
+                        Browse claimable featured DJ and mix campaign slots.
+                      </p>
+                      <Link
+                        to="/account/featured-ads/placements"
+                        className="mt-5 inline-flex h-10 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#d91515]"
+                        style={{ fontFamily: 'var(--font-heading)' }}
+                      >
+                        View Placements
+                        <ArrowRight size={14} />
+                      </Link>
+                    </article>
+                    <article className="border border-[#2a2a2a] bg-[#080808] p-5">
+                      <Radio className="text-[#FFB800]" size={22} />
+                      <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                        Campaign History
+                      </h3>
+                      <p className="mt-3 text-sm leading-6 text-[#888888]">
+                        Review active, pending, and completed promotions.
+                      </p>
+                    </article>
+                    <article className="border border-[#2a2a2a] bg-[#080808] p-5">
+                      <ShieldCheck className="text-primary" size={22} />
+                      <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                        Promotion Readiness
+                      </h3>
+                      <p className="mt-3 text-sm leading-6 text-[#888888]">
+                        Track profile, payment, and placement requirements before launching campaigns.
+                      </p>
+                    </article>
+                  </div>
                 </section>
               )}
 

@@ -297,8 +297,8 @@ class FeaturedAdController extends Controller
                     'brand_name' => 'The Blend Battlegrounds',
                     'landing_page' => 'LOGIN',
                     'user_action' => 'PAY_NOW',
-                    'return_url' => url("/account/featured-ads?campaign={$campaign->id}&payment=paypal-return"),
-                    'cancel_url' => url("/account/featured-ads?campaign={$campaign->id}&payment=cancelled"),
+                    'return_url' => url("/account/featured-ads/placements?campaign={$campaign->id}&payment=paypal-return"),
+                    'cancel_url' => url("/account/featured-ads/placements?campaign={$campaign->id}&payment=cancelled"),
                 ],
             ])
             ->throw()
