@@ -76,6 +76,7 @@ export default function PricingPage() {
   const { user } = useAuth();
   const [plans, setPlans] = useState<BillingPlan[]>([]);
   const [paymentProfile, setPaymentProfile] = useState<PaymentProfile | null>(null);
+  const [currentTier, setCurrentTier] = useState('free');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -87,6 +88,7 @@ export default function PricingPage() {
       .then((response) => {
         setPlans(response.plans);
         setPaymentProfile(response.payment_profile);
+        setCurrentTier(response.current_tier);
       })
       .catch((loadError) => {
         setError(loadError instanceof BillingApiError ? loadError.message : 'Unable to load pricing right now.');
@@ -100,6 +102,21 @@ export default function PricingPage() {
   const activeProviderLabel = paymentProfile?.active_providers.length
     ? paymentProfile.active_providers.map((provider) => provider.display_name).join(', ')
     : 'None active';
+  const currentPlan = plans.find((plan) => plan.is_current) ?? plans.find((plan) => plan.key === currentTier);
+  const currentPlanStyle = currentPlan ? (tierStyles[currentPlan.key] ?? tierStyles.free) : tierStyles.free;
+  const heroStats = currentPlan
+    ? [
+        [currentPlan.name, 'Current tier'],
+        [currentPlan.price_label, currentPlan.interval_label === 'forever' ? 'Plan cost' : currentPlan.interval_label],
+        [currentPlan.storage_label, 'Storage limit'],
+        [currentPlan.advertising_groups_label, 'Promotion access'],
+      ]
+    : [
+        ['Free', 'Core participation'],
+        ['A-F', 'Promotion groups'],
+        ['1/7', 'Campaign options'],
+        [providerName, `${providerMode} checkout`],
+      ];
 
   return (
     <>
@@ -143,16 +160,27 @@ export default function PricingPage() {
               </div>
             </div>
 
-            <div className="border border-[#2a2a2a] bg-[#101010] p-5 md:p-7">
+            <div className={`border p-5 md:p-7 ${user && currentPlan ? currentPlanStyle.card : 'border-[#2a2a2a] bg-[#101010]'}`}>
+              {user && currentPlan ? (
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
+                      Your subscription
+                    </p>
+                    <h2 className="mt-2 text-4xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                      {currentPlan.name}
+                    </h2>
+                  </div>
+                  <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${currentPlanStyle.eyebrow}`} style={{ fontFamily: 'var(--font-heading)' }}>
+                    Active
+                  </span>
+                </div>
+              ) : null}
+
               <div className="grid grid-cols-2 gap-3">
-                {[
-                  ['Free', 'Core participation'],
-                  ['A-F', 'Promotion groups'],
-                  ['1/7', 'Campaign options'],
-                  [providerName, `${providerMode} checkout`],
-                ].map(([value, label]) => (
-                  <div key={label} className="border border-[#2a2a2a] bg-[#080808] p-4">
-                    <p className="text-3xl text-[#FFB800]" style={{ fontFamily: 'var(--font-heading)' }}>
+                {heroStats.map(([value, label]) => (
+                  <div key={label} className={`border p-4 ${user && currentPlan ? currentPlanStyle.stat : 'border-[#2a2a2a] bg-[#080808]'}`}>
+                    <p className={`text-3xl ${user && currentPlan ? currentPlanStyle.price : 'text-[#FFB800]'}`} style={{ fontFamily: 'var(--font-heading)' }}>
                       {value}
                     </p>
                     <p className="mt-2 text-[11px] uppercase tracking-widest text-[#888]" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -163,11 +191,23 @@ export default function PricingPage() {
               </div>
               <div className="mt-4 border border-[#2a2a2a] bg-[#080808] p-5">
                 <p className="text-xs font-bold uppercase tracking-widest text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
-                  Featured promotion
+                  {user && currentPlan ? 'Included right now' : 'Featured promotion'}
                 </p>
                 <p className="mt-3 text-sm leading-6 text-[#aaa]">
-                  Optional campaigns let DJs promote a profile or mix for 1 day or 7 days. Higher memberships unlock stronger placement groups.
+                  {user && currentPlan
+                    ? `${currentPlan.purpose} Your active payment provider is ${providerName} in ${providerMode} mode.`
+                    : 'Optional campaigns let DJs promote a profile or mix for 1 day or 7 days. Higher memberships unlock stronger placement groups.'}
                 </p>
+                {user && currentPlan ? (
+                  <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {currentPlan.features.slice(0, 4).map((feature) => (
+                      <li key={feature} className="flex gap-2 text-sm text-[#d0d0d0]">
+                        <Check size={14} className={`mt-0.5 shrink-0 ${currentPlanStyle.check}`} />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
             </div>
           </div>
