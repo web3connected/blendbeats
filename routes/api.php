@@ -21,6 +21,7 @@ Route::prefix('auth')
         Route::post('register', [UserAuthController::class, 'register'])->name('register');
         Route::post('login', [UserAuthController::class, 'login'])->name('login');
         Route::get('me', [UserAuthController::class, 'me'])->name('me');
+        Route::patch('account', [UserAuthController::class, 'updateAccount'])->middleware('public.auth')->name('account.update');
         Route::post('logout', [UserAuthController::class, 'logout'])->name('logout');
         Route::post('forgot-password', [UserAuthController::class, 'forgotPassword'])->name('forgot-password');
         Route::post('avatar', [UserAuthController::class, 'updateAvatar'])->middleware('public.auth')->name('avatar');

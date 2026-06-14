@@ -20,7 +20,7 @@ import { type FormEvent, type ElementType, useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
-import { saveAccountAvatar } from '@/lib/account';
+import { saveAccountAvatar, saveAccountProfile, type SaveAccountProfilePayload } from '@/lib/account';
 
 function Field({
   label,
@@ -94,6 +94,9 @@ export default function AccountPage() {
   const [isAvatarSaving, setIsAvatarSaving] = useState(false);
   const [avatarMessage, setAvatarMessage] = useState('');
   const [avatarError, setAvatarError] = useState('');
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
+  const [profileError, setProfileError] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -129,8 +132,46 @@ export default function AccountPage() {
     await logout();
     navigate('/');
   };
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const value = (name: keyof SaveAccountProfilePayload) => String(formData.get(name) ?? '').trim();
+    const payload: SaveAccountProfilePayload = {
+      first_name: value('first_name'),
+      last_name: value('last_name'),
+      name: value('name'),
+      email: value('email'),
+      contact_email: value('contact_email'),
+      phone: value('phone'),
+      birthdate: value('birthdate'),
+      timezone: value('timezone'),
+      city: value('city'),
+      state: value('state'),
+      country: value('country'),
+      postal_code: value('postal_code'),
+      website_url: value('website_url'),
+      instagram_url: value('instagram_url'),
+      youtube_url: value('youtube_url'),
+      soundcloud_url: value('soundcloud_url'),
+      spotify_url: value('spotify_url'),
+      bio: value('bio'),
+      marketing_opt_in: formData.has('marketing_opt_in'),
+    };
+
+    setProfileMessage('');
+    setProfileError('');
+    setIsProfileSaving(true);
+
+    try {
+      await saveAccountProfile(payload);
+      await refreshUser();
+      setProfileMessage('Profile updated.');
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : 'Profile could not be saved.');
+    } finally {
+      setIsProfileSaving(false);
+    }
   };
 
   const profile = user.profile;
@@ -438,8 +479,24 @@ export default function AccountPage() {
               </section>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                {(profileMessage || profileError) && (
+                  <div
+                    className={`flex min-h-11 items-center border px-4 text-sm ${
+                      profileError
+                        ? 'border-primary/30 bg-primary/10 text-primary'
+                        : 'border-[#2a2a2a] bg-[#111111] text-[#aaaaaa]'
+                    }`}
+                  >
+                    {profileError || profileMessage}
+                  </div>
+                )}
                 <button
                   type="button"
+                  onClick={() => {
+                    setProfileMessage('');
+                    setProfileError('');
+                    refreshUser();
+                  }}
                   className="inline-flex h-11 items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
                   style={{ fontFamily: 'var(--font-heading)' }}
                 >
@@ -448,11 +505,12 @@ export default function AccountPage() {
                 </button>
                 <button
                   type="submit"
+                  disabled={isProfileSaving}
                   className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
                   style={{ fontFamily: 'var(--font-heading)' }}
                 >
-                  <Save size={15} />
-                  Save Profile
+                  {isProfileSaving ? <LoaderCircle size={15} className="animate-spin" /> : <Save size={15} />}
+                  {isProfileSaving ? 'Saving Profile' : 'Save Profile'}
                 </button>
               </div>
             </form>

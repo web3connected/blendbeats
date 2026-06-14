@@ -84,6 +84,81 @@ class UserAuthController extends Controller
         ]);
     }
 
+    public function updateAccount(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = Auth::guard('web')->user();
+        abort_unless($user, 401);
+
+        $attributes = $request->validate([
+            'first_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['nullable', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'contact_email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'birthdate' => ['nullable', 'date'],
+            'timezone' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'max:255'],
+            'postal_code' => ['nullable', 'string', 'max:30'],
+            'website_url' => ['nullable', 'url', 'max:255'],
+            'instagram_url' => ['nullable', 'url', 'max:255'],
+            'youtube_url' => ['nullable', 'url', 'max:255'],
+            'soundcloud_url' => ['nullable', 'url', 'max:255'],
+            'spotify_url' => ['nullable', 'url', 'max:255'],
+            'bio' => ['nullable', 'string', 'max:5000'],
+            'marketing_opt_in' => ['nullable', 'boolean'],
+        ]);
+
+        DB::transaction(function () use ($user, $attributes, $request): void {
+            $user->forceFill([
+                'first_name' => $attributes['first_name'] ?? null,
+                'last_name' => $attributes['last_name'] ?? null,
+                'name' => $attributes['name'],
+                'email' => $attributes['email'],
+            ])->save();
+
+            if (! Schema::hasTable('profiles')) {
+                return;
+            }
+
+            $hasProfile = DB::table('profiles')->where('user_id', $user->id)->exists();
+            $profileAttributes = [
+                'contact_email' => $attributes['contact_email'] ?? null,
+                'phone' => $attributes['phone'] ?? null,
+                'birthdate' => $attributes['birthdate'] ?? null,
+                'timezone' => $attributes['timezone'] ?? null,
+                'city' => $attributes['city'] ?? null,
+                'state' => $attributes['state'] ?? null,
+                'country' => $attributes['country'] ?? null,
+                'postal_code' => $attributes['postal_code'] ?? null,
+                'website_url' => $attributes['website_url'] ?? null,
+                'instagram_url' => $attributes['instagram_url'] ?? null,
+                'youtube_url' => $attributes['youtube_url'] ?? null,
+                'soundcloud_url' => $attributes['soundcloud_url'] ?? null,
+                'spotify_url' => $attributes['spotify_url'] ?? null,
+                'bio' => $attributes['bio'] ?? null,
+                'marketing_opt_in' => $request->boolean('marketing_opt_in'),
+                'updated_at' => now(),
+            ];
+
+            if (! $hasProfile) {
+                $profileAttributes['created_at'] = now();
+            }
+
+            DB::table('profiles')->updateOrInsert(
+                ['user_id' => $user->id],
+                $profileAttributes,
+            );
+        });
+
+        return response()->json([
+            'user' => $this->userPayload($user->fresh()),
+        ]);
+    }
+
     public function updateAvatar(Request $request): JsonResponse
     {
         $attributes = $request->validate([

@@ -8,6 +8,34 @@ export type SaveAccountAvatarPayload = {
   removeAvatar: boolean;
 };
 
+export type SaveAccountProfilePayload = {
+  first_name: string;
+  last_name: string;
+  name: string;
+  email: string;
+  contact_email: string;
+  phone: string;
+  birthdate: string;
+  timezone: string;
+  city: string;
+  state: string;
+  country: string;
+  postal_code: string;
+  website_url: string;
+  instagram_url: string;
+  youtube_url: string;
+  soundcloud_url: string;
+  spotify_url: string;
+  bio: string;
+  marketing_opt_in: boolean;
+};
+
+export async function saveAccountProfile(payload: SaveAccountProfilePayload): Promise<AuthUser> {
+  const response = await apiClient.patch<{ user: AuthUser }>('/auth/account', payload);
+
+  return response.data.user;
+}
+
 export async function saveAccountAvatar(payload: SaveAccountAvatarPayload): Promise<AuthUser> {
   const formData = new FormData();
 
