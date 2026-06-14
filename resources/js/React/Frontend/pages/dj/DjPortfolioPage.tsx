@@ -67,6 +67,14 @@ const storageNotes = [
   'Publishing will require a local upload or an external media URL.',
 ];
 
+const emptyPortfolioForm = {
+  title: '',
+  description: '',
+  genre: '',
+  visibility: 'draft',
+  mediaKind: 'mix',
+};
+
 function formatBytes(size: number) {
   if (size === 0) return '0 B';
 
@@ -117,7 +125,24 @@ function matchesMediaFilter(file: MediaFileRecord, filter: string) {
   return true;
 }
 
+function portfolioCoverUrl(file: MediaFileRecord) {
+  return file.portfolio_cover_image_url || null;
+}
+
 function MediaPreview({ file }: { file: MediaFileRecord }) {
+  const coverUrl = portfolioCoverUrl(file);
+
+  if (coverUrl) {
+    return (
+      <img
+        src={coverUrl}
+        alt={file.portfolio_title || file.original_name || file.name}
+        loading="lazy"
+        className="h-14 w-14 border border-[#333333] bg-[#080808] object-cover"
+      />
+    );
+  }
+
   if (file.is_image) {
     return (
       <img
@@ -167,13 +192,11 @@ export default function DjPortfolioPage() {
   const [updatingFileId, setUpdatingFileId] = useState<number | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadForm, setUploadForm] = useState({
-    title: '',
-    description: '',
-    genre: '',
-    visibility: 'draft',
-    mediaKind: 'mix',
-  });
+  const [uploadCoverFile, setUploadCoverFile] = useState<File | null>(null);
+  const [uploadForm, setUploadForm] = useState(emptyPortfolioForm);
+  const [editingFile, setEditingFile] = useState<MediaFileRecord | null>(null);
+  const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
+  const [editForm, setEditForm] = useState(emptyPortfolioForm);
   const [statusFilter, setStatusFilter] = useState('All');
   const [mediaFilter, setMediaFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -300,13 +323,26 @@ export default function DjPortfolioPage() {
   const closeUploadModal = () => {
     setIsUploadModalOpen(false);
     setUploadFile(null);
-    setUploadForm({
-      title: '',
-      description: '',
-      genre: '',
-      visibility: 'draft',
-      mediaKind: 'mix',
+    setUploadCoverFile(null);
+    setUploadForm(emptyPortfolioForm);
+  };
+
+  const openEditModal = (file: MediaFileRecord) => {
+    setEditingFile(file);
+    setEditCoverFile(null);
+    setEditForm({
+      title: file.portfolio_title || file.original_name?.replace(/\.[^/.]+$/, '') || file.name.replace(/\.[^/.]+$/, ''),
+      description: file.portfolio_description || '',
+      genre: file.portfolio_genre || '',
+      visibility: file.portfolio_visibility || 'draft',
+      mediaKind: file.portfolio_kind || (file.is_video ? 'video' : file.is_image ? 'image' : 'mix'),
     });
+  };
+
+  const closeEditModal = () => {
+    setEditingFile(null);
+    setEditCoverFile(null);
+    setEditForm(emptyPortfolioForm);
   };
 
   const handleUploadSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -321,19 +357,14 @@ export default function DjPortfolioPage() {
       return;
     }
 
-    uploadMediaFile(file, 'dj_media', uploadForm)
+    uploadMediaFile(file, 'dj_media', { ...uploadForm, coverImage: uploadCoverFile })
       .then((uploadResponse) => {
         setMediaFiles((currentFiles) => [uploadResponse.file, ...currentFiles]);
         setStorageQuota(uploadResponse.quota);
         setIsUploadModalOpen(false);
         setUploadFile(null);
-        setUploadForm({
-          title: '',
-          description: '',
-          genre: '',
-          visibility: 'draft',
-          mediaKind: 'mix',
-        });
+        setUploadCoverFile(null);
+        setUploadForm(emptyPortfolioForm);
       })
       .catch((uploadError) => {
         const validationMessage =
@@ -347,6 +378,35 @@ export default function DjPortfolioPage() {
         );
       })
       .finally(() => setIsUploading(false));
+  };
+
+  const handleEditSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingFile) return;
+
+    setUpdatingFileId(editingFile.id);
+    setError('');
+
+    updateMediaFile(editingFile.id, { ...editForm, coverImage: editCoverFile })
+      .then((updateResponse) => {
+        setMediaFiles((currentFiles) =>
+          currentFiles.map((mediaFile) => (mediaFile.id === editingFile.id ? updateResponse.file : mediaFile)),
+        );
+        setStorageQuota(updateResponse.quota);
+        closeEditModal();
+      })
+      .catch((updateError) => {
+        const validationMessage =
+          updateError instanceof MediaManagerApiError ? Object.values(updateError.errors)[0]?.[0] : null;
+
+        setError(
+          validationMessage ||
+            (updateError instanceof MediaManagerApiError
+              ? updateError.message
+              : 'Unable to update portfolio media right now.'),
+        );
+      })
+      .finally(() => setUpdatingFileId(null));
   };
 
   const handleDelete = (file: MediaFileRecord) => {
@@ -684,6 +744,7 @@ export default function DjPortfolioPage() {
                                   title: file.portfolio_title || file.original_name || file.name,
                                   artist: user.dj_profile?.dj_name,
                                   src: file.url,
+                                  artwork: portfolioCoverUrl(file) || undefined,
                                   meta: file.portfolio_genre || mediaTypeLabel(file),
                                 });
                               }}
@@ -702,6 +763,14 @@ export default function DjPortfolioPage() {
                             >
                               <Eye size={15} />
                             </a>
+                            <button
+                              type="button"
+                              onClick={() => openEditModal(file)}
+                              title="Edit media details"
+                              className="inline-flex h-9 w-9 items-center justify-center border border-[#333333] text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                            >
+                              <Edit3 size={15} />
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleVisibilityChange(file, 'public')}
@@ -870,6 +939,22 @@ export default function DjPortfolioPage() {
                 )}
               </label>
 
+              <label className="grid gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Cover Image</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => setUploadCoverFile(event.target.files?.[0] ?? null)}
+                  className="w-full border border-[#333333] bg-[#080808] px-4 py-3 text-sm text-[#bbbbbb] file:mr-4 file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-white"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                />
+                {uploadCoverFile && (
+                  <span className="text-xs text-[#888888]">
+                    Selected cover: {uploadCoverFile.name}
+                  </span>
+                )}
+              </label>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="grid gap-2">
                   <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Track Title</span>
@@ -956,6 +1041,141 @@ export default function DjPortfolioPage() {
               >
                 <Upload size={15} />
                 {isUploading ? 'Uploading' : 'Upload To Portfolio'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {editingFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-sm">
+          <form
+            onSubmit={handleEditSubmit}
+            className="max-h-[92vh] w-full max-w-2xl overflow-y-auto border border-[#2a2a2a] bg-[#0d0d0d] p-5 shadow-2xl shadow-black/60 sm:p-6"
+          >
+            <div className="mb-5 flex items-start justify-between gap-4 border-b border-[#252525] pb-4">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Portfolio Edit</p>
+                <h2 className="mt-2 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                  Edit Media Details
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditModal}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center border border-[#333333] text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                aria-label="Close edit modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="grid gap-4">
+              <div className="grid gap-4 sm:grid-cols-[120px_minmax(0,1fr)] sm:items-start">
+                <MediaPreview file={editingFile} />
+                <label className="grid gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Replace Cover Image</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => setEditCoverFile(event.target.files?.[0] ?? null)}
+                    className="w-full border border-[#333333] bg-[#080808] px-4 py-3 text-sm text-[#bbbbbb] file:mr-4 file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-white"
+                    style={{ fontFamily: 'var(--font-heading)' }}
+                  />
+                  <span className="text-xs text-[#888888]">
+                    {editCoverFile
+                      ? `Selected cover: ${editCoverFile.name}`
+                      : portfolioCoverUrl(editingFile)
+                        ? 'Current cover image will stay unless replaced.'
+                        : 'No cover image set yet.'}
+                  </span>
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Track Title</span>
+                  <input
+                    value={editForm.title}
+                    onChange={(event) => setEditForm((current) => ({ ...current, title: event.target.value }))}
+                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none placeholder:text-[#555555] focus:border-primary"
+                  />
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Genre</span>
+                  <select
+                    value={editForm.genre}
+                    onChange={(event) => setEditForm((current) => ({ ...current, genre: event.target.value }))}
+                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
+                  >
+                    <option value="">Choose genre</option>
+                    {genreOptions.map((genre) => (
+                      <option key={genre} value={genre}>
+                        {genre}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Media Type</span>
+                  <select
+                    value={editForm.mediaKind}
+                    onChange={(event) => setEditForm((current) => ({ ...current, mediaKind: event.target.value }))}
+                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
+                  >
+                    {kindOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Visibility</span>
+                  <select
+                    value={editForm.visibility}
+                    onChange={(event) => setEditForm((current) => ({ ...current, visibility: event.target.value }))}
+                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
+                  >
+                    {visibilityOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <label className="grid gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Description</span>
+                <textarea
+                  value={editForm.description}
+                  onChange={(event) => setEditForm((current) => ({ ...current, description: event.target.value }))}
+                  className="min-h-28 resize-none border border-[#333333] bg-[#080808] p-3 text-sm leading-6 text-white outline-none placeholder:text-[#555555] focus:border-primary"
+                />
+              </label>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 border-t border-[#252525] pt-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeEditModal}
+                className="inline-flex h-11 items-center justify-center border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                style={{ fontFamily: 'var(--font-heading)' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updatingFileId === editingFile.id}
+                className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
+                style={{ fontFamily: 'var(--font-heading)' }}
+              >
+                <Edit3 size={15} />
+                {updatingFileId === editingFile.id ? 'Saving' : 'Save Changes'}
               </button>
             </div>
           </form>

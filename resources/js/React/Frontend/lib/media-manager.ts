@@ -21,6 +21,8 @@ export type MediaFileRecord = {
   portfolio_genre?: string | null;
   portfolio_visibility?: string | null;
   portfolio_kind?: string | null;
+  portfolio_cover_image_path?: string | null;
+  portfolio_cover_image_url?: string | null;
   created_at: string;
 };
 
@@ -74,6 +76,7 @@ export type MediaUploadDetails = {
   genre: string;
   visibility: string;
   mediaKind: string;
+  coverImage?: File | null;
 };
 
 function toMediaManagerError(error: unknown): never {
@@ -120,6 +123,9 @@ export async function uploadMediaFile(
     formData.append('genre', details.genre);
     formData.append('visibility', details.visibility);
     formData.append('media_kind', details.mediaKind);
+    if (details.coverImage) {
+      formData.append('cover_image', details.coverImage);
+    }
   }
 
   try {
@@ -144,6 +150,20 @@ export async function updateMediaFile(
   details: Partial<MediaUploadDetails>,
 ): Promise<MediaUpdateResponse> {
   try {
+    if (details.coverImage) {
+      const formData = new FormData();
+
+      if (details.title !== undefined) formData.append('title', details.title);
+      if (details.description !== undefined) formData.append('description', details.description);
+      if (details.genre !== undefined) formData.append('genre', details.genre);
+      if (details.visibility !== undefined) formData.append('visibility', details.visibility);
+      if (details.mediaKind !== undefined) formData.append('media_kind', details.mediaKind);
+      formData.append('cover_image', details.coverImage);
+
+      const response = await apiClient.post<MediaUpdateResponse>(`/media/files/${fileId}`, formData);
+      return response.data;
+    }
+
     const response = await apiClient.patch<MediaUpdateResponse>(`/media/files/${fileId}`, {
       title: details.title,
       description: details.description,

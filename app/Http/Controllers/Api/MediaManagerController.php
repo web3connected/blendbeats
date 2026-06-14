@@ -47,6 +47,7 @@ class MediaManagerController extends Controller
             'genre' => ['nullable', 'string', 'max:120'],
             'visibility' => ['nullable', Rule::in(['public', 'unlisted', 'private', 'draft'])],
             'media_kind' => ['nullable', Rule::in(['mix', 'track', 'video', 'battle_entry', 'image'])],
+            'cover_image' => ['nullable', 'image', 'max:10240'],
         ]);
 
         $file = $mediaManager->uploadFileToMediaManager(
@@ -54,6 +55,10 @@ class MediaManagerController extends Controller
             $attributes['disk'] ?? 'public',
             $attributes['collection'] ?? MediaManagerService::COLLECTION_DJ_MEDIA,
         );
+
+        $coverFile = isset($attributes['cover_image'])
+            ? $mediaManager->uploadForOwner($request->user(), $attributes['cover_image'], 'public', MediaManagerService::COLLECTION_DJ_IMAGES)
+            : null;
 
         $file->forceFill([
             'metadata' => [
@@ -64,6 +69,9 @@ class MediaManagerController extends Controller
                     'genre' => $attributes['genre'] ?? null,
                     'visibility' => $attributes['visibility'] ?? 'draft',
                     'media_kind' => $attributes['media_kind'] ?? null,
+                    'cover_media_file_id' => $coverFile?->id,
+                    'cover_image_path' => $coverFile?->path,
+                    'cover_image_url' => $coverFile?->url,
                 ],
             ],
         ])->save();
@@ -102,11 +110,23 @@ class MediaManagerController extends Controller
             'genre' => ['nullable', 'string', 'max:120'],
             'visibility' => ['nullable', Rule::in(['public', 'unlisted', 'private', 'draft'])],
             'media_kind' => ['nullable', Rule::in(['mix', 'track', 'video', 'battle_entry', 'image'])],
+            'cover_image' => ['nullable', 'image', 'max:10240'],
         ]);
 
         $portfolio = collect($attributes)
+            ->except('cover_image')
             ->filter(fn ($value): bool => $value !== null)
             ->all();
+
+        if (isset($attributes['cover_image'])) {
+            $coverFile = $mediaManager->uploadForOwner($request->user(), $attributes['cover_image'], 'public', MediaManagerService::COLLECTION_DJ_IMAGES);
+            $portfolio = [
+                ...$portfolio,
+                'cover_media_file_id' => $coverFile->id,
+                'cover_image_path' => $coverFile->path,
+                'cover_image_url' => $coverFile->url,
+            ];
+        }
 
         $updatedFile = $mediaManager->updatePortfolioMetadata($file, $portfolio);
 

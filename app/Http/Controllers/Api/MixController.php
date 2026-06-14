@@ -146,6 +146,7 @@ class MixController extends Controller
                         'description' => $portfolio['description'] ?? null,
                         'genre' => $portfolio['genre'] ?? null,
                         'audio_file' => $file->path,
+                        'cover_image' => $portfolio['cover_image_path'] ?? null,
                         'is_public' => true,
                         'published_at' => $file->created_at ?? now(),
                     ],

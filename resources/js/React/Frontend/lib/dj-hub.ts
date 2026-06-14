@@ -31,6 +31,7 @@ export type DjHubDj = {
     genre: string | null;
     kind: string | null;
     url: string;
+    cover_image_url: string | null;
     mime_type: string | null;
     formatted_size: string;
     is_audio: boolean;

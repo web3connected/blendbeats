@@ -109,8 +109,12 @@ class MediaManagerService
         $uniqueFilename = Str::slug($filename).'_'.time().'_'.Str::lower(Str::random(6)).'.'.$extension;
         $directory = $this->accountMediaPath($mediaAccount->root_path, $collection);
 
-        if ($disk === 'public' && $collection === self::COLLECTION_DJ_MEDIA) {
+        if ($disk === 'public' && str_starts_with($collection, self::COLLECTION_DJ_MEDIA)) {
             $directory = $this->portfolioPublicPath($owner);
+
+            if ($collection === self::COLLECTION_DJ_IMAGES) {
+                $directory .= '/covers';
+            }
         }
 
         $path = $file->storeAs($directory, $uniqueFilename, $mediaAccount->disk);
@@ -309,6 +313,8 @@ class MediaManagerService
             'portfolio_genre' => $portfolio['genre'] ?? null,
             'portfolio_visibility' => $portfolio['visibility'] ?? null,
             'portfolio_kind' => $portfolio['media_kind'] ?? null,
+            'portfolio_cover_image_path' => $portfolio['cover_image_path'] ?? null,
+            'portfolio_cover_image_url' => $portfolio['cover_image_url'] ?? null,
             'created_at' => $file->created_at,
         ];
     }

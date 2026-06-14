@@ -256,9 +256,18 @@ export default function PublicDjProfilePage() {
                           key={media.id}
                           className="grid gap-4 border border-[#2a2a2a] bg-[#080808] p-4 md:grid-cols-[56px_minmax(0,1fr)_120px] md:items-center"
                         >
-                          <div className="flex h-14 w-14 items-center justify-center border border-[#333333] text-primary">
-                            {media.is_video ? <Video size={22} /> : <FileAudio size={22} />}
-                          </div>
+                          {media.cover_image_url ? (
+                            <img
+                              src={media.cover_image_url}
+                              alt={media.title}
+                              loading="lazy"
+                              className="h-14 w-14 border border-[#333333] bg-[#080808] object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-14 w-14 items-center justify-center border border-[#333333] text-primary">
+                              {media.is_video ? <Video size={22} /> : <FileAudio size={22} />}
+                            </div>
+                          )}
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="truncate text-base font-semibold text-white">{media.title}</p>
@@ -289,6 +298,7 @@ export default function PublicDjProfilePage() {
                                   title: media.title,
                                   artist: dj.dj_name,
                                   src: media.url,
+                                  artwork: media.cover_image_url || undefined,
                                   meta: media.genre || mediaKindLabel(media.kind, fallbackType),
                                 });
                               }}
