@@ -90,6 +90,9 @@ Route::middleware('admin.auth')->group(function (): void {
     Route::get('admincenter/paymentproviders', [PaymentProviderController::class, 'index'])
         ->middleware('permission:paymentproviders.view,admin')
         ->name('admincenter.paymentproviders.index');
+    Route::put('admincenter/paymentproviders/status', [PaymentProviderController::class, 'updateStatus'])
+        ->middleware('permission:paymentproviders.update,admin')
+        ->name('admincenter.paymentproviders.status.update');
     Route::put('admincenter/paymentproviders/{provider}', [PaymentProviderController::class, 'update'])
         ->middleware('permission:paymentproviders.update,admin')
         ->name('admincenter.paymentproviders.update');

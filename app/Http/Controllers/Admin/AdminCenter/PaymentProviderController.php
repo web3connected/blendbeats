@@ -22,10 +22,47 @@ class PaymentProviderController extends Controller
 
         return view('admin.payment-providers.index', [
             'providers' => $providers,
+            'activeProviders' => $providers->where('is_active', true)->values(),
             'configuredCount' => $providers->filter(fn (PaymentProvider $provider): bool => filled($provider->client_id) && $provider->hasSecret())->count(),
             'activeCount' => $providers->where('is_active', true)->count(),
             'primaryProvider' => $providers->firstWhere('is_primary', true),
         ]);
+    }
+
+    public function updateStatus(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'active_providers' => ['array'],
+            'active_providers.*' => ['integer', Rule::exists('payment_providers', 'id')],
+            'primary_provider' => ['nullable', 'integer', Rule::exists('payment_providers', 'id')],
+        ]);
+
+        $activeProviderIds = collect($validated['active_providers'] ?? [])
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+        $primaryProviderId = isset($validated['primary_provider']) ? (int) $validated['primary_provider'] : null;
+
+        if ($primaryProviderId !== null && ! $activeProviderIds->contains($primaryProviderId)) {
+            $activeProviderIds->push($primaryProviderId);
+        }
+
+        PaymentProvider::query()->get()->each(function (PaymentProvider $provider) use ($activeProviderIds, $primaryProviderId): void {
+            $provider->forceFill([
+                'is_active' => $activeProviderIds->contains($provider->id),
+                'is_primary' => $primaryProviderId === $provider->id,
+            ])->save();
+        });
+
+        if ($primaryProviderId === null && $activeProviderIds->isNotEmpty()) {
+            PaymentProvider::query()
+                ->whereKey($activeProviderIds->first())
+                ->update(['is_primary' => true]);
+        }
+
+        return redirect()
+            ->route('admin.admincenter.paymentproviders.index')
+            ->with('status', 'Payment provider switches updated.');
     }
 
     public function update(Request $request, PaymentProvider $provider): RedirectResponse
@@ -33,8 +70,6 @@ class PaymentProviderController extends Controller
         $validated = $request->validate([
             'display_name' => ['required', 'string', 'max:120'],
             'mode' => ['required', 'string', Rule::in(['sandbox', 'test', 'live', 'production'])],
-            'is_active' => ['nullable', 'boolean'],
-            'is_primary' => ['nullable', 'boolean'],
             'client_id' => ['nullable', 'string', 'max:500'],
             'secret' => ['nullable', 'string', 'max:2000'],
             'clear_secret' => ['nullable', 'boolean'],
@@ -50,8 +85,6 @@ class PaymentProviderController extends Controller
         $provider->fill([
             'display_name' => $validated['display_name'],
             'mode' => $validated['mode'],
-            'is_active' => $request->boolean('is_active'),
-            'is_primary' => $request->boolean('is_primary'),
             'client_id' => $validated['client_id'] ?? null,
             'webhook_id' => $validated['webhook_id'] ?? null,
             'merchant_id' => $validated['merchant_id'] ?? null,
@@ -73,12 +106,6 @@ class PaymentProviderController extends Controller
         }
 
         $provider->save();
-
-        if ($provider->is_primary) {
-            PaymentProvider::query()
-                ->whereKeyNot($provider->getKey())
-                ->update(['is_primary' => false]);
-        }
 
         return redirect()
             ->route('admin.admincenter.paymentproviders.index')
