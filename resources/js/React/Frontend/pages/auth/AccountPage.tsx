@@ -73,6 +73,53 @@ function TextAreaField({
   );
 }
 
+const TIMEZONE_OPTIONS = [
+  { value: 'America/New_York', label: 'Eastern Time - New York' },
+  { value: 'America/Chicago', label: 'Central Time - Chicago' },
+  { value: 'America/Denver', label: 'Mountain Time - Denver' },
+  { value: 'America/Phoenix', label: 'Arizona Time - Phoenix' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time - Los Angeles' },
+  { value: 'America/Anchorage', label: 'Alaska Time - Anchorage' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time - Honolulu' },
+  { value: 'America/Puerto_Rico', label: 'Atlantic Time - Puerto Rico' },
+  { value: 'America/Toronto', label: 'Eastern Time - Toronto' },
+  { value: 'America/Vancouver', label: 'Pacific Time - Vancouver' },
+  { value: 'America/Mexico_City', label: 'Central Time - Mexico City' },
+  { value: 'Europe/London', label: 'London' },
+  { value: 'Europe/Paris', label: 'Central Europe - Paris' },
+  { value: 'Europe/Berlin', label: 'Central Europe - Berlin' },
+  { value: 'Africa/Lagos', label: 'West Africa - Lagos' },
+  { value: 'Africa/Johannesburg', label: 'South Africa - Johannesburg' },
+  { value: 'Asia/Dubai', label: 'Gulf Time - Dubai' },
+  { value: 'Asia/Tokyo', label: 'Japan - Tokyo' },
+  { value: 'Australia/Sydney', label: 'Australia Eastern - Sydney' },
+  { value: 'UTC', label: 'UTC' },
+];
+
+function TimezoneField({ value }: { value?: string | null }) {
+  const savedValue = value ?? '';
+  const hasSavedOption = TIMEZONE_OPTIONS.some((option) => option.value === savedValue);
+
+  return (
+    <label className="grid gap-2">
+      <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Timezone</span>
+      <select
+        name="timezone"
+        defaultValue={savedValue}
+        className="h-11 w-full border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none transition-colors focus:border-primary"
+      >
+        <option value="">Select timezone</option>
+        {savedValue && !hasSavedOption && <option value={savedValue}>{savedValue}</option>}
+        {TIMEZONE_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function SectionTitle({ icon: Icon, title }: { icon: ElementType; title: string }) {
   return (
     <div className="mb-5 flex items-center gap-3 border-b border-[#242424] pb-3">
@@ -421,12 +468,7 @@ export default function AccountPage() {
                   />
                   <Field label="Phone" name="phone" type="tel" value={profile?.phone} placeholder="555-0100" />
                   <Field label="Birthdate" name="birthdate" type="date" value={profile?.birthdate} />
-                  <Field
-                    label="Timezone"
-                    name="timezone"
-                    value={profile?.timezone}
-                    placeholder="America/New_York"
-                  />
+                  <TimezoneField value={profile?.timezone} />
                 </div>
               </section>
 
