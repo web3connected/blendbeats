@@ -4,7 +4,7 @@ import { getDjHubDjs, type DjHubDj } from '@/lib/dj-hub';
 
 export const FEATURED_DJ_SLOT_COUNT = 24;
 export const FEATURED_DJ_GROUP_SIZE = 4;
-export const FEATURED_DJ_GROUP_WEIGHTS = [100, 80, 64, 51, 41, 33];
+export const FEATURED_DJ_GROUP_WEIGHTS = [100, 75, 56, 42, 32, 24];
 
 export type FeaturedDjSlot = {
   number: number;

@@ -12,7 +12,7 @@ class FeaturedPlacementPricingService
 
     private const MIN_DAILY_PRICE_CENTS = 599;
 
-    private const GROUP_DECAY = 0.20;
+    private const GROUP_DECAY = 0.249;
 
     private const SLOT_DECAY = 0.10;
 
