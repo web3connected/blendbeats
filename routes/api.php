@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\MediaManagerController;
 use App\Http\Controllers\Api\MediaSetupController;
 use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\Auth\UserAuthController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Session\Middleware\StartSession;
@@ -55,6 +56,33 @@ Route::prefix('media')
 Route::get('dj-hub/djs', [DjHubController::class, 'index'])->name('api.dj-hub.index');
 Route::get('dj-hub/djs/{handle}', [DjHubController::class, 'show'])->name('api.dj-hub.show');
 Route::get('lounge/live-state', [LoungeLiveStateController::class, 'show'])->name('api.lounge.live-state');
+
+Route::get('site/preview-status', function (Request $request) {
+    $maintenanceEnabled = filter_var(env('FRONTEND_MAINTENANCE_MODE', true), FILTER_VALIDATE_BOOLEAN);
+    $admin = auth('admin')->user();
+    $allowedRoles = ['super-admin', 'sys-admin', 'admin'];
+    $adminRoles = $admin
+        ? collect($admin->roles?->pluck('name')->all() ?? [])
+            ->push($admin->role)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all()
+        : [];
+    $canPreview = $admin && $admin->is_active && count(array_intersect($allowedRoles, $adminRoles)) > 0;
+
+    return response()->json([
+        'maintenance_enabled' => $maintenanceEnabled,
+        'can_preview' => (bool) $canPreview,
+        'admin' => $canPreview ? [
+            'name' => $admin->name,
+            'email' => $admin->email,
+            'roles' => $adminRoles,
+        ] : null,
+    ]);
+})
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
+    ->name('api.site.preview-status');
 
 Route::get('billing/plans', [BillingController::class, 'plans'])
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
