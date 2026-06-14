@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\AccountUpdatedNotification;
+use App\Notifications\RegistrationWelcomeNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,6 +28,10 @@ class UserAuthController extends Controller
             ...$attributes,
             'media_storage_tier' => config('billing.subscription.free_tier', 'free'),
         ]);
+
+        if (Schema::hasTable('notifications')) {
+            $user->notify(new RegistrationWelcomeNotification());
+        }
 
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
