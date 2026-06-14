@@ -193,6 +193,11 @@ export default function FeaturedAdPlacementsPage() {
   const pendingCampaignCount = placements
     ? placements.my_campaigns.filter((campaign) => campaign.status === 'pending_payment').length
     : 0;
+  const nextAvailableSlot = placements
+    ? placements.campaigns
+        .flatMap((campaign) => campaign.slots)
+        .find((slot) => slot.is_unlocked && slot.is_available && slot.options.length > 0)
+    : null;
   const selectedPlacement = placements
     ? placements.campaigns.reduce<{
       campaign: FeaturedMarketplaceCampaign;
@@ -239,6 +244,16 @@ export default function FeaturedAdPlacementsPage() {
   const openCampaignSetup = (slot: FeaturedCampaignSlot) => {
     setSelectedSlotId(slot.id);
     setCampaignSetupSlotId(slot.id);
+  };
+
+  const startNewCampaign = () => {
+    if (!nextAvailableSlot) {
+      setPlacementsError('No claimable placement slots are available for your current tier.');
+      return;
+    }
+
+    setPlacementsError('');
+    openCampaignSetup(nextAvailableSlot);
   };
 
   const handleCampaignSetupPayment = (slot: FeaturedCampaignSlot) => {
@@ -359,6 +374,16 @@ export default function FeaturedAdPlacementsPage() {
                       Available Placements
                     </h3>
                     <p className="mt-3 text-sm leading-6 text-[#888888]">{openSlotCount} slots are open for your current tier.</p>
+                    <button
+                      type="button"
+                      onClick={startNewCampaign}
+                      disabled={!nextAvailableSlot}
+                      className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#d91515] disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{ fontFamily: 'var(--font-heading)' }}
+                    >
+                      <CreditCard size={15} />
+                      Create New Ad
+                    </button>
                   </article>
                   <article className="border border-[#2a2a2a] bg-[#080808] p-5">
                     <Radio className="text-[#FFB800]" size={22} />
@@ -458,7 +483,24 @@ export default function FeaturedAdPlacementsPage() {
                           {selectedSlot.active_campaign && (
                             <div className="border border-[#2a2a2a] bg-[#080808] p-3 text-sm leading-6 text-[#aaaaaa]">
                               Claimed by {selectedSlot.active_campaign.dj?.name || 'a DJ'}.
+                              {selectedSlot.active_campaign.is_mine && selectedSlot.active_campaign.status === 'active' && (
+                                <span className="mt-2 block text-xs leading-5 text-[#888888]">
+                                  This placement is running. You can create another ad in an open slot.
+                                </span>
+                              )}
                             </div>
+                          )}
+                          {selectedSlot.active_campaign?.is_mine && selectedSlot.active_campaign.status === 'active' && (
+                            <button
+                              type="button"
+                              onClick={startNewCampaign}
+                              disabled={!nextAvailableSlot}
+                              className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#d91515] disabled:cursor-not-allowed disabled:opacity-50"
+                              style={{ fontFamily: 'var(--font-heading)' }}
+                            >
+                              <CreditCard size={15} />
+                              Create New Ad
+                            </button>
                           )}
                           {selectedSlot.active_campaign?.is_mine && selectedSlot.active_campaign.status === 'pending_payment' && (
                             <button
@@ -594,6 +636,17 @@ export default function FeaturedAdPlacementsPage() {
                                       >
                                         <CreditCard size={15} />
                                         Continue Campaign
+                                      </button>
+                                    )}
+                                    {slot.active_campaign.is_mine && slot.active_campaign.status === 'active' && nextAvailableSlot && (
+                                      <button
+                                        type="button"
+                                        onClick={startNewCampaign}
+                                        className="inline-flex h-11 items-center justify-center gap-2 border border-primary px-4 text-xs font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary hover:text-white"
+                                        style={{ fontFamily: 'var(--font-heading)' }}
+                                      >
+                                        <CreditCard size={15} />
+                                        Create New Ad
                                       </button>
                                     )}
                                   </div>
