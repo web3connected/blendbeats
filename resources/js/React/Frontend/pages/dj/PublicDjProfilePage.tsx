@@ -14,10 +14,11 @@ import {
   Users,
   Video,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { usePlayer } from '@/components/player/PlayerProvider';
+import { useCounter } from '@/hooks/useCounter';
 import { getDjHubDj, type DjHubDj } from '@/lib/dj-hub';
 
 function formatDate(date: string | null) {
@@ -42,6 +43,12 @@ export default function PublicDjProfilePage() {
   const [dj, setDj] = useState<DjHubDj | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const countedProfileViews = useRef(new Set<string>());
+  const { count: countView } = useCounter({
+    onCounted: (response) => {
+      setDj((current) => (current ? { ...current, view_count: response.count } : current));
+    },
+  });
 
   useEffect(() => {
     if (!handle) return;
@@ -54,6 +61,17 @@ export default function PublicDjProfilePage() {
       .catch(() => setError('Unable to load this DJ profile.'))
       .finally(() => setIsLoading(false));
   }, [handle]);
+
+  useEffect(() => {
+    if (!dj?.handle) return;
+    if (countedProfileViews.current.has(dj.handle)) return;
+
+    countedProfileViews.current.add(dj.handle);
+
+    void countView({ type: 'dj-profile', id: dj.handle, action: 'view' }).catch(() => {
+      countedProfileViews.current.delete(dj.handle);
+    });
+  }, [countView, dj?.handle]);
 
   const portfolioMedia = useMemo(() => dj?.portfolio_media ?? [], [dj?.portfolio_media]);
   const audioMedia = useMemo(() => portfolioMedia.filter((media) => media.is_audio), [portfolioMedia]);
@@ -123,11 +141,17 @@ export default function PublicDjProfilePage() {
                     </div>
                   )}
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-2">
+                <div className="mt-4 grid grid-cols-3 gap-2">
                   <div className="border border-[#2a2a2a] bg-[#080808] p-3">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Followers</p>
                     <p className="mt-1 text-2xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
                       {dj.followers_count.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="border border-[#2a2a2a] bg-[#080808] p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Views</p>
+                    <p className="mt-1 text-2xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                      {dj.view_count.toLocaleString()}
                     </p>
                   </div>
                   <div className="border border-[#2a2a2a] bg-[#080808] p-3">

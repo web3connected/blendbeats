@@ -32,6 +32,7 @@ class DjProfile extends Model
         'visibility',
         'verification_status',
         'published_at',
+        'view_count',
     ];
 
     protected function casts(): array
@@ -42,7 +43,13 @@ class DjProfile extends Model
             'booking_enabled' => 'boolean',
             'battle_enabled' => 'boolean',
             'published_at' => 'datetime',
+            'view_count' => 'integer',
         ];
+    }
+
+    public function incrementViewCount(): void
+    {
+        $this->increment('view_count');
     }
 
     /**

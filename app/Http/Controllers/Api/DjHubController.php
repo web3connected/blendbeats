@@ -158,6 +158,7 @@ class DjHubController extends Controller
             'country' => $profile->country ?? null,
             'open_for_bookings' => (bool) ($profile->booking_enabled ?? false),
             'followers_count' => (int) ($profile->followers_count ?? 0),
+            'view_count' => (int) ($profile->view_count ?? 0),
             'featured_slot' => $this->featuredSlotFor((int) $profile->id),
             'featured_statuses' => $this->featuredStatusesFor((int) $profile->id),
             'featured_mix' => $this->featuredMixFor((int) $profile->user_id),
