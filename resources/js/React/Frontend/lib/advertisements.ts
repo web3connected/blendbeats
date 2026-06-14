@@ -1,5 +1,8 @@
 import apiClient from '@/lib/api-client';
 
+const DISPLAY_AD_CACHE_TTL_MS = 60 * 1000;
+const DISPLAY_AD_CACHE_PREFIX = 'blendbeats.display_ad.';
+
 export type UniversalAdvertisement = {
   id: number;
   type: string;
@@ -18,10 +21,58 @@ export type UniversalAdvertisement = {
   };
 };
 
+type CachedDisplayAdvertisement = {
+  expires_at: number;
+  ad: UniversalAdvertisement;
+};
+
+function cacheKey(placement: string) {
+  return `${DISPLAY_AD_CACHE_PREFIX}${placement}`;
+}
+
+function readCachedDisplayAdvertisement(placement: string): UniversalAdvertisement | null {
+  try {
+    const raw = window.localStorage.getItem(cacheKey(placement));
+    if (!raw) return null;
+
+    const cached = JSON.parse(raw) as Partial<CachedDisplayAdvertisement>;
+
+    if (!cached.ad || !cached.expires_at || cached.expires_at <= Date.now()) {
+      window.localStorage.removeItem(cacheKey(placement));
+      return null;
+    }
+
+    return cached.ad;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedDisplayAdvertisement(placement: string, ad: UniversalAdvertisement | null) {
+  if (!ad) return;
+
+  try {
+    window.localStorage.setItem(
+      cacheKey(placement),
+      JSON.stringify({
+        expires_at: Date.now() + DISPLAY_AD_CACHE_TTL_MS,
+        ad,
+      } satisfies CachedDisplayAdvertisement),
+    );
+  } catch {
+    // Local storage is a display optimization only.
+  }
+}
+
 export async function getDisplayAdvertisement(placement: string): Promise<UniversalAdvertisement | null> {
+  const cachedAd = readCachedDisplayAdvertisement(placement);
+  if (cachedAd) return cachedAd;
+
   const response = await apiClient.get<{ ad: UniversalAdvertisement | null }>('/ads/display', {
     params: { placement },
   });
+
+  writeCachedDisplayAdvertisement(placement, response.data.ad);
 
   return response.data.ad;
 }
