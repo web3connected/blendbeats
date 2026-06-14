@@ -125,11 +125,13 @@ export async function getFeaturedAdPlacements(): Promise<FeaturedAdsPlacementsRe
 export async function startFeaturedAdCheckout(
   campaignSlotId: number,
   campaignOptionId: number,
+  startDate: string,
 ): Promise<FeaturedAdCheckoutResponse> {
   try {
     const response = await apiClient.post<FeaturedAdCheckoutResponse>('/featured-ads/checkout', {
       campaign_slot_id: campaignSlotId,
       campaign_option_id: campaignOptionId,
+      start_date: startDate,
     });
 
     return response.data;
@@ -141,10 +143,12 @@ export async function startFeaturedAdCheckout(
 export async function restartFeaturedAdCheckout(
   campaignId: number,
   campaignOptionId: number,
+  startDate: string,
 ): Promise<FeaturedAdCheckoutResponse> {
   try {
     const response = await apiClient.post<FeaturedAdCheckoutResponse>(`/featured-ads/campaigns/${campaignId}/checkout`, {
       campaign_option_id: campaignOptionId,
+      start_date: startDate,
     });
 
     return response.data;

@@ -23,6 +23,27 @@ import {
   type FeaturedCampaignSlot,
 } from '@/lib/featured-ads';
 
+function dateInputValue(date = new Date()) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
+}
+
+function addDaysToDateInput(value: string, days: number) {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + days);
+  return dateInputValue(date);
+}
+
+function formatDateLabel(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(year, month - 1, day));
+}
+
 export default function FeaturedAdPlacementsPage() {
   const { user, isLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,6 +51,7 @@ export default function FeaturedAdPlacementsPage() {
   const [isPlacementsLoading, setIsPlacementsLoading] = useState(false);
   const [placementsError, setPlacementsError] = useState('');
   const [selectedOptionBySlot, setSelectedOptionBySlot] = useState<Record<number, number>>({});
+  const [selectedStartDateBySlot, setSelectedStartDateBySlot] = useState<Record<number, string>>({});
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [campaignSetupSlotId, setCampaignSetupSlotId] = useState<number | null>(null);
   const [checkoutSlot, setCheckoutSlot] = useState<number | null>(null);
@@ -59,6 +81,19 @@ export default function FeaturedAdPlacementsPage() {
               }
               if (slot.active_campaign?.is_mine && slot.active_campaign.campaign_option_id) {
                 next[slot.id] = slot.active_campaign.campaign_option_id;
+              }
+            });
+          });
+
+          return next;
+        });
+        setSelectedStartDateBySlot((current) => {
+          const today = dateInputValue();
+          const next = { ...current };
+          response.campaigns.forEach((campaign) => {
+            campaign.slots.forEach((slot) => {
+              if (!next[slot.id]) {
+                next[slot.id] = slot.active_campaign?.start_date?.slice(0, 10) || today;
               }
             });
           });
@@ -106,6 +141,7 @@ export default function FeaturedAdPlacementsPage() {
 
   const handleCheckout = (slot: FeaturedCampaignSlot) => {
     const selectedOptionId = selectedOptionBySlot[slot.id] || slot.options[0]?.id;
+    const selectedStartDate = selectedStartDateBySlot[slot.id] || dateInputValue();
 
     if (!selectedOptionId) {
       setPlacementsError('Choose a campaign option before checkout.');
@@ -115,7 +151,7 @@ export default function FeaturedAdPlacementsPage() {
     setCheckoutSlot(slot.id);
     setPlacementsError('');
 
-    startFeaturedAdCheckout(slot.id, selectedOptionId)
+    startFeaturedAdCheckout(slot.id, selectedOptionId, selectedStartDate)
       .then((response) => {
         if (response.checkout_url) {
           window.location.href = response.checkout_url;
@@ -176,6 +212,8 @@ export default function FeaturedAdPlacementsPage() {
   const campaignSetupOptionId = campaignSetupSlot ? selectedOptionBySlot[campaignSetupSlot.id] || campaignSetupSlot.options[0]?.id || 0 : 0;
   const campaignSetupOption = campaignSetupSlot?.options.find((option) => option.id === campaignSetupOptionId) || campaignSetupSlot?.options[0] || null;
   const campaignSetupActiveCampaign = campaignSetupSlot?.active_campaign ?? null;
+  const campaignSetupStartDate = campaignSetupSlot ? selectedStartDateBySlot[campaignSetupSlot.id] || dateInputValue() : dateInputValue();
+  const campaignSetupEndDate = addDaysToDateInput(campaignSetupStartDate, campaignSetupOption?.duration_days ?? 1);
   const canResumePayment = Boolean(
     campaignSetupActiveCampaign?.is_mine
       && campaignSetupActiveCampaign.status === 'pending_payment'
@@ -200,6 +238,7 @@ export default function FeaturedAdPlacementsPage() {
 
     if (activeCampaign?.is_mine && activeCampaign.status === 'pending_payment') {
       const selectedOptionId = selectedOptionBySlot[slot.id] || slot.options[0]?.id;
+      const selectedStartDate = selectedStartDateBySlot[slot.id] || dateInputValue();
 
       if (!selectedOptionId) {
         setPlacementsError('Choose a campaign option before checkout.');
@@ -209,7 +248,7 @@ export default function FeaturedAdPlacementsPage() {
       setCheckoutSlot(slot.id);
       setPlacementsError('');
 
-      restartFeaturedAdCheckout(activeCampaign.id, selectedOptionId)
+      restartFeaturedAdCheckout(activeCampaign.id, selectedOptionId, selectedStartDate)
         .then((response) => {
           if (response.checkout_url) {
             window.location.href = response.checkout_url;
@@ -672,11 +711,42 @@ export default function FeaturedAdPlacementsPage() {
                 </select>
               </label>
 
-              <div className="grid gap-3 border border-[#2a2a2a] bg-[#111111] p-4 sm:grid-cols-3">
+              <label className="grid gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Campaign Start Date</span>
+                <input
+                  type="date"
+                  min={dateInputValue()}
+                  value={campaignSetupStartDate}
+                  onChange={(event) =>
+                    setSelectedStartDateBySlot((current) => ({
+                      ...current,
+                      [campaignSetupSlot.id]: event.target.value || dateInputValue(),
+                    }))
+                  }
+                  className="h-12 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none [color-scheme:dark] focus:border-primary"
+                />
+                <span className="text-xs leading-5 text-[#888888]">
+                  Pick the calendar day this placement should begin after payment is approved.
+                </span>
+              </label>
+
+              <div className="grid gap-3 border border-[#2a2a2a] bg-[#111111] p-4 sm:grid-cols-5">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Campaign Length</p>
                   <p className="mt-2 text-xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
                     {campaignSetupOption?.duration_days ?? 0} day{campaignSetupOption?.duration_days === 1 ? '' : 's'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Starts</p>
+                  <p className="mt-2 text-xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                    {formatDateLabel(campaignSetupStartDate)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Ends</p>
+                  <p className="mt-2 text-xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                    {formatDateLabel(campaignSetupEndDate)}
                   </p>
                 </div>
                 <div>

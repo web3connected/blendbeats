@@ -77,6 +77,7 @@ class FeaturedAdController extends Controller
                 'integer',
                 Rule::exists('featured_slot_campaign_options', 'id')->where(fn ($query) => $query->where('is_active', true)),
             ],
+            'start_date' => ['required', 'date', 'after_or_equal:today'],
         ]);
 
         $user = $request->user();
@@ -101,6 +102,8 @@ class FeaturedAdController extends Controller
         $groupSlotNumber = (int) $campaignSlot->group_slot_number;
         $dailyPrice = $this->placementPricing->dailyPriceCents($groupNumber, $groupSlotNumber);
         $amountCents = $dailyPrice * $option->duration_days;
+        $startDate = Carbon::parse($validated['start_date'])->startOfDay();
+        $endDate = $startDate->copy()->addDays((int) $option->duration_days);
         $provider = $this->primaryPaymentProvider();
 
         abort_unless($provider, 422, 'No active payment provider is configured.');
@@ -120,8 +123,8 @@ class FeaturedAdController extends Controller
             'payment_status' => 'pending',
             'status' => 'pending_payment',
             'claimed_at' => now(),
-            'start_date' => null,
-            'end_date' => null,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
         ]);
 
         $campaignSlot->forceFill([
@@ -169,7 +172,10 @@ class FeaturedAdController extends Controller
         }
 
         $option = $campaign->campaignOption;
-        $start = now();
+        $start = $campaign->start_date instanceof Carbon ? $campaign->start_date->copy() : now();
+        if ($start->lt(now())) {
+            $start = now();
+        }
         $end = $start->copy()->addDays((int) ($option?->duration_days ?? 1));
 
         $campaign->forceFill([
@@ -201,6 +207,7 @@ class FeaturedAdController extends Controller
                 'integer',
                 Rule::exists('featured_slot_campaign_options', 'id')->where(fn ($query) => $query->where('is_active', true)),
             ],
+            'start_date' => ['required', 'date', 'after_or_equal:today'],
         ]);
 
         $campaignSlot = $campaign->campaignSlot?->loadMissing('campaign.slotGroup');
@@ -220,6 +227,8 @@ class FeaturedAdController extends Controller
         $groupNumber = (int) $slotGroup->sort_order;
         $groupSlotNumber = (int) $campaignSlot->group_slot_number;
         $amountCents = $this->placementPricing->dailyPriceCents($groupNumber, $groupSlotNumber) * $option->duration_days;
+        $startDate = Carbon::parse($validated['start_date'])->startOfDay();
+        $endDate = $startDate->copy()->addDays((int) $option->duration_days);
 
         $campaign->forceFill([
             'featured_slot_campaign_option_id' => $option->id,
@@ -228,6 +237,8 @@ class FeaturedAdController extends Controller
             'currency' => 'USD',
             'payment_provider' => 'paypal',
             'payment_status' => 'pending',
+            'start_date' => $startDate,
+            'end_date' => $endDate,
         ]);
 
         try {
