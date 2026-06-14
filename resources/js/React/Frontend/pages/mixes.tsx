@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { CalendarDays, Disc3, Eye, Headphones, Play, Radio, Star } from 'lucide-react';
 
 import HeaderTitle from '@/layouts/HeaderTitle';
+import MixesFeaturedDjAdSpaces from '@/components/advertising/MixesFeaturedDjAdSpaces';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { usePlayer } from '@/components/player/PlayerProvider';
 import { useCounter } from '@/hooks/useCounter';
@@ -463,6 +464,8 @@ export default function MixesPage() {
             <div className="border border-primary/40 bg-primary/10 px-4 py-3 text-sm text-white">{error}</div>
           </div>
         )}
+
+        <MixesFeaturedDjAdSpaces />
 
         {isLoading ? (
           <section className="container mx-auto px-4 py-20">
