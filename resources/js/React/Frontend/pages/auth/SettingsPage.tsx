@@ -44,7 +44,7 @@ const settingsCards = [
   {
     title: 'Storage',
     description: 'Track storage usage, upload limits, and future storage upgrade options.',
-    href: '/dj/portfolio',
+    href: '/account/storage',
     icon: UploadCloud,
   },
   {
