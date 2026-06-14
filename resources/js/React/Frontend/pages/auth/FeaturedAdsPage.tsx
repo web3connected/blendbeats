@@ -230,7 +230,7 @@ export default function FeaturedAdsPage() {
         </section>
 
         <section className="px-4 py-10 lg:px-8">
-          <div className="container mx-auto grid max-w-6xl gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+          <div className="container mx-auto grid max-w-7xl gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
             <aside className="border border-[#2a2a2a] bg-[#111111] p-5">
               <div className="mb-5 flex h-12 w-12 items-center justify-center bg-[#080808] text-primary">
                 <UserRound size={20} />
@@ -408,8 +408,8 @@ export default function FeaturedAdsPage() {
                   </div>
                 </section>
               ) : (
-                <section className="border border-[#2a2a2a] bg-[#111111] p-5">
-                  <div className="mb-6 flex items-center justify-between gap-4">
+                <section className="border border-[#2a2a2a] bg-[#111111] p-5 sm:p-6">
+                  <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-center gap-3">
                       <BadgeCheck className="text-[#FFB800]" size={24} />
                       <h2 className="text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -419,54 +419,54 @@ export default function FeaturedAdsPage() {
                     <button
                       type="button"
                       onClick={resetOnboarding}
-                      className="border border-[#333333] px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#aaaaaa]"
+                      className="inline-flex h-11 items-center justify-center border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#aaaaaa] transition-colors hover:border-primary hover:text-primary md:self-start"
                       style={{ fontFamily: 'var(--font-heading)' }}
                     >
                       Review Setup
                     </button>
                   </div>
 
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <article className="border border-[#2a2a2a] bg-[#080808] p-5">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <article className="flex min-h-[260px] flex-col border border-[#2a2a2a] bg-[#080808] p-5 sm:p-6">
                       <LayoutGrid className="text-primary" size={22} />
                       <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
                         Available Placements
                       </h3>
-                      <p className="mt-3 text-sm leading-6 text-[#888888]">
+                      <p className="mt-3 flex-1 text-sm leading-6 text-[#888888]">
                         Browse claimable featured DJ and mix campaign slots.
                       </p>
                       <Link
                         to="/account/featured-ads/placements"
-                        className="mt-5 inline-flex h-10 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#d91515]"
+                        className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 bg-primary px-4 py-3 text-center text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#d91515]"
                         style={{ fontFamily: 'var(--font-heading)' }}
                       >
                         View Placements
                         <ArrowRight size={14} />
                       </Link>
                     </article>
-                    <article className="border border-[#2a2a2a] bg-[#080808] p-5">
+                    <article className="flex min-h-[260px] flex-col border border-[#2a2a2a] bg-[#080808] p-5 sm:p-6">
                       <Radio className="text-[#FFB800]" size={22} />
                       <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
                         Analytics
                       </h3>
-                      <p className="mt-3 text-sm leading-6 text-[#888888]">
+                      <p className="mt-3 flex-1 text-sm leading-6 text-[#888888]">
                         Review impressions, clicks, CTR, and campaign performance.
                       </p>
                       <Link
                         to="/account/featured-ads/analytics"
-                        className="mt-5 inline-flex h-10 items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                        className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 border border-[#333333] px-4 py-3 text-center text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
                         style={{ fontFamily: 'var(--font-heading)' }}
                       >
                         View Analytics
                         <ArrowRight size={14} />
                       </Link>
                     </article>
-                    <article className="border border-[#2a2a2a] bg-[#080808] p-5">
+                    <article className="flex min-h-[260px] flex-col border border-[#2a2a2a] bg-[#080808] p-5 sm:p-6">
                       <ShieldCheck className="text-primary" size={22} />
                       <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
                         Promotion Readiness
                       </h3>
-                      <p className="mt-3 text-sm leading-6 text-[#888888]">
+                      <p className="mt-3 flex-1 text-sm leading-6 text-[#888888]">
                         Track profile, payment, and placement requirements before launching campaigns.
                       </p>
                     </article>
