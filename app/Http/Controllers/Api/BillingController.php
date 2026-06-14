@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PaymentProvider;
 use App\Services\BillingPlanService;
 use App\Services\SubscriptionTierSyncService;
 use Illuminate\Http\JsonResponse;
@@ -42,6 +43,30 @@ class BillingController extends Controller
                 'valid' => $subscription->valid(),
             ] : null,
             'has_stripe_customer' => $user->hasStripeId(),
+        ]);
+    }
+
+    public function paymentMethods(): JsonResponse
+    {
+        $providers = PaymentProvider::query()
+            ->where('is_active', true)
+            ->orderByDesc('is_primary')
+            ->orderBy('display_name')
+            ->get()
+            ->map(fn (PaymentProvider $provider): array => [
+                'id' => $provider->id,
+                'provider' => $provider->provider,
+                'display_name' => $provider->display_name,
+                'mode' => $provider->mode,
+                'is_primary' => $provider->is_primary,
+                'supported_features' => $provider->supported_features ?? [],
+                'linking_enabled' => false,
+                'is_linked' => false,
+                'status_label' => 'Available',
+            ]);
+
+        return response()->json([
+            'payment_methods' => $providers,
         ]);
     }
 

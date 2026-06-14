@@ -35,6 +35,22 @@ export type SubscriptionStatus = {
   has_stripe_customer: boolean;
 };
 
+export type PaymentMethodProvider = {
+  id: number;
+  provider: string;
+  display_name: string;
+  mode: string;
+  is_primary: boolean;
+  supported_features: string[];
+  linking_enabled: boolean;
+  is_linked: boolean;
+  status_label: string;
+};
+
+export type PaymentMethodsResponse = {
+  payment_methods: PaymentMethodProvider[];
+};
+
 export class BillingApiError extends Error {
   status: number;
 
@@ -70,6 +86,15 @@ export async function getBillingPlans(): Promise<BillingPlansResponse> {
 export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
   try {
     const response = await apiClient.get<SubscriptionStatus>('/billing/subscription');
+    return response.data;
+  } catch (error) {
+    toBillingError(error);
+  }
+}
+
+export async function getPaymentMethods(): Promise<PaymentMethodsResponse> {
+  try {
+    const response = await apiClient.get<PaymentMethodsResponse>('/billing/payment-methods');
     return response.data;
   } catch (error) {
     toBillingError(error);

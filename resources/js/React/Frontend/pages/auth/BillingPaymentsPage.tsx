@@ -5,7 +5,6 @@ import {
   BadgeCheck,
   Bell,
   CreditCard,
-  ExternalLink,
   ReceiptText,
   ShieldCheck,
   WalletCards,
@@ -17,11 +16,10 @@ import { useAuth } from '@/components/auth/AuthProvider';
 const billingCards = [
   {
     title: 'Payment Methods',
-    description: 'Manage PayPal wallet funding sources, cards, and preferred payment methods from your PayPal account.',
+    description: 'View available payment methods, link provider accounts, and choose how future payments are handled.',
     icon: CreditCard,
-    actionLabel: 'Open PayPal Wallet',
-    href: 'https://www.paypal.com/myaccount/wallet',
-    external: true,
+    actionLabel: 'Manage Methods',
+    href: '/account/payment-methods',
   },
   {
     title: 'Invoices & Receipts',
@@ -140,7 +138,7 @@ export default function BillingPaymentsPage() {
                 const content = (
                   <>
                     {item.actionLabel}
-                    {item.external ? <ExternalLink size={15} /> : <ArrowRight size={15} />}
+                    <ArrowRight size={15} />
                   </>
                 );
 
@@ -160,25 +158,13 @@ export default function BillingPaymentsPage() {
                     </div>
 
                     {item.href ? (
-                      item.external ? (
-                        <a
-                          href={item.href}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-6 inline-flex h-11 items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
-                          style={{ fontFamily: 'var(--font-heading)' }}
-                        >
-                          {content}
-                        </a>
-                      ) : (
-                        <Link
-                          to={item.href}
-                          className="mt-6 inline-flex h-11 items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
-                          style={{ fontFamily: 'var(--font-heading)' }}
-                        >
-                          {content}
-                        </Link>
-                      )
+                      <Link
+                        to={item.href}
+                        className="mt-6 inline-flex h-11 items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                        style={{ fontFamily: 'var(--font-heading)' }}
+                      >
+                        {content}
+                      </Link>
                     ) : (
                       <button
                         type="button"

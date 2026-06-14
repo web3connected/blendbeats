@@ -61,6 +61,7 @@ Route::prefix('billing')
     ->name('api.billing.')
     ->group(function (): void {
         Route::get('subscription', [BillingController::class, 'subscription'])->name('subscription');
+        Route::get('payment-methods', [BillingController::class, 'paymentMethods'])->name('payment-methods');
         Route::post('checkout', [BillingController::class, 'checkout'])->name('checkout');
         Route::post('portal', [BillingController::class, 'portal'])->name('portal');
     });
