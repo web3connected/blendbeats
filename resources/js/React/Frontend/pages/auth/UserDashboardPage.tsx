@@ -5,7 +5,6 @@ import {
   ListMusic,
   Music2,
   Radio,
-  Settings,
   ShieldCheck,
   Swords,
   User,
@@ -45,10 +44,10 @@ const dashboardActions = [
     accent: 'text-primary',
   },
   {
-    title: 'Account Settings',
-    description: 'Manage profile details, email, password, and account preferences.',
+    title: 'Profile',
+    description: 'Manage your personal data, avatar, email, contact info, and location.',
     href: '/account',
-    icon: Settings,
+    icon: User,
     accent: 'text-[#FFB800]',
   },
 ];

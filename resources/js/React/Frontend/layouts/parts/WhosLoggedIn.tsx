@@ -94,7 +94,7 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
             className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
           >
             <LayoutDashboard size={15} />
-            Dashboard
+            Account
           </Link>
           <Link
             to={user?.dj_profile ? '/dj/edit' : '/dj/start'}
@@ -117,8 +117,8 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
             onClick={onNavigate}
             className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
           >
-            <Settings size={15} />
-            Account
+            <User size={15} />
+            Profile
           </Link>
           <Link
             to="/settings"
@@ -171,7 +171,7 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
             role="menuitem"
           >
             <LayoutDashboard size={15} />
-            Dashboard
+            Account
           </Link>
           <Link
             to={user?.dj_profile ? '/dj/edit' : '/dj/start'}
@@ -198,7 +198,7 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
             role="menuitem"
           >
             <User size={15} />
-            Account
+            Profile
           </Link>
           <Link
             to="/settings"

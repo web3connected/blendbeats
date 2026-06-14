@@ -396,8 +396,8 @@ export default function AccountPage() {
   return (
     <>
       <Helmet>
-        <title>Account | The Blend Battlegrounds</title>
-        <meta name="description" content="Manage your Blend Battlegrounds account." />
+        <title>Profile | The Blend Battlegrounds</title>
+        <meta name="description" content="Manage your Blend Battlegrounds profile data." />
       </Helmet>
       <style>
         {`
@@ -415,13 +415,13 @@ export default function AccountPage() {
               className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary"
               style={{ fontFamily: 'var(--font-heading)' }}
             >
-              Account
+              Account / Profile
             </p>
             <h1
               className="text-white uppercase leading-none"
               style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(4rem, 10vw, 8rem)' }}
             >
-              Your Profile
+              Profile
             </h1>
           </div>
         </section>

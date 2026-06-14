@@ -10,7 +10,6 @@ import {
   SlidersHorizontal,
   UploadCloud,
   User,
-  UserCog,
   WalletCards,
 } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
@@ -19,15 +18,9 @@ import { useAuth } from '@/components/auth/AuthProvider';
 
 const settingsCards = [
   {
-    title: 'Account Settings',
-    description: 'Manage your login details, account identity, email, and basic preferences.',
+    title: 'Profile',
+    description: 'Manage your personal data, avatar, contact info, location, and social links.',
     href: '/account',
-    icon: UserCog,
-  },
-  {
-    title: 'Profile Settings',
-    description: 'Update public profile details, DJ identity, genres, links, and booking info.',
-    href: '/dj/edit',
     icon: User,
   },
   {
@@ -37,27 +30,27 @@ const settingsCards = [
     icon: WalletCards,
   },
   {
-    title: 'Subscription / Membership Plan',
+    title: 'Membership Plan',
     description: 'View your current tier, compare plans, and manage membership upgrades.',
     href: '/pricing',
     icon: CreditCard,
   },
   {
-    title: 'Featured Ads / Promotions',
+    title: 'Featured Ads',
     description: 'Manage featured placement campaigns and promotional visibility.',
     href: '/settings',
     icon: Megaphone,
   },
   {
-    title: 'Storage & Upload Limits',
+    title: 'Storage',
     description: 'Track storage usage, upload limits, and future storage upgrade options.',
     href: '/dj/portfolio',
     icon: UploadCloud,
   },
   {
-    title: 'Security Settings',
+    title: 'Security',
     description: 'Control passwords, sessions, account access, and future security tools.',
-    href: '/account',
+    href: '/settings',
     icon: Lock,
   },
   {
@@ -67,7 +60,7 @@ const settingsCards = [
     icon: Bell,
   },
   {
-    title: 'Support / Help',
+    title: 'Support',
     description: 'Get help with your account, billing, uploads, promotions, and platform tools.',
     href: '/settings',
     icon: HelpCircle,
@@ -114,7 +107,7 @@ export default function SettingsPage() {
                   Settings
                 </h1>
                 <p className="mt-5 max-w-2xl text-base leading-7 text-[#aaaaaa]">
-                  Your control center for account tools, payments, subscriptions, promotions, storage, and support.
+                  Manage account-level preferences, billing, subscriptions, promotions, storage, security, notifications, and support.
                 </p>
               </div>
               <div className="border border-[#303030] bg-[#111111] p-5">
@@ -136,7 +129,7 @@ export default function SettingsPage() {
             <div className="mb-6 flex items-center gap-3">
               <ShieldCheck size={18} className="text-primary" />
               <h2 className="text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                Manage Account
+                Account Settings
               </h2>
             </div>
 
