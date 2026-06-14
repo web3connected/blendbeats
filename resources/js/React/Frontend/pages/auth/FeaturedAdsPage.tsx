@@ -426,7 +426,7 @@ export default function FeaturedAdsPage() {
                     </button>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <article className="border border-[#2a2a2a] bg-[#080808] p-5">
                       <LayoutGrid className="text-primary" size={22} />
                       <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -447,11 +447,19 @@ export default function FeaturedAdsPage() {
                     <article className="border border-[#2a2a2a] bg-[#080808] p-5">
                       <Radio className="text-[#FFB800]" size={22} />
                       <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                        Campaign History
+                        Analytics
                       </h3>
                       <p className="mt-3 text-sm leading-6 text-[#888888]">
-                        Review active, pending, and completed promotions.
+                        Review impressions, clicks, CTR, and campaign performance.
                       </p>
+                      <Link
+                        to="/account/featured-ads/analytics"
+                        className="mt-5 inline-flex h-10 items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                        style={{ fontFamily: 'var(--font-heading)' }}
+                      >
+                        View Analytics
+                        <ArrowRight size={14} />
+                      </Link>
                     </article>
                     <article className="border border-[#2a2a2a] bg-[#080808] p-5">
                       <ShieldCheck className="text-primary" size={22} />

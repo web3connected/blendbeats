@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdvertisementEvent;
 use App\Models\FeaturedCampaign;
 use App\Models\FeaturedCampaignSlot;
 use App\Models\DjFeaturedStatus;
@@ -65,6 +66,75 @@ class FeaturedAdController extends Controller
                     ->values()
                 : [],
             'payment_provider' => $this->primaryPaymentProviderPayload(),
+        ]);
+    }
+
+    public function analytics(Request $request): JsonResponse
+    {
+        $profile = $request->user()->djProfile;
+
+        if (! $profile) {
+            return response()->json([
+                'summary' => [
+                    'campaigns' => 0,
+                    'active_campaigns' => 0,
+                    'impressions' => 0,
+                    'clicks' => 0,
+                    'ctr' => 0,
+                ],
+                'campaigns' => [],
+            ]);
+        }
+
+        $campaigns = DjFeaturedStatus::query()
+            ->with(['campaignOption:id,name,duration_days', 'campaignSlot.campaign.slotGroup:id,name,group_key,sort_order'])
+            ->where('dj_profile_id', $profile->id)
+            ->latest()
+            ->get();
+
+        $campaignIds = $campaigns->pluck('id');
+        $eventCounts = AdvertisementEvent::query()
+            ->where('advertisable_type', DjFeaturedStatus::class)
+            ->whereIn('advertisable_id', $campaignIds)
+            ->select('advertisable_id', 'event_type', DB::raw('count(*) as aggregate_count'))
+            ->groupBy('advertisable_id', 'event_type')
+            ->get()
+            ->groupBy('advertisable_id');
+
+        $campaignPayloads = $campaigns
+            ->map(function (DjFeaturedStatus $campaign) use ($eventCounts): array {
+                $events = $eventCounts->get($campaign->id, collect());
+                $impressions = (int) ($campaign->impression_count ?: $events->firstWhere('event_type', 'impression')?->aggregate_count ?? 0);
+                $clicks = (int) ($campaign->click_count ?: $events->firstWhere('event_type', 'click')?->aggregate_count ?? 0);
+                $ctr = $impressions > 0 ? round(($clicks / $impressions) * 100, 2) : 0.0;
+                $groupNumber = (int) ($campaign->campaignSlot?->campaign?->slotGroup?->sort_order
+                    ?: $this->placementPricing->groupNumberForSlot((int) $campaign->slot_number));
+                $slotPosition = (int) ($campaign->campaignSlot?->group_slot_number
+                    ?: $this->placementPricing->slotPositionForSlot((int) $campaign->slot_number));
+
+                return [
+                    ...$this->campaignPayload($campaign, $campaign->dj_profile_id),
+                    'group_number' => $groupNumber,
+                    'slot_position' => $slotPosition,
+                    'impressions' => $impressions,
+                    'clicks' => $clicks,
+                    'ctr' => $ctr,
+                ];
+            })
+            ->values();
+
+        $impressions = (int) $campaignPayloads->sum('impressions');
+        $clicks = (int) $campaignPayloads->sum('clicks');
+
+        return response()->json([
+            'summary' => [
+                'campaigns' => $campaignPayloads->count(),
+                'active_campaigns' => $campaignPayloads->where('status', 'active')->count(),
+                'impressions' => $impressions,
+                'clicks' => $clicks,
+                'ctr' => $impressions > 0 ? round(($clicks / $impressions) * 100, 2) : 0,
+            ],
+            'campaigns' => $campaignPayloads,
         ]);
     }
 

@@ -35,6 +35,25 @@ export type FeaturedAdCampaign = {
   } | null;
 };
 
+export type FeaturedAdAnalyticsCampaign = FeaturedAdCampaign & {
+  group_number: number;
+  slot_position: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+};
+
+export type FeaturedAdAnalyticsResponse = {
+  summary: {
+    campaigns: number;
+    active_campaigns: number;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+  };
+  campaigns: FeaturedAdAnalyticsCampaign[];
+};
+
 export type FeaturedCampaignSlot = {
   id: number;
   campaign_id: number;
@@ -120,6 +139,15 @@ function toFeaturedAdsError(error: unknown): never {
 export async function getFeaturedAdPlacements(): Promise<FeaturedAdsPlacementsResponse> {
   try {
     const response = await apiClient.get<FeaturedAdsPlacementsResponse>('/featured-ads/placements');
+    return response.data;
+  } catch (error) {
+    toFeaturedAdsError(error);
+  }
+}
+
+export async function getFeaturedAdAnalytics(): Promise<FeaturedAdAnalyticsResponse> {
+  try {
+    const response = await apiClient.get<FeaturedAdAnalyticsResponse>('/featured-ads/analytics');
     return response.data;
   } catch (error) {
     toFeaturedAdsError(error);
