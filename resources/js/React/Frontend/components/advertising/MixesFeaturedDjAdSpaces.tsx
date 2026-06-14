@@ -16,7 +16,7 @@ export default function MixesFeaturedDjAdSpaces() {
               Featured DJs
             </p>
             <h2 className="mt-2 text-5xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-              Spotlight Rotation
+              Spotlight
             </h2>
           </div>
           <p className="max-w-md text-sm leading-6 text-[#888888]">
