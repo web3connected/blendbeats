@@ -21,25 +21,25 @@ const helpTopics = [
     title: 'Account & Profile',
     description: 'Get help with login, profile details, avatar, DJ identity, and account settings.',
     icon: ShieldCheck,
-    href: '/account/profile',
+    href: '/account/support/docs/account-profile',
   },
   {
     title: 'Uploads & Storage',
     description: 'Review upload limits, portfolio media, audio playback, file storage, and cover images.',
     icon: UploadCloud,
-    href: '/account/storage',
+    href: '/account/support/docs/uploads-storage',
   },
   {
     title: 'Billing & Payments',
     description: 'Manage PayPal, payment methods, receipts, provider status, and billing questions.',
     icon: CreditCard,
-    href: '/account/billing',
+    href: '/account/support/docs/billing-payments',
   },
   {
     title: 'Featured Ads',
     description: 'Get support for placement setup, campaign checkout, ad status, impressions, and clicks.',
     icon: Megaphone,
-    href: '/account/featured-ads',
+    href: '/account/support/docs/featured-ads',
   },
 ];
 
@@ -47,17 +47,17 @@ const quickAnswers = [
   {
     question: 'Where do I upload mixes?',
     answer: 'Use your DJ Portfolio to upload audio, add cover art, set visibility, and publish public mixes.',
-    href: '/dj/portfolio',
+    href: '/account/support/docs/upload-mixes',
   },
   {
     question: 'Where do I manage payment methods?',
     answer: 'Payment methods live in the account billing area. PayPal is the active provider right now.',
-    href: '/account/payment-methods',
+    href: '/account/support/docs/payment-methods',
   },
   {
     question: 'Where do I review ad performance?',
     answer: 'Featured Ad Analytics shows impressions, clicks, CTR, and campaign performance.',
-    href: '/account/featured-ads/analytics',
+    href: '/account/support/docs/ad-performance',
   },
 ];
 

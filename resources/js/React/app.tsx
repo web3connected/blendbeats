@@ -16,6 +16,7 @@ import PaymentMethodsPage from './Frontend/pages/auth/PaymentMethodsPage';
 import RegisterPage from './Frontend/pages/auth/RegisterPage';
 import SettingsPage from './Frontend/pages/auth/SettingsPage';
 import StoragePage from './Frontend/pages/auth/StoragePage';
+import SupportDocPage from './Frontend/pages/auth/SupportDocPage';
 import SupportPage from './Frontend/pages/auth/SupportPage';
 import UserDashboardPage from './Frontend/pages/auth/UserDashboardPage';
 import BattlesPage from './Frontend/pages/battles';
@@ -77,6 +78,7 @@ createRoot(rootElement).render(
                 <Route path="/account/settings" element={<SettingsPage />} />
                 <Route path="/account/storage" element={<StoragePage />} />
                 <Route path="/account/support" element={<SupportPage />} />
+                <Route path="/account/support/docs/:topic" element={<SupportDocPage />} />
                 <Route path="/settings" element={<Navigate to="/account/settings" replace />} />
                 <Route path="*" element={<HomePage />} />
               </Routes>
