@@ -3,6 +3,7 @@ import { ChevronDown, Headphones, Menu, Music2, Radio, Upload, Users, X } from '
 import { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import NotificationHeaderBell from './NotificationHeaderBell';
 import WhosLoggedIn from './WhosLoggedIn';
 import { siteMedia } from '@/lib/site-media';
 
@@ -140,6 +141,7 @@ export default function Header() {
             >
               ENTER BATTLE
             </Link>
+            <NotificationHeaderBell />
             <WhosLoggedIn />
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import type { AuthUser } from '@/lib/auth';
-import { getUnreadNotificationCount } from '@/lib/notifications';
 
 interface WhosLoggedInProps {
   onNavigate?: () => void;
@@ -28,7 +27,6 @@ function UserAvatar({ user, className }: { user: AuthUser; className: string }) 
 export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLoggedInProps) {
   const { user, isLoading, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const isMobile = variant === 'mobile';
   const djProfileLabel = user?.dj_profile ? 'Go To DJ Profile' : 'Start DJ Career';
@@ -43,33 +41,6 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [isOpen]);
-
-  useEffect(() => {
-    if (!user) {
-      setUnreadCount(0);
-      return;
-    }
-
-    let cancelled = false;
-
-    const refreshUnreadCount = () => {
-      getUnreadNotificationCount()
-        .then((count) => {
-          if (!cancelled) setUnreadCount(count);
-        })
-        .catch(() => {
-          if (!cancelled) setUnreadCount(0);
-        });
-    };
-
-    refreshUnreadCount();
-    const interval = window.setInterval(refreshUnreadCount, 60_000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, [user]);
 
   const handleLogout = async () => {
     await logout();
@@ -156,7 +127,6 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
           >
             <span className="relative">
               <Bell size={15} />
-              {unreadCount > 0 && <span className="absolute -right-2 -top-2 h-4 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] leading-4 text-white">{Math.min(unreadCount, 99)}</span>}
             </span>
             Notifications
           </Link>
@@ -192,7 +162,6 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
       >
         <UserAvatar user={user} className="h-7 w-7 text-xs" />
         <span className="max-w-28 truncate text-sm font-semibold text-white">{user.name}</span>
-        {unreadCount > 0 && <span className="h-5 min-w-5 bg-primary px-1 text-center text-[10px] font-bold leading-5 text-white">{Math.min(unreadCount, 99)}</span>}
         <ChevronDown size={15} className="text-[#888888]" />
       </button>
 
@@ -249,7 +218,6 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
           >
             <span className="relative">
               <Bell size={15} />
-              {unreadCount > 0 && <span className="absolute -right-2 -top-2 h-4 min-w-4 bg-primary px-1 text-center text-[10px] leading-4 text-white">{Math.min(unreadCount, 99)}</span>}
             </span>
             Notifications
           </Link>
