@@ -16,7 +16,11 @@ class RegistrationAdCreditSeeder extends Seeder
             ->orderBy('id')
             ->chunkById(100, function ($users) use ($credits): void {
                 foreach ($users as $user) {
-                    $credits->grantRegistrationAdCredit($user);
+                    $credit = $credits->grantRegistrationAdCredit($user);
+
+                    if ($credit) {
+                        $credits->notifyRegistrationAdCredit($credit);
+                    }
                 }
             });
     }

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\UserAdCredit;
+use App\Notifications\RegistrationAdCreditNotification;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -38,6 +39,24 @@ class UserAdCreditService
                 ],
             ],
         );
+    }
+
+    public function notifyRegistrationAdCredit(UserAdCredit $credit): bool
+    {
+        if (! Schema::hasTable('notifications') || $credit->notified_at) {
+            return false;
+        }
+
+        $credit->loadMissing('user');
+
+        if (! $credit->user) {
+            return false;
+        }
+
+        $credit->user->notify(new RegistrationAdCreditNotification($credit));
+        $credit->forceFill(['notified_at' => now()])->save();
+
+        return true;
     }
 
     private function codeFor(User $user): string

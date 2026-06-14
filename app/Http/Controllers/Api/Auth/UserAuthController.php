@@ -34,7 +34,12 @@ class UserAuthController extends Controller
             $user->notify(new RegistrationWelcomeNotification());
         }
 
-        app(UserAdCreditService::class)->grantRegistrationAdCredit($user);
+        $adCredits = app(UserAdCreditService::class);
+        $credit = $adCredits->grantRegistrationAdCredit($user);
+
+        if ($credit) {
+            $adCredits->notifyRegistrationAdCredit($credit);
+        }
 
         Auth::guard('web')->login($user);
         $request->session()->regenerate();

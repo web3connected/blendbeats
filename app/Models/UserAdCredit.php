@@ -21,6 +21,7 @@ class UserAdCredit extends Model
         'granted_at',
         'expires_at',
         'redeemed_at',
+        'notified_at',
         'metadata',
     ];
 
@@ -34,6 +35,7 @@ class UserAdCredit extends Model
             'granted_at' => 'datetime',
             'expires_at' => 'datetime',
             'redeemed_at' => 'datetime',
+            'notified_at' => 'datetime',
             'metadata' => 'array',
         ];
     }
