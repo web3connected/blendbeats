@@ -12,6 +12,9 @@ export type FeaturedAdOption = {
 export type FeaturedAdCampaign = {
   id: number;
   slot_number: number;
+  campaign_title?: string | null;
+  campaign_slot_id?: number | null;
+  group_slot_number?: number | null;
   group: string;
   option_name: string | null;
   duration_days: number | null;
@@ -29,17 +32,34 @@ export type FeaturedAdCampaign = {
   } | null;
 };
 
-export type FeaturedAdSlot = {
-  number: number;
+export type FeaturedCampaignSlot = {
+  id: number;
+  campaign_id: number;
   group: string;
   group_number: number;
-  position: number;
-  daily_price_cents: number;
-  daily_price_label: string;
+  group_slot_number: number;
+  template_slot_number: number;
+  claim_status: string;
   is_unlocked: boolean;
   is_available: boolean;
   active_campaign: FeaturedAdCampaign | null;
   options: FeaturedAdOption[];
+};
+
+export type FeaturedMarketplaceCampaign = {
+  id: number;
+  title: string;
+  description: string | null;
+  status: string;
+  group: string;
+  group_name: string;
+  group_number: number;
+  template_type: string;
+  slot_count: number;
+  daily_price_cents: number;
+  daily_price_label: string;
+  is_unlocked: boolean;
+  slots: FeaturedCampaignSlot[];
 };
 
 export type FeaturedAdsPlacementsResponse = {
@@ -47,7 +67,7 @@ export type FeaturedAdsPlacementsResponse = {
     tier: string;
     groups: string[];
   };
-  slots: FeaturedAdSlot[];
+  campaigns: FeaturedMarketplaceCampaign[];
   my_campaigns: FeaturedAdCampaign[];
   payment_provider: {
     provider: string;
@@ -95,12 +115,12 @@ export async function getFeaturedAdPlacements(): Promise<FeaturedAdsPlacementsRe
 }
 
 export async function startFeaturedAdCheckout(
-  slotNumber: number,
+  campaignSlotId: number,
   campaignOptionId: number,
 ): Promise<FeaturedAdCheckoutResponse> {
   try {
     const response = await apiClient.post<FeaturedAdCheckoutResponse>('/featured-ads/checkout', {
-      slot_number: slotNumber,
+      campaign_slot_id: campaignSlotId,
       campaign_option_id: campaignOptionId,
     });
 

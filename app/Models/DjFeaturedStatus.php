@@ -13,6 +13,7 @@ class DjFeaturedStatus extends Model
         'dj_profile_id',
         'slot_number',
         'featured_slot_campaign_option_id',
+        'featured_campaign_slot_id',
         'featured_type',
         'rotation_weight',
         'amount_cents',
@@ -51,5 +52,10 @@ class DjFeaturedStatus extends Model
     public function campaignOption(): BelongsTo
     {
         return $this->belongsTo(FeaturedSlotCampaignOption::class, 'featured_slot_campaign_option_id');
+    }
+
+    public function campaignSlot(): BelongsTo
+    {
+        return $this->belongsTo(FeaturedCampaignSlot::class, 'featured_campaign_slot_id');
     }
 }

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\FeaturedCampaign;
+use App\Models\FeaturedCampaignSlot;
 use App\Models\DjFeaturedStatus;
 use App\Models\FeaturedSlotCampaignOption;
 use App\Models\PaymentProvider;
@@ -34,42 +36,33 @@ class FeaturedAdController extends Controller
         $user = $request->user();
         $profile = $user->djProfile;
         $availableGroups = $this->membershipTiers->advertisingGroupsFor($user);
-        $configuredOptionIdsBySlot = $this->configuredOptionIdsBySlot();
-        $activeRowsBySlot = DjFeaturedStatus::query()
-            ->with(['djProfile:id,dj_name,handle,user_id', 'campaignOption:id,name,duration_days'])
-            ->whereIn('status', ['active', 'pending_payment'])
+
+        $campaigns = FeaturedCampaign::query()
+            ->with([
+                'slotGroup:id,name,group_key,slot_count,template_type,rotation_weight,daily_price_cents,sort_order,is_active',
+                'slots.featuredStatus.djProfile:id,dj_name,handle,user_id',
+                'slots.featuredStatus.campaignOption:id,name,duration_days',
+            ])
+            ->where('status', 'active')
+            ->where(fn ($query) => $query->whereNull('start_date')->orWhere('start_date', '<=', now()))
             ->where(fn ($query) => $query->whereNull('end_date')->orWhere('end_date', '>=', now()))
-            ->whereBetween('slot_number', [1, self::SLOT_COUNT])
+            ->orderBy('sort_order')
+            ->latest()
             ->get()
-            ->groupBy('slot_number');
+            ->filter(fn (FeaturedCampaign $campaign): bool => (bool) $campaign->slotGroup?->is_active)
+            ->values();
 
         return response()->json([
             'membership' => [
                 'tier' => $this->membershipTiers->tierFor($user),
                 'groups' => $availableGroups,
             ],
-            'slots' => collect(range(1, self::SLOT_COUNT))->map(function (int $slotNumber) use ($configuredOptionIdsBySlot, $activeRowsBySlot, $availableGroups): array {
-                $groupNumber = $this->groupNumberForSlot($slotNumber);
-                $groupKey = $this->groupKeyForNumber($groupNumber);
-                $activeRow = $activeRowsBySlot->get($slotNumber)?->first();
-                $configuredOptionIds = $configuredOptionIdsBySlot->get($slotNumber, collect())->all();
-
-                return [
-                    'number' => $slotNumber,
-                    'group' => $groupKey,
-                    'group_number' => $groupNumber,
-                    'position' => (($slotNumber - 1) % self::GROUP_SIZE) + 1,
-                    'daily_price_cents' => $this->dailyPriceForGroup($groupNumber),
-                    'daily_price_label' => $this->formatMoney($this->dailyPriceForGroup($groupNumber)),
-                    'is_unlocked' => in_array($groupKey, $availableGroups, true),
-                    'is_available' => ! $activeRow && count($configuredOptionIds) > 0,
-                    'active_campaign' => $activeRow ? $this->campaignPayload($activeRow) : null,
-                    'options' => $this->campaignOptionsForSlot($slotNumber, $configuredOptionIds, $groupNumber),
-                ];
-            })->values(),
+            'campaigns' => $campaigns
+                ->map(fn (FeaturedCampaign $campaign): array => $this->marketplaceCampaignPayload($campaign, $availableGroups))
+                ->values(),
             'my_campaigns' => $profile
                 ? DjFeaturedStatus::query()
-                    ->with('campaignOption:id,name,duration_days')
+                    ->with(['campaignOption:id,name,duration_days', 'campaignSlot.campaign:id,title'])
                     ->where('dj_profile_id', $profile->id)
                     ->latest()
                     ->take(12)
@@ -84,7 +77,7 @@ class FeaturedAdController extends Controller
     public function checkout(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'slot_number' => ['required', 'integer', 'min:1', 'max:'.self::SLOT_COUNT],
+            'campaign_slot_id' => ['required', 'integer', Rule::exists('featured_campaign_slots', 'id')],
             'campaign_option_id' => [
                 'required',
                 'integer',
@@ -96,15 +89,22 @@ class FeaturedAdController extends Controller
         $profile = $user->djProfile;
         abort_unless($profile && $profile->profile_status === 'active' && $profile->visibility === 'public', 422, 'Create an active public DJ profile before claiming featured placements.');
 
-        $slotNumber = (int) $validated['slot_number'];
-        $groupNumber = $this->groupNumberForSlot($slotNumber);
-        $groupKey = $this->groupKeyForNumber($groupNumber);
+        $campaignSlot = FeaturedCampaignSlot::query()
+            ->with(['campaign.slotGroup'])
+            ->findOrFail($validated['campaign_slot_id']);
+        $campaign = $campaignSlot->campaign;
+        $slotGroup = $campaign?->slotGroup;
+        abort_unless($campaign && $slotGroup && $campaign->status === 'active' && $slotGroup->is_active, 422, 'This featured campaign is not available.');
+        abort_unless((! $campaign->start_date || $campaign->start_date <= now()) && (! $campaign->end_date || $campaign->end_date >= now()), 422, 'This featured campaign is not currently active.');
+
+        $groupNumber = (int) $slotGroup->sort_order;
+        $groupKey = (string) $slotGroup->group_key;
         abort_unless($this->membershipTiers->canAccessAdvertisingGroup($user, $groupKey), 403, "Your membership does not include Group {$groupKey} advertising.");
-        abort_unless($this->slotHasOption($slotNumber, (int) $validated['campaign_option_id']), 422, 'That campaign option is not available for this slot.');
-        abort_if($this->slotHasActiveOrPendingCampaign($slotNumber), 422, 'That featured slot is already claimed or pending payment.');
+        abort_unless($this->campaignSlotHasOption($campaignSlot, (int) $validated['campaign_option_id']), 422, 'That campaign option is not available for this slot.');
+        abort_if($this->campaignSlotHasActiveOrPendingCampaign($campaignSlot), 422, 'That campaign slot is already claimed or pending payment.');
 
         $option = FeaturedSlotCampaignOption::query()->findOrFail($validated['campaign_option_id']);
-        $amountCents = $this->dailyPriceForGroup($groupNumber) * $option->duration_days;
+        $amountCents = (int) $slotGroup->daily_price_cents * $option->duration_days;
         $provider = $this->primaryPaymentProvider();
 
         abort_unless($provider, 422, 'No active payment provider is configured.');
@@ -113,10 +113,11 @@ class FeaturedAdController extends Controller
 
         $campaign = DjFeaturedStatus::query()->create([
             'dj_profile_id' => $profile->id,
-            'slot_number' => $slotNumber,
+            'slot_number' => $this->templateSlotNumber($groupNumber, (int) $campaignSlot->group_slot_number),
             'featured_slot_campaign_option_id' => $option->id,
+            'featured_campaign_slot_id' => $campaignSlot->id,
             'featured_type' => 'paid_placement',
-            'rotation_weight' => self::GROUP_WEIGHTS[$groupNumber - 1] ?? 1,
+            'rotation_weight' => (int) $slotGroup->rotation_weight,
             'amount_cents' => $amountCents,
             'currency' => 'USD',
             'payment_provider' => 'paypal',
@@ -127,10 +128,19 @@ class FeaturedAdController extends Controller
             'end_date' => null,
         ]);
 
+        $campaignSlot->forceFill([
+            'claim_status' => 'pending_payment',
+            'claimed_by_user_id' => $user->id,
+        ])->save();
+
         try {
             $order = $this->createPaypalOrder($provider, $campaign, $option);
         } catch (RequestException $exception) {
             $campaign->delete();
+            $campaignSlot->forceFill([
+                'claim_status' => 'open',
+                'claimed_by_user_id' => null,
+            ])->save();
 
             abort(422, $exception->response?->json('message') ?: 'PayPal checkout could not be started.');
         }
@@ -177,27 +187,26 @@ class FeaturedAdController extends Controller
             ],
         ])->save();
 
+        $campaign->campaignSlot?->forceFill(['claim_status' => 'claimed'])->save();
+
         return response()->json([
             'campaign' => $this->campaignPayload($campaign->refresh()),
         ]);
     }
 
-    private function configuredOptionIdsBySlot()
+    private function campaignOptionsForSlot(int $templateSlotNumber, int $dailyPrice): array
     {
-        return DB::table('featured_slot_campaign_option_slot')
-            ->select(['slot_number', 'featured_slot_campaign_option_id'])
-            ->get()
-            ->groupBy('slot_number')
-            ->map(fn ($rows) => $rows->pluck('featured_slot_campaign_option_id')->map(fn ($id) => (int) $id)->unique()->values());
-    }
+        $configuredOptionIds = DB::table('featured_slot_campaign_option_slot')
+            ->where('slot_number', $templateSlotNumber)
+            ->pluck('featured_slot_campaign_option_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
 
-    private function campaignOptionsForSlot(int $slotNumber, array $configuredOptionIds, int $groupNumber): array
-    {
         if (count($configuredOptionIds) === 0) {
             return [];
         }
-
-        $dailyPrice = $this->dailyPriceForGroup($groupNumber);
 
         return FeaturedSlotCampaignOption::query()
             ->whereIn('id', $configuredOptionIds)
@@ -217,18 +226,27 @@ class FeaturedAdController extends Controller
             ->all();
     }
 
-    private function slotHasOption(int $slotNumber, int $optionId): bool
+    private function campaignSlotHasOption(FeaturedCampaignSlot $campaignSlot, int $optionId): bool
     {
+        $templateSlotNumber = $this->templateSlotNumber(
+            (int) $campaignSlot->campaign->slotGroup->sort_order,
+            (int) $campaignSlot->group_slot_number,
+        );
+
         return DB::table('featured_slot_campaign_option_slot')
-            ->where('slot_number', $slotNumber)
+            ->where('slot_number', $templateSlotNumber)
             ->where('featured_slot_campaign_option_id', $optionId)
             ->exists();
     }
 
-    private function slotHasActiveOrPendingCampaign(int $slotNumber): bool
+    private function campaignSlotHasActiveOrPendingCampaign(FeaturedCampaignSlot $campaignSlot): bool
     {
+        if ($campaignSlot->claim_status !== 'open') {
+            return true;
+        }
+
         return DjFeaturedStatus::query()
-            ->where('slot_number', $slotNumber)
+            ->where('featured_campaign_slot_id', $campaignSlot->id)
             ->whereIn('status', ['active', 'pending_payment'])
             ->where(fn ($query) => $query->whereNull('end_date')->orWhere('end_date', '>=', now()))
             ->exists();
@@ -269,7 +287,7 @@ class FeaturedAdController extends Controller
                 'intent' => 'CAPTURE',
                 'purchase_units' => [[
                     'reference_id' => 'featured-campaign-'.$campaign->id,
-                    'description' => "BlendBeats Featured Slot {$campaign->slot_number} - {$option->name}",
+                    'description' => "BlendBeats Featured Placement - {$option->name}",
                     'amount' => [
                         'currency_code' => $campaign->currency,
                         'value' => $amount,
@@ -321,10 +339,17 @@ class FeaturedAdController extends Controller
 
     private function campaignPayload(DjFeaturedStatus $campaign): array
     {
+        $campaignSlot = $campaign->campaignSlot;
+        $marketplaceCampaign = $campaignSlot?->campaign;
+        $slotGroup = $marketplaceCampaign?->slotGroup;
+
         return [
             'id' => $campaign->id,
             'slot_number' => $campaign->slot_number,
-            'group' => $this->groupKeyForNumber($this->groupNumberForSlot((int) $campaign->slot_number)),
+            'campaign_title' => $marketplaceCampaign?->title,
+            'campaign_slot_id' => $campaignSlot?->id,
+            'group_slot_number' => $campaignSlot?->group_slot_number,
+            'group' => $slotGroup?->group_key ?? $this->groupKeyForNumber($this->groupNumberForSlot((int) $campaign->slot_number)),
             'option_name' => $campaign->campaignOption?->name,
             'duration_days' => $campaign->campaignOption?->duration_days,
             'amount_cents' => $campaign->amount_cents,
@@ -342,6 +367,51 @@ class FeaturedAdController extends Controller
         ];
     }
 
+    private function marketplaceCampaignPayload(FeaturedCampaign $campaign, array $availableGroups): array
+    {
+        $slotGroup = $campaign->slotGroup;
+        $groupKey = (string) $slotGroup->group_key;
+        $dailyPrice = (int) $slotGroup->daily_price_cents;
+        $isUnlocked = in_array($groupKey, $availableGroups, true);
+
+        return [
+            'id' => $campaign->id,
+            'title' => $campaign->title,
+            'description' => $campaign->description,
+            'status' => $campaign->status,
+            'group' => $groupKey,
+            'group_name' => $slotGroup->name,
+            'group_number' => (int) $slotGroup->sort_order,
+            'template_type' => $slotGroup->template_type,
+            'slot_count' => (int) $slotGroup->slot_count,
+            'daily_price_cents' => $dailyPrice,
+            'daily_price_label' => $this->formatMoney($dailyPrice),
+            'is_unlocked' => $isUnlocked,
+            'slots' => $campaign->slots
+                ->sortBy('group_slot_number')
+                ->map(function (FeaturedCampaignSlot $slot) use ($campaign, $slotGroup, $dailyPrice, $isUnlocked): array {
+                    $featuredStatus = $slot->featuredStatus;
+                    $templateSlotNumber = $this->templateSlotNumber((int) $slotGroup->sort_order, (int) $slot->group_slot_number);
+                    $options = $this->campaignOptionsForSlot($templateSlotNumber, $dailyPrice);
+
+                    return [
+                        'id' => $slot->id,
+                        'campaign_id' => $campaign->id,
+                        'group' => $slotGroup->group_key,
+                        'group_number' => (int) $slotGroup->sort_order,
+                        'group_slot_number' => (int) $slot->group_slot_number,
+                        'template_slot_number' => $templateSlotNumber,
+                        'claim_status' => $slot->claim_status,
+                        'is_unlocked' => $isUnlocked,
+                        'is_available' => $slot->claim_status === 'open' && count($options) > 0 && ! $featuredStatus,
+                        'active_campaign' => $featuredStatus ? $this->campaignPayload($featuredStatus) : null,
+                        'options' => $options,
+                    ];
+                })
+                ->values(),
+        ];
+    }
+
     private function groupNumberForSlot(int $slotNumber): int
     {
         return intdiv($slotNumber - 1, self::GROUP_SIZE) + 1;
@@ -350,6 +420,11 @@ class FeaturedAdController extends Controller
     private function groupKeyForNumber(int $groupNumber): string
     {
         return chr(64 + $groupNumber);
+    }
+
+    private function templateSlotNumber(int $groupNumber, int $groupSlotNumber): int
+    {
+        return (($groupNumber - 1) * self::GROUP_SIZE) + $groupSlotNumber;
     }
 
     private function dailyPriceForGroup(int $group): int
