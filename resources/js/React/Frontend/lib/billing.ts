@@ -18,9 +18,25 @@ export type BillingPlan = {
   checkout_enabled: boolean;
 };
 
+export type PaymentProfileProvider = {
+  provider: string;
+  display_name: string;
+  mode: string;
+  is_primary: boolean;
+  supported_features: string[];
+  credentials_ready: boolean;
+  checkout_ready: boolean;
+};
+
+export type PaymentProfile = {
+  primary_provider: PaymentProfileProvider | null;
+  active_providers: PaymentProfileProvider[];
+};
+
 export type BillingPlansResponse = {
   plans: BillingPlan[];
   current_tier: string;
+  payment_profile: PaymentProfile;
 };
 
 export type SubscriptionStatus = {
@@ -33,6 +49,7 @@ export type SubscriptionStatus = {
     valid: boolean;
   } | null;
   has_stripe_customer: boolean;
+  payment_profile: PaymentProfile;
 };
 
 export type PaymentMethodProvider = {
@@ -49,6 +66,7 @@ export type PaymentMethodProvider = {
 
 export type PaymentMethodsResponse = {
   payment_methods: PaymentMethodProvider[];
+  payment_profile: PaymentProfile;
 };
 
 export class BillingApiError extends Error {

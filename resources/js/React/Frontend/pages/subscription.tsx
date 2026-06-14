@@ -11,6 +11,7 @@ import {
   openBillingPortal,
   startCheckout,
   type BillingPlan,
+  type PaymentProfile,
   type SubscriptionStatus,
 } from '@/lib/billing';
 
@@ -19,6 +20,7 @@ export default function SubscriptionPage() {
   const [searchParams] = useSearchParams();
   const [plans, setPlans] = useState<BillingPlan[]>([]);
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
+  const [paymentProfile, setPaymentProfile] = useState<PaymentProfile | null>(null);
   const [error, setError] = useState('');
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
@@ -40,6 +42,7 @@ export default function SubscriptionPage() {
       .then(([plansResponse, subscriptionResponse]) => {
         setPlans(plansResponse.plans);
         setStatus(subscriptionResponse);
+        setPaymentProfile(subscriptionResponse.payment_profile ?? plansResponse.payment_profile);
       })
       .catch((loadError) => {
         setError(loadError instanceof BillingApiError ? loadError.message : 'Unable to load subscription details.');
@@ -58,7 +61,7 @@ export default function SubscriptionPage() {
         window.location.href = url;
       })
       .catch((checkoutError) => {
-        setError(checkoutError instanceof BillingApiError ? checkoutError.message : 'Unable to start Stripe checkout.');
+        setError(checkoutError instanceof BillingApiError ? checkoutError.message : 'Unable to start checkout.');
       })
       .finally(() => setIsCheckoutLoading(false));
   };
@@ -72,7 +75,7 @@ export default function SubscriptionPage() {
         window.location.href = url;
       })
       .catch((portalError) => {
-        setError(portalError instanceof BillingApiError ? portalError.message : 'Unable to open Stripe billing portal.');
+        setError(portalError instanceof BillingApiError ? portalError.message : 'Unable to open billing portal.');
       })
       .finally(() => setIsPortalLoading(false));
   };
@@ -88,6 +91,18 @@ export default function SubscriptionPage() {
   if (!user) {
     return <Navigate to="/register" replace />;
   }
+
+  const primaryProvider = paymentProfile?.primary_provider;
+  const providerName = primaryProvider?.display_name ?? 'Payment Provider';
+  const providerStatusLabel = primaryProvider
+    ? `${primaryProvider.display_name} ${primaryProvider.mode}`
+    : 'No active provider';
+  const providerCheckoutReady = Boolean(primaryProvider?.checkout_ready);
+  const checkoutLabel = selectedPlan?.is_current
+    ? 'Current Plan'
+    : providerCheckoutReady
+      ? `Continue To ${providerName} Checkout`
+      : `${providerName} Setup Needed`;
 
   return (
     <>
@@ -120,7 +135,7 @@ export default function SubscriptionPage() {
                   Choose Your Membership
                 </h1>
                 <p className="mt-6 max-w-2xl text-base leading-7 text-[#c8c8c8]">
-                  You are signed in as {user.name}. Pick a membership plan and continue to Stripe test checkout when the plan is configured.
+                  You are signed in as {user.name}. Pick a membership plan and continue through the active payment provider when checkout is ready.
                 </p>
               </div>
 
@@ -159,9 +174,9 @@ export default function SubscriptionPage() {
                         </p>
                       </div>
                       <div className="border border-[#2a2a2a] bg-[#080808] p-3">
-                        <p className="text-[10px] uppercase tracking-widest text-[#777]">Stripe Status</p>
+                        <p className="text-[10px] uppercase tracking-widest text-[#777]">Payment Provider</p>
                         <p className="mt-1 text-lg uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                          {status?.subscription?.stripe_status ?? 'None'}
+                          {providerStatusLabel}
                         </p>
                       </div>
                     </div>
@@ -173,13 +188,13 @@ export default function SubscriptionPage() {
                     <div className="mt-7 grid gap-3">
                       <button
                         type="button"
-                        disabled={!selectedPlan.checkout_enabled || selectedPlan.is_current || isCheckoutLoading}
+                        disabled={!selectedPlan.checkout_enabled || !providerCheckoutReady || selectedPlan.is_current || isCheckoutLoading}
                         onClick={handleCheckout}
                         className="inline-flex w-full items-center justify-center gap-3 bg-primary px-6 py-4 text-xs font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                         style={{ fontFamily: 'var(--font-heading)' }}
                       >
                         {isCheckoutLoading ? <Loader2 className="animate-spin" size={16} /> : <CreditCard size={16} />}
-                        {selectedPlan.is_current ? 'Current Plan' : selectedPlan.checkout_enabled ? 'Continue To Stripe Checkout' : 'Stripe Price Needed'}
+                        {selectedPlan.checkout_enabled ? checkoutLabel : 'Plan Price Needed'}
                       </button>
 
                       {status?.has_stripe_customer && (

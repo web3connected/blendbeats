@@ -10,8 +10,10 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import { getPaymentMethods, type PaymentProfile } from '@/lib/billing';
 
 const billingCards = [
   {
@@ -23,7 +25,7 @@ const billingCards = [
   },
   {
     title: 'Invoices & Receipts',
-    description: 'PayPal receipts and BlendBeats billing records will appear here after checkout webhooks are connected.',
+    description: 'Provider receipts and BlendBeats billing records will appear here after checkout webhooks are connected.',
     icon: ReceiptText,
     actionLabel: 'Coming Soon',
   },
@@ -44,6 +46,15 @@ const billingCards = [
 
 export default function BillingPaymentsPage() {
   const { user, isLoading } = useAuth();
+  const [paymentProfile, setPaymentProfile] = useState<PaymentProfile | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+
+    getPaymentMethods()
+      .then((response) => setPaymentProfile(response.payment_profile))
+      .catch(() => setPaymentProfile(null));
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -57,13 +68,19 @@ export default function BillingPaymentsPage() {
 
   if (!user) return <Navigate to="/login" replace />;
 
+  const primaryProvider = paymentProfile?.primary_provider;
+  const providerName = primaryProvider?.display_name ?? 'No Active Provider';
+  const providerDescription = primaryProvider
+    ? `Primary ${primaryProvider.mode} payment provider.`
+    : 'Enable a payment provider before checkout can be used.';
+
   return (
     <>
       <Helmet>
         <title>Billing & Payments | The Blend Battlegrounds</title>
         <meta
           name="description"
-          content="Manage BlendBeats billing, PayPal payment methods, invoices, receipts, and billing preferences."
+          content="Manage BlendBeats billing, payment methods, invoices, receipts, and billing preferences."
         />
       </Helmet>
 
@@ -94,8 +111,7 @@ export default function BillingPaymentsPage() {
                   Billing & Payments
                 </h1>
                 <p className="mt-5 max-w-2xl text-base leading-7 text-[#aaaaaa]">
-                  Manage payment methods, invoices, receipts, and billing preferences. PayPal is the active payment provider while
-                  Stripe stays ready for future checkout flows.
+                  Manage payment methods, invoices, receipts, and billing preferences using the active payment provider profile.
                 </p>
               </div>
 
@@ -105,9 +121,9 @@ export default function BillingPaymentsPage() {
                 </div>
                 <p className="text-[11px] font-bold uppercase tracking-widest text-[#FFB800]">Active Provider</p>
                 <p className="mt-2 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                  PayPal
+                  {providerName}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-[#888888]">Primary checkout and payment method provider.</p>
+                <p className="mt-2 text-sm leading-6 text-[#888888]">{providerDescription}</p>
               </div>
             </div>
           </div>
@@ -127,7 +143,7 @@ export default function BillingPaymentsPage() {
               <div className="mt-6 border-t border-[#262626] pt-5">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-[#FFB800]">Provider Status</p>
                 <p className="mt-2 text-sm leading-6 text-[#aaaaaa]">
-                  PayPal management is separated from subscriptions so users can handle payment methods without changing plans.
+                  Payment methods are separated from subscriptions so users can manage providers without changing plans.
                 </p>
               </div>
             </aside>
@@ -149,7 +165,7 @@ export default function BillingPaymentsPage() {
                         <div className="flex h-11 w-11 items-center justify-center bg-[#080808] text-primary">
                           <Icon size={20} />
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-[#555555]">PayPal</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-[#555555]">{providerName}</span>
                       </div>
                       <h2 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
                         {item.title}

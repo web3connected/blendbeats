@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import HeaderTitle from '@/layouts/HeaderTitle';
-import { BillingApiError, getBillingPlans, type BillingPlan } from '@/lib/billing';
+import { BillingApiError, getBillingPlans, type BillingPlan, type PaymentProfile } from '@/lib/billing';
 
 const promotionGroups = [
   ['A', 'Premium site visibility with limited inventory.'],
@@ -33,6 +33,7 @@ function ctaLabel(plan: BillingPlan, signedIn: boolean) {
 export default function PricingPage() {
   const { user } = useAuth();
   const [plans, setPlans] = useState<BillingPlan[]>([]);
+  const [paymentProfile, setPaymentProfile] = useState<PaymentProfile | null>(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -41,12 +42,22 @@ export default function PricingPage() {
     setError('');
 
     getBillingPlans()
-      .then((response) => setPlans(response.plans))
+      .then((response) => {
+        setPlans(response.plans);
+        setPaymentProfile(response.payment_profile);
+      })
       .catch((loadError) => {
         setError(loadError instanceof BillingApiError ? loadError.message : 'Unable to load pricing right now.');
       })
       .finally(() => setIsLoading(false));
   }, []);
+
+  const primaryProvider = paymentProfile?.primary_provider;
+  const providerName = primaryProvider?.display_name ?? 'Payment Provider';
+  const providerMode = primaryProvider?.mode ?? 'setup';
+  const activeProviderLabel = paymentProfile?.active_providers.length
+    ? paymentProfile.active_providers.map((provider) => provider.display_name).join(', ')
+    : 'None active';
 
   return (
     <>
@@ -96,7 +107,7 @@ export default function PricingPage() {
                   ['Free', 'Core participation'],
                   ['A-F', 'Promotion groups'],
                   ['1/7', 'Campaign options'],
-                  ['Stripe', 'Test checkout'],
+                  [providerName, `${providerMode} checkout`],
                 ].map(([value, label]) => (
                   <div key={label} className="border border-[#2a2a2a] bg-[#080808] p-4">
                     <p className="text-3xl text-[#FFB800]" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -132,7 +143,7 @@ export default function PricingPage() {
                 </h2>
               </div>
               <p className="max-w-xl text-sm leading-6 text-[#aaa]">
-                Paid tiers use Stripe test checkout when the matching Stripe price IDs are configured.
+                Paid tiers use the active payment profile configured by the admin team. Current active provider: {activeProviderLabel}.
               </p>
             </div>
 
