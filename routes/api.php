@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\MixController;
 use App\Http\Controllers\Api\AdvertisementDisplayController;
 use App\Http\Controllers\Api\AdvertisementEventController;
 use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\CommerceController;
 use App\Http\Controllers\Api\CounterController;
 use App\Http\Controllers\Api\DjHubController;
 use App\Http\Controllers\Api\DjLoungeController;
@@ -151,6 +152,17 @@ Route::prefix('dj-lounge')->name('api.dj-lounge.')->group(function (): void {
 
 Route::get('mixes', [MixController::class, 'index'])->name('api.mixes.index');
 Route::post('mixes/{mix:slug}/play', [MixController::class, 'play'])->name('api.mixes.play');
+Route::prefix('commerce')
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
+    ->name('api.commerce.')
+    ->group(function (): void {
+        Route::get('products', [CommerceController::class, 'products'])->name('products');
+        Route::get('cart', [CommerceController::class, 'cart'])->name('cart');
+        Route::post('cart/items', [CommerceController::class, 'addToCart'])->name('cart.items.store');
+        Route::patch('cart/items/{item}', [CommerceController::class, 'updateCartItem'])->name('cart.items.update');
+        Route::delete('cart/items/{item}', [CommerceController::class, 'removeCartItem'])->name('cart.items.destroy');
+        Route::get('checkout/summary', [CommerceController::class, 'checkoutSummary'])->name('checkout.summary');
+    });
 Route::get('ads/display', [AdvertisementDisplayController::class, 'show'])->name('api.ads.display');
 Route::post('ads/events', [AdvertisementEventController::class, 'store'])
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
