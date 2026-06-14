@@ -17,6 +17,37 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Session\Middleware\StartSession;
 
+$previewStatus = static function (Request $request) {
+    $maintenanceEnabled = filter_var(
+        env('FEATURED_ADS_MAINTENANCE_MODE', env('FRONTEND_MAINTENANCE_MODE', false)),
+        FILTER_VALIDATE_BOOLEAN
+    );
+    $admin = auth('admin')->user();
+    $allowedRoles = ['super-admin', 'sys-admin', 'sys_admin', 'administrator', 'admin'];
+    $adminRoles = $admin
+        ? collect($admin->roles?->pluck('name')->all() ?? [])
+            ->push($admin->role)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all()
+        : [];
+    $normalizedRoles = collect($adminRoles)
+        ->map(fn (string $role): string => strtolower(str_replace(' ', '-', $role)))
+        ->all();
+    $canPreview = $admin && $admin->is_active && count(array_intersect($allowedRoles, $normalizedRoles)) > 0;
+
+    return response()->json([
+        'maintenance_enabled' => $maintenanceEnabled,
+        'can_preview' => (bool) $canPreview,
+        'admin' => $canPreview ? [
+            'name' => $admin->name,
+            'email' => $admin->email,
+            'roles' => $adminRoles,
+        ] : null,
+    ]);
+};
+
 Route::prefix('auth')
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
     ->name('api.auth.')
@@ -57,30 +88,11 @@ Route::get('dj-hub/djs', [DjHubController::class, 'index'])->name('api.dj-hub.in
 Route::get('dj-hub/djs/{handle}', [DjHubController::class, 'show'])->name('api.dj-hub.show');
 Route::get('lounge/live-state', [LoungeLiveStateController::class, 'show'])->name('api.lounge.live-state');
 
-Route::get('site/preview-status', function (Request $request) {
-    $maintenanceEnabled = filter_var(env('FRONTEND_MAINTENANCE_MODE', true), FILTER_VALIDATE_BOOLEAN);
-    $admin = auth('admin')->user();
-    $allowedRoles = ['super-admin', 'sys-admin', 'admin'];
-    $adminRoles = $admin
-        ? collect($admin->roles?->pluck('name')->all() ?? [])
-            ->push($admin->role)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all()
-        : [];
-    $canPreview = $admin && $admin->is_active && count(array_intersect($allowedRoles, $adminRoles)) > 0;
+Route::get('featured-ads/preview-status', $previewStatus)
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
+    ->name('api.featured-ads.preview-status');
 
-    return response()->json([
-        'maintenance_enabled' => $maintenanceEnabled,
-        'can_preview' => (bool) $canPreview,
-        'admin' => $canPreview ? [
-            'name' => $admin->name,
-            'email' => $admin->email,
-            'roles' => $adminRoles,
-        ] : null,
-    ]);
-})
+Route::get('site/preview-status', $previewStatus)
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
     ->name('api.site.preview-status');
 

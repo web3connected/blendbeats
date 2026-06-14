@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import MaintenanceGate from '@/components/site/MaintenanceGate';
 import {
   captureFeaturedAdCampaign,
   FeaturedAdsApiError,
@@ -269,7 +270,11 @@ export default function FeaturedAdPlacementsPage() {
   };
 
   return (
-    <>
+    <MaintenanceGate
+      eyebrow="Advertising Maintenance"
+      title="Placements Are Being Updated"
+      message="The featured placement marketplace is being updated right now. Admin preview access is available while this advertising area is down."
+    >
       <Helmet>
         <title>Available Placements | The Blend Battlegrounds</title>
         <meta name="description" content="Browse and claim featured ad campaign placements." />
@@ -802,6 +807,6 @@ export default function FeaturedAdPlacementsPage() {
           </div>
         </div>
       )}
-    </>
+    </MaintenanceGate>
   );
 }

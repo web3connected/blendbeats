@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import MaintenanceGate from '@/components/site/MaintenanceGate';
 import {
   BillingApiError,
   getPaymentMethods,
@@ -171,7 +172,11 @@ export default function FeaturedAdsPage() {
   };
 
   return (
-    <>
+    <MaintenanceGate
+      eyebrow="Advertising Maintenance"
+      title="Promotions Are Being Updated"
+      message="The featured ads section is being updated right now. Admin preview access is available while this advertising area is down."
+    >
       <Helmet>
         <title>Featured Ads | The Blend Battlegrounds</title>
         <meta
@@ -493,6 +498,6 @@ export default function FeaturedAdsPage() {
           </div>
         </section>
       </main>
-    </>
+    </MaintenanceGate>
   );
 }

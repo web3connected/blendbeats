@@ -16,9 +16,17 @@ type PreviewStatus = {
 
 type MaintenanceGateProps = {
   children: ReactNode;
+  title?: string;
+  eyebrow?: string;
+  message?: string;
+  statusPath?: string;
 };
 
-function MaintenanceScreen() {
+function MaintenanceScreen({
+  title = 'We Are Tuning The Decks',
+  eyebrow = 'Maintenance Mode',
+  message = 'The Blend Battlegrounds is being updated right now. Admin preview access is available while the public site is under maintenance.',
+}: Pick<MaintenanceGateProps, 'title' | 'eyebrow' | 'message'>) {
   return (
     <>
       <Helmet>
@@ -32,13 +40,13 @@ function MaintenanceScreen() {
               <ShieldCheck size={24} />
             </div>
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
-              Maintenance Mode
+              {eyebrow}
             </p>
             <h1 className="uppercase leading-none text-white" style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(3rem, 8vw, 6rem)' }}>
-              We Are Tuning The Decks
+              {title}
             </h1>
             <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-[#aaaaaa]">
-              The Blend Battlegrounds is being updated right now. Admin preview access is available while the public site is under maintenance.
+              {message}
             </p>
             <a
               href="/admin/login"
@@ -63,7 +71,13 @@ function LoadingScreen() {
   );
 }
 
-export default function MaintenanceGate({ children }: MaintenanceGateProps) {
+export default function MaintenanceGate({
+  children,
+  title,
+  eyebrow,
+  message,
+  statusPath = '/featured-ads/preview-status',
+}: MaintenanceGateProps) {
   const [status, setStatus] = useState<PreviewStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -71,7 +85,7 @@ export default function MaintenanceGate({ children }: MaintenanceGateProps) {
     let cancelled = false;
 
     apiClient
-      .get<PreviewStatus>('/site/preview-status')
+      .get<PreviewStatus>(statusPath)
       .then((response) => {
         if (!cancelled) setStatus(response.data);
       })
@@ -91,12 +105,12 @@ export default function MaintenanceGate({ children }: MaintenanceGateProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [statusPath]);
 
   if (isLoading) return <LoadingScreen />;
 
   if (status?.maintenance_enabled && !status.can_preview) {
-    return <MaintenanceScreen />;
+    return <MaintenanceScreen title={title} eyebrow={eyebrow} message={message} />;
   }
 
   return children;
