@@ -1,6 +1,8 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
+  AlertTriangle,
   AtSign,
+  CheckCircle2,
   Image,
   Globe,
   LayoutDashboard,
@@ -15,6 +17,7 @@ import {
   Swords,
   Upload,
   UserRound,
+  X,
 } from 'lucide-react';
 import { type FormEvent, type ElementType, useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
@@ -131,6 +134,50 @@ function SectionTitle({ icon: Icon, title }: { icon: ElementType; title: string 
   );
 }
 
+type AccountToast = {
+  id: number;
+  type: 'success' | 'error';
+  message: string;
+};
+
+function AccountToastBanner({
+  toast,
+  onClose,
+}: {
+  toast: AccountToast;
+  onClose: () => void;
+}) {
+  const Icon = toast.type === 'success' ? CheckCircle2 : AlertTriangle;
+
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-4 z-[70] flex justify-center px-4">
+      <div
+        className={`pointer-events-auto flex min-h-12 w-full max-w-md items-center gap-3 border px-4 py-3 text-sm text-white shadow-2xl shadow-black/50 ${
+          toast.type === 'success'
+            ? 'border-[#2a2a2a] bg-[#101010]'
+            : 'border-primary/50 bg-[#180909]'
+        }`}
+        style={{
+          animation: 'blendbeats-toast-slide-down 220ms ease-out both',
+        }}
+        role="status"
+        aria-live="polite"
+      >
+        <Icon size={18} className={toast.type === 'success' ? 'text-[#FFB800]' : 'text-primary'} />
+        <span className="min-w-0 flex-1">{toast.message}</span>
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-[#333333] text-[#aaaaaa] transition-colors hover:border-primary hover:text-primary"
+          aria-label="Close message"
+        >
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AccountPage() {
   const navigate = useNavigate();
   const { user, isLoading, logout, refreshUser } = useAuth();
@@ -139,11 +186,12 @@ export default function AccountPage() {
   const [useGravatar, setUseGravatar] = useState(false);
   const [useGeneratedInitials, setUseGeneratedInitials] = useState(false);
   const [isAvatarSaving, setIsAvatarSaving] = useState(false);
-  const [avatarMessage, setAvatarMessage] = useState('');
-  const [avatarError, setAvatarError] = useState('');
   const [isProfileSaving, setIsProfileSaving] = useState(false);
-  const [profileMessage, setProfileMessage] = useState('');
-  const [profileError, setProfileError] = useState('');
+  const [toast, setToast] = useState<AccountToast | null>(null);
+
+  const showToast = (type: AccountToast['type'], message: string) => {
+    setToast({ id: Date.now(), type, message });
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -164,6 +212,14 @@ export default function AccountPage() {
 
     return () => URL.revokeObjectURL(objectUrl);
   }, [avatarFile]);
+
+  useEffect(() => {
+    if (!toast) return;
+
+    const timeout = window.setTimeout(() => setToast(null), 4200);
+
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   if (isLoading) {
     return (
@@ -206,16 +262,14 @@ export default function AccountPage() {
       marketing_opt_in: formData.has('marketing_opt_in'),
     };
 
-    setProfileMessage('');
-    setProfileError('');
     setIsProfileSaving(true);
 
     try {
       await saveAccountProfile(payload);
       await refreshUser();
-      setProfileMessage('Profile updated.');
+      showToast('success', 'Profile updated.');
     } catch (error) {
-      setProfileError(error instanceof Error ? error.message : 'Profile could not be saved.');
+      showToast('error', error instanceof Error ? error.message : 'Profile could not be saved.');
     } finally {
       setIsProfileSaving(false);
     }
@@ -239,8 +293,6 @@ export default function AccountPage() {
         : user.avatar_source ?? (user.avatar ? 'uploaded' : 'generated');
 
   const handleAvatarSave = async () => {
-    setAvatarMessage('');
-    setAvatarError('');
     setIsAvatarSaving(true);
 
     try {
@@ -251,9 +303,9 @@ export default function AccountPage() {
         removeAvatar: useGeneratedInitials,
       });
       await refreshUser();
-      setAvatarMessage('Avatar updated.');
+      showToast('success', 'Avatar updated.');
     } catch (error) {
-      setAvatarError(error instanceof Error ? error.message : 'Avatar could not be updated.');
+      showToast('error', error instanceof Error ? error.message : 'Avatar could not be updated.');
     } finally {
       setIsAvatarSaving(false);
     }
@@ -265,6 +317,15 @@ export default function AccountPage() {
         <title>Account | The Blend Battlegrounds</title>
         <meta name="description" content="Manage your Blend Battlegrounds account." />
       </Helmet>
+      <style>
+        {`
+          @keyframes blendbeats-toast-slide-down {
+            0% { opacity: 0; transform: translateY(-18px); }
+            100% { opacity: 1; transform: translateY(0); }
+          }
+        `}
+      </style>
+      {toast && <AccountToastBanner toast={toast} onClose={() => setToast(null)} />}
       <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a]">
         <section className="border-b border-[#1a1a1a] px-4 py-16 lg:px-8">
           <div className="container mx-auto max-w-4xl">
@@ -368,8 +429,6 @@ export default function AccountPage() {
                           setAvatarFile(event.target.files?.[0] ?? null);
                           setUseGravatar(false);
                           setUseGeneratedInitials(false);
-                          setAvatarMessage('');
-                          setAvatarError('');
                         }}
                         className="w-full border border-[#333333] bg-[#050505] px-4 py-3 text-sm text-[#bbbbbb] file:mr-4 file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-white"
                         style={{ fontFamily: 'var(--font-heading)' }}
@@ -384,8 +443,6 @@ export default function AccountPage() {
                           setUseGravatar(true);
                           setUseGeneratedInitials(false);
                           setAvatarFile(null);
-                          setAvatarMessage('');
-                          setAvatarError('');
                         }}
                         className={`min-h-24 border p-4 text-left transition-colors ${
                           useGravatar
@@ -403,8 +460,6 @@ export default function AccountPage() {
                           setUseGravatar(false);
                           setUseGeneratedInitials(true);
                           setAvatarFile(null);
-                          setAvatarMessage('');
-                          setAvatarError('');
                         }}
                         className={`min-h-24 border p-4 text-left transition-colors ${
                           useGeneratedInitials
@@ -421,17 +476,6 @@ export default function AccountPage() {
                         </span>
                       </button>
                     </div>
-
-                    {avatarMessage && (
-                      <div className="border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
-                        {avatarMessage}
-                      </div>
-                    )}
-                    {avatarError && (
-                      <div className="border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
-                        {avatarError}
-                      </div>
-                    )}
 
                     <button
                       type="button"
@@ -521,22 +565,10 @@ export default function AccountPage() {
               </section>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                {(profileMessage || profileError) && (
-                  <div
-                    className={`flex min-h-11 items-center border px-4 text-sm ${
-                      profileError
-                        ? 'border-primary/30 bg-primary/10 text-primary'
-                        : 'border-[#2a2a2a] bg-[#111111] text-[#aaaaaa]'
-                    }`}
-                  >
-                    {profileError || profileMessage}
-                  </div>
-                )}
                 <button
                   type="button"
                   onClick={() => {
-                    setProfileMessage('');
-                    setProfileError('');
+                    setToast(null);
                     refreshUser();
                   }}
                   className="inline-flex h-11 items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
