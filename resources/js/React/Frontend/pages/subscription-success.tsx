@@ -25,11 +25,11 @@ export default function SubscriptionSuccessPage() {
           </p>
           <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
-              to="/dashboard"
+              to="/account"
               className="inline-flex h-11 items-center justify-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white"
               style={{ fontFamily: 'var(--font-heading)' }}
             >
-              Go To Dashboard
+              Go To Account
             </Link>
             <Link
               to="/subscription"

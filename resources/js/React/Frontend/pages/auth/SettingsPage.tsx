@@ -20,7 +20,7 @@ const settingsCards = [
   {
     title: 'Profile',
     description: 'Manage your personal data, avatar, contact info, location, and social links.',
-    href: '/account',
+    href: '/account/profile',
     icon: User,
   },
   {
@@ -38,7 +38,7 @@ const settingsCards = [
   {
     title: 'Featured Ads',
     description: 'Manage featured placement campaigns and promotional visibility.',
-    href: '/settings',
+    href: '/account/settings',
     icon: Megaphone,
   },
   {
@@ -50,19 +50,19 @@ const settingsCards = [
   {
     title: 'Security',
     description: 'Control passwords, sessions, account access, and future security tools.',
-    href: '/settings',
+    href: '/account/settings',
     icon: Lock,
   },
   {
     title: 'Notifications',
     description: 'Choose how BlendBeats contacts you about posts, mixes, battles, and billing.',
-    href: '/settings',
+    href: '/account/settings',
     icon: Bell,
   },
   {
     title: 'Support',
     description: 'Get help with your account, billing, uploads, promotions, and platform tools.',
-    href: '/settings',
+    href: '/account/settings',
     icon: HelpCircle,
   },
 ];

@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './Frontend/components/auth/AuthProvider';
 import { PlayerProvider } from './Frontend/components/player/PlayerProvider';
 import SiteWrapper from './Frontend/layouts/SiteWrapper';
@@ -60,8 +60,10 @@ createRoot(rootElement).render(
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/dashboard" element={<UserDashboardPage />} />
-                <Route path="/account" element={<AccountPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/account" element={<UserDashboardPage />} />
+                <Route path="/account/profile" element={<AccountPage />} />
+                <Route path="/account/settings" element={<SettingsPage />} />
+                <Route path="/settings" element={<Navigate to="/account/settings" replace />} />
                 <Route path="*" element={<HomePage />} />
               </Routes>
             </SiteWrapper>

@@ -46,7 +46,7 @@ const dashboardActions = [
   {
     title: 'Profile',
     description: 'Manage your personal data, avatar, email, contact info, and location.',
-    href: '/account',
+    href: '/account/profile',
     icon: User,
     accent: 'text-[#FFB800]',
   },

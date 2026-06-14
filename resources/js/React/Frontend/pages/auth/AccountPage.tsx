@@ -442,14 +442,14 @@ export default function AccountPage() {
               )}
               <p className="text-lg font-semibold text-white">{user.name}</p>
               <p className="mt-1 break-all text-sm text-[#888888]">{user.email}</p>
-              <div className="mt-6 grid gap-3">
-                <Link
-                  to="/dashboard"
-                  className="inline-flex h-12 items-center gap-3 border border-[#333333] px-4 text-sm text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
-                >
-                  <LayoutDashboard size={16} />
-                  Go to dashboard
-                </Link>
+                <div className="mt-6 grid gap-3">
+                  <Link
+                    to="/account"
+                    className="inline-flex h-12 items-center gap-3 border border-[#333333] px-4 text-sm text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                  >
+                    <LayoutDashboard size={16} />
+                    Go to account
+                  </Link>
                 <Link
                   to="/battles"
                   className="inline-flex h-12 items-center gap-3 border border-[#333333] px-4 text-sm text-[#dddddd] transition-colors hover:border-primary hover:text-primary"

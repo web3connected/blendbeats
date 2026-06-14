@@ -396,12 +396,12 @@ export default function StartDjCareerPage() {
           <section className="border-b border-[#1a1a1a] px-4 py-12 lg:px-8 lg:py-16">
             <div className="container mx-auto max-w-6xl">
               <Link
-                to="/dashboard"
+                to="/account"
                 className="mb-8 inline-flex h-10 items-center gap-2 border border-[#333333] px-3 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
                 style={{ fontFamily: 'var(--font-heading)' }}
               >
                 <ArrowLeft size={15} />
-                Dashboard
+                Account
               </Link>
 
               <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
@@ -580,11 +580,11 @@ export default function StartDjCareerPage() {
                 </p>
               </div>
               <Link
-                to="/dashboard"
+                to="/account"
                 className="inline-flex h-12 items-center justify-center border border-[#444444] px-5 text-sm font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
                 style={{ fontFamily: 'var(--font-heading)' }}
               >
-                Back To Dashboard
+                Back To Account
               </Link>
             </div>
           </div>

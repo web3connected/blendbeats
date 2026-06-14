@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      navigate('/dashboard');
+      navigate('/account');
     } catch (submissionError) {
       setError(
         submissionError instanceof ApiAuthError

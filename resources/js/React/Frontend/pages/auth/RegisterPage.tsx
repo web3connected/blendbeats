@@ -29,7 +29,7 @@ export default function RegisterPage() {
     setIsSubmitting(true);
     try {
       await register(name, email, password, passwordConfirmation);
-      navigate('/dashboard');
+      navigate('/account');
     } catch (submissionError) {
       setError(
         submissionError instanceof ApiAuthError
