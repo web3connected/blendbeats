@@ -15,6 +15,13 @@ class DjFeaturedStatus extends Model
         'featured_slot_campaign_option_id',
         'featured_type',
         'rotation_weight',
+        'amount_cents',
+        'currency',
+        'payment_provider',
+        'payment_status',
+        'payment_reference',
+        'claimed_at',
+        'payment_metadata',
         'start_date',
         'end_date',
         'status',
@@ -27,6 +34,9 @@ class DjFeaturedStatus extends Model
             'end_date' => 'datetime',
             'slot_number' => 'integer',
             'rotation_weight' => 'integer',
+            'amount_cents' => 'integer',
+            'claimed_at' => 'datetime',
+            'payment_metadata' => 'array',
         ];
     }
 

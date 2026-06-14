@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CounterController;
 use App\Http\Controllers\Api\DjHubController;
 use App\Http\Controllers\Api\DjLoungeController;
 use App\Http\Controllers\Api\DjProfileController;
+use App\Http\Controllers\Api\FeaturedAdController;
 use App\Http\Controllers\Api\LoungeLiveStateController;
 use App\Http\Controllers\Api\MediaManagerController;
 use App\Http\Controllers\Api\MediaSetupController;
@@ -66,6 +67,15 @@ Route::prefix('billing')
         Route::get('payment-methods', [BillingController::class, 'paymentMethods'])->name('payment-methods');
         Route::post('checkout', [BillingController::class, 'checkout'])->name('checkout');
         Route::post('portal', [BillingController::class, 'portal'])->name('portal');
+    });
+
+Route::prefix('featured-ads')
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.featured-ads.')
+    ->group(function (): void {
+        Route::get('placements', [FeaturedAdController::class, 'placements'])->name('placements');
+        Route::post('checkout', [FeaturedAdController::class, 'checkout'])->name('checkout');
+        Route::post('campaigns/{campaign}/capture', [FeaturedAdController::class, 'capture'])->name('campaigns.capture');
     });
 
 Route::prefix('dj-lounge')->name('api.dj-lounge.')->group(function (): void {
