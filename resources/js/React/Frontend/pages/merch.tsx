@@ -12,6 +12,28 @@ import {
   updateCommerceCartItem,
 } from '@/lib/commerce';
 
+function ProductArtwork({ product }: { product: CommerceProduct }) {
+  if (product.image_url) {
+    return (
+      <img
+        src={product.image_url}
+        alt={`${product.title} product image`}
+        loading="lazy"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    );
+  }
+
+  return (
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_55%_30%,rgba(255,184,0,0.22),transparent_35%),linear-gradient(135deg,#1b1b1b,#070707)]">
+      <ShoppingBag
+        size={64}
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[#FFB800]/60"
+      />
+    </div>
+  );
+}
+
 function sourceLabel(source: string) {
   return source.replaceAll('_', ' ');
 }
@@ -161,10 +183,10 @@ export default function MerchPage() {
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                   {products.map((product) => (
                     <article key={product.id} className="border border-[#292929] bg-[#121212]">
-                      <div
-                        className="min-h-56 border-b border-[#292929] bg-cover bg-center"
-                        style={{ backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.78)), url(${product.image_url || '/media/site/dj-hero.png'})` }}
-                      />
+                      <div className="relative min-h-56 overflow-hidden border-b border-[#292929]">
+                        <ProductArtwork product={product} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                      </div>
                       <div className="p-5">
                         <div className="mb-3 flex items-start justify-between gap-4">
                           <div>

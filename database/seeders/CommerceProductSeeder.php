@@ -19,7 +19,7 @@ class CommerceProductSeeder extends Seeder
                 'source_type' => 'internal',
                 'fulfillment_type' => 'internal',
                 'category' => 'Digital',
-                'image_url' => '/media/site/dj-hero.png',
+                'image_url' => null,
                 'metadata' => ['lane' => 'internal_checkout'],
             ],
             [
@@ -31,7 +31,7 @@ class CommerceProductSeeder extends Seeder
                 'fulfillment_type' => 'print_on_demand',
                 'category' => 'Apparel',
                 'requires_customization' => true,
-                'image_url' => '/media/site/dj-hero.png',
+                'image_url' => null,
                 'customization_schema' => [
                     'size' => ['S', 'M', 'L', 'XL', '2XL'],
                     'color' => ['Black', 'Red', 'Gold'],
@@ -50,7 +50,7 @@ class CommerceProductSeeder extends Seeder
                 'external_product_url' => 'https://example.com/slipmat-set',
                 'affiliate_tracking_url' => 'https://example.com/slipmat-set?ref=blendbeats',
                 'commission_rate' => 8.50,
-                'image_url' => '/media/site/dj-hero.png',
+                'image_url' => null,
                 'metadata' => ['lane' => 'affiliate_redirect'],
             ],
             [
@@ -65,7 +65,7 @@ class CommerceProductSeeder extends Seeder
                 'affiliate_tracking_url' => 'https://example.com/custom-battle-poster?ref=blendbeats',
                 'requires_customization' => true,
                 'commission_rate' => 10.00,
-                'image_url' => '/media/site/dj-hero.png',
+                'image_url' => null,
                 'customization_schema' => [
                     'fields' => ['dj_name', 'event_name', 'date'],
                     'sizes' => ['11x17', '18x24'],
