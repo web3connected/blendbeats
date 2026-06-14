@@ -7,10 +7,12 @@ use App\Models\DjGenre;
 use App\Models\DjMedia;
 use App\Models\DjProfile;
 use App\Models\DjSocialLink;
+use App\Notifications\DjProfileCreatedNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -110,6 +112,10 @@ class DjProfileController extends Controller
 
             return $profile->load(['genres', 'socialLinks', 'bookingSetting', 'media']);
         });
+
+        if (! $existingProfile && $isFinalSave && Schema::hasTable('notifications')) {
+            $user->notify(new DjProfileCreatedNotification($profile));
+        }
 
         return response()->json([
             'dj_profile' => $this->profilePayload($profile),
