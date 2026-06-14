@@ -71,8 +71,6 @@ class AdvertisementDisplayService
             ])
             ->where('status', 'active')
             ->where('payment_status', 'paid')
-            ->where(fn ($query) => $query->whereNull('start_date')->orWhere('start_date', '<=', now()))
-            ->where(fn ($query) => $query->whereNull('end_date')->orWhere('end_date', '>=', now()))
             ->latest('claimed_at')
             ->limit(self::MAX_DISCOVERY)
             ->get()
