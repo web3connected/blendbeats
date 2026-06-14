@@ -26,7 +26,7 @@ const settingsCards = [
   {
     title: 'Billing & Payments',
     description: 'Review payment methods, invoices, receipts, and billing preferences.',
-    href: '/subscription',
+    href: '/account/billing',
     icon: WalletCards,
   },
   {

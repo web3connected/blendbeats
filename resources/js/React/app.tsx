@@ -6,6 +6,7 @@ import { AuthProvider } from './Frontend/components/auth/AuthProvider';
 import { PlayerProvider } from './Frontend/components/player/PlayerProvider';
 import SiteWrapper from './Frontend/layouts/SiteWrapper';
 import AccountPage from './Frontend/pages/auth/AccountPage';
+import BillingPaymentsPage from './Frontend/pages/auth/BillingPaymentsPage';
 import ForgotPasswordPage from './Frontend/pages/auth/ForgotPasswordPage';
 import LoginPage from './Frontend/pages/auth/LoginPage';
 import RegisterPage from './Frontend/pages/auth/RegisterPage';
@@ -62,6 +63,7 @@ createRoot(rootElement).render(
                 <Route path="/dashboard" element={<UserDashboardPage />} />
                 <Route path="/account" element={<UserDashboardPage />} />
                 <Route path="/account/profile" element={<AccountPage />} />
+                <Route path="/account/billing" element={<BillingPaymentsPage />} />
                 <Route path="/account/settings" element={<SettingsPage />} />
                 <Route path="/settings" element={<Navigate to="/account/settings" replace />} />
                 <Route path="*" element={<HomePage />} />
