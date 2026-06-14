@@ -62,7 +62,7 @@ const settingsCards = [
   {
     title: 'Support',
     description: 'Get help with your account, billing, uploads, promotions, and platform tools.',
-    href: '/account/settings',
+    href: '/account/support',
     icon: HelpCircle,
   },
 ];
