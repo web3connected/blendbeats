@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\AdminCenter;
 
 use App\Http\Controllers\Controller;
 use App\Models\FeaturedSlotCampaignOption;
+use App\Services\FeaturedPlacementPricingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,24 +14,32 @@ use Illuminate\View\View;
 
 class FeaturedSlotController extends Controller
 {
-    private const SLOT_COUNT = 24;
-
-    private const GROUP_SIZE = 4;
-
-    private const GROUP_WEIGHTS = [35, 25, 15, 10, 8, 7];
-
-    private const MAX_DAILY_PRICE_CENTS = 2500;
-
-    private const MIN_DAILY_PRICE_CENTS = 599;
+    public function __construct(private readonly FeaturedPlacementPricingService $placementPricing) {}
 
     public function index(): View
     {
-        $slots = collect(range(1, self::SLOT_COUNT))
+        $slotCount = FeaturedPlacementPricingService::GROUP_COUNT * FeaturedPlacementPricingService::GROUP_SIZE;
+        $slots = collect(range(1, $slotCount))
             ->map(fn (int $slotNumber): array => [
                 'number' => $slotNumber,
-                'group' => intdiv($slotNumber - 1, self::GROUP_SIZE) + 1,
-                'position' => (($slotNumber - 1) % self::GROUP_SIZE) + 1,
-                'daily_price_cents' => $this->dailyPriceForGroup(intdiv($slotNumber - 1, self::GROUP_SIZE) + 1),
+                'group' => $this->placementPricing->groupNumberForSlot($slotNumber),
+                'position' => $this->placementPricing->slotPositionForSlot($slotNumber),
+                'daily_price_cents' => $this->placementPricing->dailyPriceCents(
+                    $this->placementPricing->groupNumberForSlot($slotNumber),
+                    $this->placementPricing->slotPositionForSlot($slotNumber),
+                ),
+                'daily_price' => $this->placementPricing->formatMoney($this->placementPricing->dailyPriceCents(
+                    $this->placementPricing->groupNumberForSlot($slotNumber),
+                    $this->placementPricing->slotPositionForSlot($slotNumber),
+                )),
+                'exposure_percent' => $this->placementPricing->exposurePercent(
+                    $this->placementPricing->groupNumberForSlot($slotNumber),
+                    $this->placementPricing->slotPositionForSlot($slotNumber),
+                ),
+                'rotation_weight' => $this->placementPricing->rotationWeight(
+                    $this->placementPricing->groupNumberForSlot($slotNumber),
+                    $this->placementPricing->slotPositionForSlot($slotNumber),
+                ),
             ]);
 
         $campaignOptions = Schema::hasTable('featured_slot_campaign_options')
@@ -50,18 +59,21 @@ class FeaturedSlotController extends Controller
 
         return view('admin.featured-slots.index', [
             'slots' => $slots,
-            'groups' => $slots->chunk(self::GROUP_SIZE),
+            'groups' => $slots->chunk(FeaturedPlacementPricingService::GROUP_SIZE),
             'campaignOptions' => $campaignOptions,
             'activeCampaignOptions' => $activeCampaignOptions,
             'slotCampaignOptionIds' => $slotCampaignOptionIds,
-            'pricingGroups' => collect(range(1, count(self::GROUP_WEIGHTS)))->map(fn (int $group): array => [
+            'pricingGroups' => collect(range(1, FeaturedPlacementPricingService::GROUP_COUNT))->map(fn (int $group): array => [
                 'group' => $group,
-                'weight' => self::GROUP_WEIGHTS[$group - 1],
-                'daily_price_cents' => $this->dailyPriceForGroup($group),
-                'daily_price' => $this->formatMoney($this->dailyPriceForGroup($group)),
+                'weight' => $this->placementPricing->rotationWeight($group),
+                'daily_price_cents' => $this->placementPricing->dailyPriceCents($group),
+                'daily_price' => $this->placementPricing->formatMoney($this->placementPricing->dailyPriceCents($group)),
+                'daily_price_range' => $this->placementPricing->priceRangeLabel($group),
+                'min_exposure_percent' => $this->placementPricing->exposurePercent($group, FeaturedPlacementPricingService::GROUP_SIZE),
+                'max_exposure_percent' => $this->placementPricing->exposurePercent($group),
             ]),
             'configuredSlotCount' => $slotCampaignOptionIds->filter(fn (array $optionIds) => count($optionIds) > 0)->count(),
-            'slotCount' => self::SLOT_COUNT,
+            'slotCount' => $slotCount,
         ]);
     }
 
@@ -94,7 +106,8 @@ class FeaturedSlotController extends Controller
 
     public function update(Request $request, int $slot): RedirectResponse
     {
-        abort_unless($slot >= 1 && $slot <= self::SLOT_COUNT, 404);
+        $slotCount = FeaturedPlacementPricingService::GROUP_COUNT * FeaturedPlacementPricingService::GROUP_SIZE;
+        abort_unless($slot >= 1 && $slot <= $slotCount, 404);
 
         if ($request->boolean('clear_slot')) {
             if (Schema::hasTable('featured_slot_campaign_option_slot')) {
@@ -155,23 +168,4 @@ class FeaturedSlotController extends Controller
         ];
     }
 
-    private function dailyPriceForGroup(int $group): int
-    {
-        $weight = self::GROUP_WEIGHTS[$group - 1] ?? min(self::GROUP_WEIGHTS);
-        $maxWeight = max(self::GROUP_WEIGHTS);
-        $minWeight = min(self::GROUP_WEIGHTS);
-
-        if ($maxWeight === $minWeight) {
-            return self::MIN_DAILY_PRICE_CENTS;
-        }
-
-        $visibilityRatio = ($weight - $minWeight) / ($maxWeight - $minWeight);
-
-        return (int) round(self::MIN_DAILY_PRICE_CENTS + ($visibilityRatio * (self::MAX_DAILY_PRICE_CENTS - self::MIN_DAILY_PRICE_CENTS)));
-    }
-
-    private function formatMoney(int $cents): string
-    {
-        return '$'.number_format($cents / 100, 2);
-    }
 }

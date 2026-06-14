@@ -53,7 +53,7 @@
         <div class="card-header">
             <h3 class="card-title">Visibility Pricing</h3>
             <div class="card-tools text-muted">
-                Daily price drops with lower rotation visibility.
+                Daily price decays by group and again by slot position, so lower exposure costs less.
             </div>
         </div>
         <div class="card-body p-0">
@@ -61,8 +61,8 @@
                 <thead>
                     <tr>
                         <th>Group</th>
-                        <th>Visibility Weight</th>
-                        <th>Daily Rate</th>
+                        <th>Exposure Range</th>
+                        <th>Daily Rate Range</th>
                         <th>Slot Range</th>
                     </tr>
                 </thead>
@@ -70,8 +70,8 @@
                     @foreach ($pricingGroups as $pricingGroup)
                         <tr>
                             <td>Group {{ $pricingGroup['group'] }}</td>
-                            <td>{{ $pricingGroup['weight'] }}%</td>
-                            <td>{{ $pricingGroup['daily_price'] }} / day</td>
+                            <td>{{ $pricingGroup['max_exposure_percent'] }}%-{{ $pricingGroup['min_exposure_percent'] }}%</td>
+                            <td>{{ $pricingGroup['daily_price_range'] }} / day</td>
                             <td>
                                 Slots {{ (($pricingGroup['group'] - 1) * 4) + 1 }}-{{ $pricingGroup['group'] * 4 }}
                             </td>
@@ -212,6 +212,9 @@
                                             <span class="badge badge-{{ $slotSelectedOptionIds->isNotEmpty() ? 'success' : 'dark' }}">
                                                 {{ $slotSelectedOptionIds->isNotEmpty() ? 'Configured' : 'No Options' }}
                                             </span>
+                                        </div>
+                                        <div class="small text-muted mt-2">
+                                            {{ $slot['daily_price'] }} / day · {{ $slot['exposure_percent'] }}% exposure · weight {{ $slot['rotation_weight'] }}
                                         </div>
                                     </div>
                                     <form method="POST" action="{{ route('admin.admincenter.featuredslots.update', $slot['number']) }}">

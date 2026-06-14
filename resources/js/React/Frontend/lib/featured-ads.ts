@@ -16,6 +16,7 @@ export type FeaturedAdCampaign = {
   campaign_slot_id?: number | null;
   group_slot_number?: number | null;
   group: string;
+  campaign_option_id: number | null;
   option_name: string | null;
   duration_days: number | null;
   amount_cents: number;
@@ -24,6 +25,8 @@ export type FeaturedAdCampaign = {
   payment_provider: string | null;
   payment_status: string;
   status: string;
+  is_mine: boolean;
+  approval_url: string | null;
   start_date: string | null;
   end_date: string | null;
   dj?: {
@@ -39,6 +42,10 @@ export type FeaturedCampaignSlot = {
   group_number: number;
   group_slot_number: number;
   template_slot_number: number;
+  daily_price_cents: number;
+  daily_price_label: string;
+  exposure_percent: number;
+  rotation_weight: number;
   claim_status: string;
   is_unlocked: boolean;
   is_available: boolean;
@@ -58,6 +65,7 @@ export type FeaturedMarketplaceCampaign = {
   slot_count: number;
   daily_price_cents: number;
   daily_price_label: string;
+  daily_price_range_label: string;
   is_unlocked: boolean;
   slots: FeaturedCampaignSlot[];
 };

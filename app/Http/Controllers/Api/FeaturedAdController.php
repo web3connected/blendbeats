@@ -8,6 +8,7 @@ use App\Models\FeaturedCampaignSlot;
 use App\Models\DjFeaturedStatus;
 use App\Models\FeaturedSlotCampaignOption;
 use App\Models\PaymentProvider;
+use App\Services\FeaturedPlacementPricingService;
 use App\Services\MembershipTierService;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
@@ -19,17 +20,10 @@ use Illuminate\Validation\Rule;
 
 class FeaturedAdController extends Controller
 {
-    private const SLOT_COUNT = 24;
-
-    private const GROUP_SIZE = 4;
-
-    private const GROUP_WEIGHTS = [35, 25, 15, 10, 8, 7];
-
-    private const MAX_DAILY_PRICE_CENTS = 2500;
-
-    private const MIN_DAILY_PRICE_CENTS = 599;
-
-    public function __construct(private readonly MembershipTierService $membershipTiers) {}
+    public function __construct(
+        private readonly MembershipTierService $membershipTiers,
+        private readonly FeaturedPlacementPricingService $placementPricing,
+    ) {}
 
     public function placements(Request $request): JsonResponse
     {
@@ -58,7 +52,7 @@ class FeaturedAdController extends Controller
                 'groups' => $availableGroups,
             ],
             'campaigns' => $campaigns
-                ->map(fn (FeaturedCampaign $campaign): array => $this->marketplaceCampaignPayload($campaign, $availableGroups))
+                ->map(fn (FeaturedCampaign $campaign): array => $this->marketplaceCampaignPayload($campaign, $availableGroups, $profile?->id))
                 ->values(),
             'my_campaigns' => $profile
                 ? DjFeaturedStatus::query()
@@ -67,7 +61,7 @@ class FeaturedAdController extends Controller
                     ->latest()
                     ->take(12)
                     ->get()
-                    ->map(fn (DjFeaturedStatus $campaign): array => $this->campaignPayload($campaign))
+                    ->map(fn (DjFeaturedStatus $campaign): array => $this->campaignPayload($campaign, $profile->id))
                     ->values()
                 : [],
             'payment_provider' => $this->primaryPaymentProviderPayload(),
@@ -104,7 +98,9 @@ class FeaturedAdController extends Controller
         abort_if($this->campaignSlotHasActiveOrPendingCampaign($campaignSlot), 422, 'That campaign slot is already claimed or pending payment.');
 
         $option = FeaturedSlotCampaignOption::query()->findOrFail($validated['campaign_option_id']);
-        $amountCents = (int) $slotGroup->daily_price_cents * $option->duration_days;
+        $groupSlotNumber = (int) $campaignSlot->group_slot_number;
+        $dailyPrice = $this->placementPricing->dailyPriceCents($groupNumber, $groupSlotNumber);
+        $amountCents = $dailyPrice * $option->duration_days;
         $provider = $this->primaryPaymentProvider();
 
         abort_unless($provider, 422, 'No active payment provider is configured.');
@@ -113,11 +109,11 @@ class FeaturedAdController extends Controller
 
         $campaign = DjFeaturedStatus::query()->create([
             'dj_profile_id' => $profile->id,
-            'slot_number' => $this->templateSlotNumber($groupNumber, (int) $campaignSlot->group_slot_number),
+            'slot_number' => $this->placementPricing->templateSlotNumber($groupNumber, $groupSlotNumber),
             'featured_slot_campaign_option_id' => $option->id,
             'featured_campaign_slot_id' => $campaignSlot->id,
             'featured_type' => 'paid_placement',
-            'rotation_weight' => (int) $slotGroup->rotation_weight,
+            'rotation_weight' => $this->placementPricing->rotationWeight($groupNumber, $groupSlotNumber),
             'amount_cents' => $amountCents,
             'currency' => 'USD',
             'payment_provider' => 'paypal',
@@ -153,7 +149,7 @@ class FeaturedAdController extends Controller
         $approvalLink = collect($order['links'] ?? [])->firstWhere('rel', 'approve');
 
         return response()->json([
-            'campaign' => $this->campaignPayload($campaign->refresh()),
+            'campaign' => $this->campaignPayload($campaign->refresh(), $profile->id),
             'checkout_url' => is_array($approvalLink) ? ($approvalLink['href'] ?? null) : null,
         ], 201);
     }
@@ -190,7 +186,7 @@ class FeaturedAdController extends Controller
         $campaign->campaignSlot?->forceFill(['claim_status' => 'claimed'])->save();
 
         return response()->json([
-            'campaign' => $this->campaignPayload($campaign->refresh()),
+            'campaign' => $this->campaignPayload($campaign->refresh(), $campaign->dj_profile_id),
         ]);
     }
 
@@ -228,7 +224,7 @@ class FeaturedAdController extends Controller
 
     private function campaignSlotHasOption(FeaturedCampaignSlot $campaignSlot, int $optionId): bool
     {
-        $templateSlotNumber = $this->templateSlotNumber(
+        $templateSlotNumber = $this->placementPricing->templateSlotNumber(
             (int) $campaignSlot->campaign->slotGroup->sort_order,
             (int) $campaignSlot->group_slot_number,
         );
@@ -337,11 +333,12 @@ class FeaturedAdController extends Controller
             : 'https://api-m.sandbox.paypal.com';
     }
 
-    private function campaignPayload(DjFeaturedStatus $campaign): array
+    private function campaignPayload(DjFeaturedStatus $campaign, ?int $currentDjProfileId = null): array
     {
         $campaignSlot = $campaign->campaignSlot;
         $marketplaceCampaign = $campaignSlot?->campaign;
         $slotGroup = $marketplaceCampaign?->slotGroup;
+        $isMine = $currentDjProfileId !== null && (int) $campaign->dj_profile_id === $currentDjProfileId;
 
         return [
             'id' => $campaign->id,
@@ -349,7 +346,8 @@ class FeaturedAdController extends Controller
             'campaign_title' => $marketplaceCampaign?->title,
             'campaign_slot_id' => $campaignSlot?->id,
             'group_slot_number' => $campaignSlot?->group_slot_number,
-            'group' => $slotGroup?->group_key ?? $this->groupKeyForNumber($this->groupNumberForSlot((int) $campaign->slot_number)),
+            'group' => $slotGroup?->group_key ?? $this->placementPricing->groupKeyForNumber($this->placementPricing->groupNumberForSlot((int) $campaign->slot_number)),
+            'campaign_option_id' => $campaign->featured_slot_campaign_option_id,
             'option_name' => $campaign->campaignOption?->name,
             'duration_days' => $campaign->campaignOption?->duration_days,
             'amount_cents' => $campaign->amount_cents,
@@ -358,6 +356,10 @@ class FeaturedAdController extends Controller
             'payment_provider' => $campaign->payment_provider,
             'payment_status' => $campaign->payment_status,
             'status' => $campaign->status,
+            'is_mine' => $isMine,
+            'approval_url' => $isMine && $campaign->status === 'pending_payment'
+                ? $this->approvalUrlFromMetadata($campaign->payment_metadata ?? [])
+                : null,
             'start_date' => $this->dateString($campaign->start_date),
             'end_date' => $this->dateString($campaign->end_date),
             'dj' => $campaign->relationLoaded('djProfile') && $campaign->djProfile ? [
@@ -367,11 +369,12 @@ class FeaturedAdController extends Controller
         ];
     }
 
-    private function marketplaceCampaignPayload(FeaturedCampaign $campaign, array $availableGroups): array
+    private function marketplaceCampaignPayload(FeaturedCampaign $campaign, array $availableGroups, ?int $currentDjProfileId = null): array
     {
         $slotGroup = $campaign->slotGroup;
         $groupKey = (string) $slotGroup->group_key;
-        $dailyPrice = (int) $slotGroup->daily_price_cents;
+        $groupNumber = (int) $slotGroup->sort_order;
+        $dailyPrice = $this->placementPricing->dailyPriceCents($groupNumber);
         $isUnlocked = in_array($groupKey, $availableGroups, true);
 
         return [
@@ -386,25 +389,33 @@ class FeaturedAdController extends Controller
             'slot_count' => (int) $slotGroup->slot_count,
             'daily_price_cents' => $dailyPrice,
             'daily_price_label' => $this->formatMoney($dailyPrice),
+            'daily_price_range_label' => $this->placementPricing->priceRangeLabel($groupNumber, (int) $slotGroup->slot_count),
             'is_unlocked' => $isUnlocked,
             'slots' => $campaign->slots
                 ->sortBy('group_slot_number')
-                ->map(function (FeaturedCampaignSlot $slot) use ($campaign, $slotGroup, $dailyPrice, $isUnlocked): array {
+                ->map(function (FeaturedCampaignSlot $slot) use ($campaign, $slotGroup, $isUnlocked): array {
                     $featuredStatus = $slot->featuredStatus;
-                    $templateSlotNumber = $this->templateSlotNumber((int) $slotGroup->sort_order, (int) $slot->group_slot_number);
+                    $groupNumber = (int) $slotGroup->sort_order;
+                    $groupSlotNumber = (int) $slot->group_slot_number;
+                    $templateSlotNumber = $this->placementPricing->templateSlotNumber($groupNumber, $groupSlotNumber);
+                    $dailyPrice = $this->placementPricing->dailyPriceCents($groupNumber, $groupSlotNumber);
                     $options = $this->campaignOptionsForSlot($templateSlotNumber, $dailyPrice);
 
                     return [
                         'id' => $slot->id,
                         'campaign_id' => $campaign->id,
                         'group' => $slotGroup->group_key,
-                        'group_number' => (int) $slotGroup->sort_order,
-                        'group_slot_number' => (int) $slot->group_slot_number,
+                        'group_number' => $groupNumber,
+                        'group_slot_number' => $groupSlotNumber,
                         'template_slot_number' => $templateSlotNumber,
+                        'daily_price_cents' => $dailyPrice,
+                        'daily_price_label' => $this->formatMoney($dailyPrice),
+                        'exposure_percent' => $this->placementPricing->exposurePercent($groupNumber, $groupSlotNumber),
+                        'rotation_weight' => $this->placementPricing->rotationWeight($groupNumber, $groupSlotNumber),
                         'claim_status' => $slot->claim_status,
                         'is_unlocked' => $isUnlocked,
                         'is_available' => $slot->claim_status === 'open' && count($options) > 0 && ! $featuredStatus,
-                        'active_campaign' => $featuredStatus ? $this->campaignPayload($featuredStatus) : null,
+                        'active_campaign' => $featuredStatus ? $this->campaignPayload($featuredStatus, $currentDjProfileId) : null,
                         'options' => $options,
                     ];
                 })
@@ -412,39 +423,16 @@ class FeaturedAdController extends Controller
         ];
     }
 
-    private function groupNumberForSlot(int $slotNumber): int
-    {
-        return intdiv($slotNumber - 1, self::GROUP_SIZE) + 1;
-    }
-
-    private function groupKeyForNumber(int $groupNumber): string
-    {
-        return chr(64 + $groupNumber);
-    }
-
-    private function templateSlotNumber(int $groupNumber, int $groupSlotNumber): int
-    {
-        return (($groupNumber - 1) * self::GROUP_SIZE) + $groupSlotNumber;
-    }
-
-    private function dailyPriceForGroup(int $group): int
-    {
-        $weight = self::GROUP_WEIGHTS[$group - 1] ?? min(self::GROUP_WEIGHTS);
-        $maxWeight = max(self::GROUP_WEIGHTS);
-        $minWeight = min(self::GROUP_WEIGHTS);
-
-        if ($maxWeight === $minWeight) {
-            return self::MIN_DAILY_PRICE_CENTS;
-        }
-
-        $visibilityRatio = ($weight - $minWeight) / ($maxWeight - $minWeight);
-
-        return (int) round(self::MIN_DAILY_PRICE_CENTS + ($visibilityRatio * (self::MAX_DAILY_PRICE_CENTS - self::MIN_DAILY_PRICE_CENTS)));
-    }
-
     private function formatMoney(int $cents): string
     {
         return '$'.number_format($cents / 100, 2);
+    }
+
+    private function approvalUrlFromMetadata(array $metadata): ?string
+    {
+        $approvalLink = collect($metadata['links'] ?? [])->firstWhere('rel', 'approve');
+
+        return is_array($approvalLink) ? ($approvalLink['href'] ?? null) : null;
     }
 
     private function dateString(null|string|Carbon $date): ?string
