@@ -393,7 +393,7 @@ class FeaturedAdController extends Controller
             'is_unlocked' => $isUnlocked,
             'slots' => $campaign->slots
                 ->sortBy('group_slot_number')
-                ->map(function (FeaturedCampaignSlot $slot) use ($campaign, $slotGroup, $isUnlocked): array {
+                ->map(function (FeaturedCampaignSlot $slot) use ($campaign, $slotGroup, $isUnlocked, $currentDjProfileId): array {
                     $featuredStatus = $slot->featuredStatus;
                     $groupNumber = (int) $slotGroup->sort_order;
                     $groupSlotNumber = (int) $slot->group_slot_number;
