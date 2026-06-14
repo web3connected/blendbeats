@@ -24,6 +24,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import { saveAccountAvatar, saveAccountProfile, type SaveAccountProfilePayload } from '@/lib/account';
+import type { AuthUser } from '@/lib/auth';
 
 function Field({
   label,
@@ -31,12 +32,14 @@ function Field({
   type = 'text',
   value,
   placeholder,
+  onChange,
 }: {
   label: string;
   name: string;
   type?: string;
-  value?: string | null;
+  value: string;
   placeholder?: string;
+  onChange: (value: string) => void;
 }) {
   return (
     <label className="grid gap-2">
@@ -44,7 +47,8 @@ function Field({
       <input
         name={name}
         type={type}
-        defaultValue={value ?? ''}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         className="h-11 w-full border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none transition-colors placeholder:text-[#555555] focus:border-primary"
       />
@@ -57,18 +61,21 @@ function TextAreaField({
   name,
   value,
   placeholder,
+  onChange,
 }: {
   label: string;
   name: string;
-  value?: string | null;
+  value: string;
   placeholder?: string;
+  onChange: (value: string) => void;
 }) {
   return (
     <label className="grid gap-2">
       <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">{label}</span>
       <textarea
         name={name}
-        defaultValue={value ?? ''}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         className="min-h-32 w-full resize-none border border-[#333333] bg-[#080808] p-3 text-sm leading-6 text-white outline-none transition-colors placeholder:text-[#555555] focus:border-primary"
       />
@@ -99,20 +106,20 @@ const TIMEZONE_OPTIONS = [
   { value: 'UTC', label: 'UTC' },
 ];
 
-function TimezoneField({ value }: { value?: string | null }) {
-  const savedValue = value ?? '';
-  const hasSavedOption = TIMEZONE_OPTIONS.some((option) => option.value === savedValue);
+function TimezoneField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const hasSavedOption = TIMEZONE_OPTIONS.some((option) => option.value === value);
 
   return (
     <label className="grid gap-2">
       <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Timezone</span>
       <select
         name="timezone"
-        defaultValue={savedValue}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
         className="h-11 w-full border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none transition-colors focus:border-primary"
       >
         <option value="">Select timezone</option>
-        {savedValue && !hasSavedOption && <option value={savedValue}>{savedValue}</option>}
+        {value && !hasSavedOption && <option value={value}>{value}</option>}
         {TIMEZONE_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -139,6 +146,67 @@ type AccountToast = {
   type: 'success' | 'error';
   message: string;
 };
+
+type AccountTab = 'avatar' | 'identity' | 'contact' | 'location' | 'social' | 'profile';
+
+type AccountProfileFormState = SaveAccountProfilePayload;
+
+const accountTabs: Array<{ id: AccountTab; label: string; icon: ElementType }> = [
+  { id: 'avatar', label: 'Avatar', icon: Image },
+  { id: 'identity', label: 'Identity', icon: UserRound },
+  { id: 'contact', label: 'Contact', icon: Mail },
+  { id: 'location', label: 'Location', icon: MapPin },
+  { id: 'social', label: 'Social', icon: Globe },
+  { id: 'profile', label: 'Profile', icon: AtSign },
+];
+
+const emptyAccountProfileForm: AccountProfileFormState = {
+  first_name: '',
+  last_name: '',
+  name: '',
+  email: '',
+  contact_email: '',
+  phone: '',
+  birthdate: '',
+  timezone: '',
+  city: '',
+  state: '',
+  country: '',
+  postal_code: '',
+  website_url: '',
+  instagram_url: '',
+  youtube_url: '',
+  soundcloud_url: '',
+  spotify_url: '',
+  bio: '',
+  marketing_opt_in: false,
+};
+
+function profileFormFromUser(user: AuthUser): AccountProfileFormState {
+  const profile = user.profile;
+
+  return {
+    first_name: user.first_name ?? user.name.split(' ')[0] ?? '',
+    last_name: user.last_name ?? user.name.split(' ').slice(1).join(' '),
+    name: user.name,
+    email: user.email,
+    contact_email: profile?.contact_email ?? user.email,
+    phone: profile?.phone ?? '',
+    birthdate: profile?.birthdate ?? '',
+    timezone: profile?.timezone ?? '',
+    city: profile?.city ?? '',
+    state: profile?.state ?? '',
+    country: profile?.country ?? '',
+    postal_code: profile?.postal_code ?? '',
+    website_url: profile?.website_url ?? '',
+    instagram_url: profile?.instagram_url ?? '',
+    youtube_url: profile?.youtube_url ?? '',
+    soundcloud_url: profile?.soundcloud_url ?? '',
+    spotify_url: profile?.spotify_url ?? '',
+    bio: profile?.bio ?? '',
+    marketing_opt_in: Boolean(profile?.marketing_opt_in),
+  };
+}
 
 function AccountToastBanner({
   toast,
@@ -188,10 +256,18 @@ export default function AccountPage() {
   const [isAvatarSaving, setIsAvatarSaving] = useState(false);
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [toast, setToast] = useState<AccountToast | null>(null);
+  const [activeTab, setActiveTab] = useState<AccountTab>('identity');
+  const [profileForm, setProfileForm] = useState<AccountProfileFormState>(emptyAccountProfileForm);
 
   const showToast = (type: AccountToast['type'], message: string) => {
     setToast({ id: Date.now(), type, message });
   };
+
+  useEffect(() => {
+    if (!user) return;
+
+    setProfileForm(profileFormFromUser(user));
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;
@@ -235,31 +311,39 @@ export default function AccountPage() {
     await logout();
     navigate('/');
   };
+  const updateProfileField = <FieldName extends keyof AccountProfileFormState>(
+    field: FieldName,
+    value: AccountProfileFormState[FieldName],
+  ) => {
+    setProfileForm((currentForm) => ({ ...currentForm, [field]: value }));
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    await handleProfileSave();
+  };
 
-    const formData = new FormData(event.currentTarget);
-    const value = (name: keyof SaveAccountProfilePayload) => String(formData.get(name) ?? '').trim();
+  const handleProfileSave = async () => {
     const payload: SaveAccountProfilePayload = {
-      first_name: value('first_name'),
-      last_name: value('last_name'),
-      name: value('name'),
-      email: value('email'),
-      contact_email: value('contact_email'),
-      phone: value('phone'),
-      birthdate: value('birthdate'),
-      timezone: value('timezone'),
-      city: value('city'),
-      state: value('state'),
-      country: value('country'),
-      postal_code: value('postal_code'),
-      website_url: value('website_url'),
-      instagram_url: value('instagram_url'),
-      youtube_url: value('youtube_url'),
-      soundcloud_url: value('soundcloud_url'),
-      spotify_url: value('spotify_url'),
-      bio: value('bio'),
-      marketing_opt_in: formData.has('marketing_opt_in'),
+      ...profileForm,
+      first_name: profileForm.first_name.trim(),
+      last_name: profileForm.last_name.trim(),
+      name: profileForm.name.trim(),
+      email: profileForm.email.trim(),
+      contact_email: profileForm.contact_email.trim(),
+      phone: profileForm.phone.trim(),
+      birthdate: profileForm.birthdate.trim(),
+      timezone: profileForm.timezone.trim(),
+      city: profileForm.city.trim(),
+      state: profileForm.state.trim(),
+      country: profileForm.country.trim(),
+      postal_code: profileForm.postal_code.trim(),
+      website_url: profileForm.website_url.trim(),
+      instagram_url: profileForm.instagram_url.trim(),
+      youtube_url: profileForm.youtube_url.trim(),
+      soundcloud_url: profileForm.soundcloud_url.trim(),
+      spotify_url: profileForm.spotify_url.trim(),
+      bio: profileForm.bio.trim(),
     };
 
     setIsProfileSaving(true);
@@ -275,9 +359,6 @@ export default function AccountPage() {
     }
   };
 
-  const profile = user.profile;
-  const firstName = user.first_name ?? user.name.split(' ')[0] ?? '';
-  const lastName = user.last_name ?? user.name.split(' ').slice(1).join(' ');
   const avatarPreview = avatarFilePreview
     || (useGeneratedInitials
       ? user.generated_avatar_url
@@ -291,6 +372,7 @@ export default function AccountPage() {
       : useGravatar
         ? 'gravatar'
         : user.avatar_source ?? (user.avatar ? 'uploaded' : 'generated');
+  const activeTabMeta = accountTabs.find((tab) => tab.id === activeTab) ?? accountTabs[1];
 
   const handleAvatarSave = async () => {
     setIsAvatarSaving(true);
@@ -387,206 +469,230 @@ export default function AccountPage() {
             </aside>
 
             <form onSubmit={handleSubmit} className="grid gap-5">
-              <section className="border border-[#2a2a2a] bg-[#111111] p-5 sm:p-6">
-                <SectionTitle icon={Image} title="Account Avatar" />
-                <div className="grid gap-5 md:grid-cols-[160px_minmax(0,1fr)]">
-                  <div>
-                    {avatarPreview ? (
-                      <img
-                        src={avatarPreview}
-                        alt={user.name}
-                        className="h-36 w-36 border border-[#333333] object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-36 w-36 items-center justify-center border border-[#333333] bg-primary text-4xl font-black uppercase text-white">
-                        {user.name.charAt(0)}
-                      </div>
-                    )}
-                    <p className="mt-3 text-[11px] uppercase tracking-widest text-[#777777]">
-                      Source: {avatarSource}
-                    </p>
-                  </div>
+              <section className="border border-[#2a2a2a] bg-[#111111]">
+                <div className="grid border-b border-[#2a2a2a] bg-[#080808] sm:grid-cols-3 lg:grid-cols-6">
+                  {accountTabs.map((tab) => {
+                    const Icon = tab.icon;
 
-                  <div className="grid gap-4">
-                    <div className="border border-[#333333] bg-[#080808] p-4">
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-[#bbbbbb]">Avatar Source</p>
-                      <p className="mt-2 text-sm leading-6 text-[#888888]">
-                        Your account uses one avatar everywhere. Upload an image, use Gravatar from your email, or fall
-                        back to generated initials.
-                      </p>
-                    </div>
-
-                    <label className="grid gap-2 border border-[#333333] bg-[#080808] p-4">
-                      <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#bbbbbb]">
-                        <Upload size={15} className="text-primary" />
-                        Upload Avatar
-                      </span>
-                      <input
-                        name="avatar_upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={(event) => {
-                          setAvatarFile(event.target.files?.[0] ?? null);
-                          setUseGravatar(false);
-                          setUseGeneratedInitials(false);
-                        }}
-                        className="w-full border border-[#333333] bg-[#050505] px-4 py-3 text-sm text-[#bbbbbb] file:mr-4 file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-white"
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`inline-flex h-12 items-center justify-center gap-2 border-b border-r border-[#2a2a2a] px-3 text-xs font-bold uppercase tracking-widest transition-colors last:border-r-0 ${
+                          activeTab === tab.id
+                            ? 'bg-primary text-white'
+                            : 'text-[#aaaaaa] hover:bg-[#111111] hover:text-primary'
+                        }`}
                         style={{ fontFamily: 'var(--font-heading)' }}
-                      />
-                      <span className="text-xs leading-5 text-[#888888]">Stores the uploaded image as your user avatar.</span>
-                    </label>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUseGravatar(true);
-                          setUseGeneratedInitials(false);
-                          setAvatarFile(null);
-                        }}
-                        className={`min-h-24 border p-4 text-left transition-colors ${
-                          useGravatar
-                            ? 'border-primary bg-primary/10'
-                            : 'border-[#333333] bg-[#080808] hover:border-primary'
-                        }`}
                       >
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-primary">Use Gravatar</span>
-                        <span className="mt-3 block break-all text-sm leading-6 text-[#aaaaaa]">{user.email}</span>
+                        <Icon size={15} />
+                        {tab.label}
                       </button>
+                    );
+                  })}
+                </div>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUseGravatar(false);
-                          setUseGeneratedInitials(true);
-                          setAvatarFile(null);
-                        }}
-                        className={`min-h-24 border p-4 text-left transition-colors ${
-                          useGeneratedInitials
-                            ? 'border-primary bg-primary/10'
-                            : 'border-[#333333] bg-[#080808] hover:border-primary'
-                        }`}
-                      >
-                        <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#bbbbbb]">
-                          <RotateCcw size={15} className="text-primary" />
-                          Use Generated Initials
-                        </span>
-                        <span className="mt-3 block text-sm leading-6 text-[#888888]">
-                          Use the initials avatar from your display name.
-                        </span>
-                      </button>
+                <div className="p-5 sm:p-6">
+                  <SectionTitle icon={activeTabMeta.icon} title={activeTabMeta.label === 'Social' ? 'Social Links' : activeTabMeta.label} />
+
+                  {activeTab === 'avatar' && (
+                    <div className="grid gap-5 md:grid-cols-[160px_minmax(0,1fr)]">
+                      <div>
+                        {avatarPreview ? (
+                          <img
+                            src={avatarPreview}
+                            alt={user.name}
+                            className="h-36 w-36 border border-[#333333] object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-36 w-36 items-center justify-center border border-[#333333] bg-primary text-4xl font-black uppercase text-white">
+                            {user.name.charAt(0)}
+                          </div>
+                        )}
+                        <p className="mt-3 text-[11px] uppercase tracking-widest text-[#777777]">
+                          Source: {avatarSource}
+                        </p>
+                      </div>
+
+                      <div className="grid gap-4">
+                        <div className="border border-[#333333] bg-[#080808] p-4">
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-[#bbbbbb]">Avatar Source</p>
+                          <p className="mt-2 text-sm leading-6 text-[#888888]">
+                            Your account uses one avatar everywhere. Upload an image, use Gravatar from your email, or fall
+                            back to generated initials.
+                          </p>
+                        </div>
+
+                        <label className="grid gap-2 border border-[#333333] bg-[#080808] p-4">
+                          <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#bbbbbb]">
+                            <Upload size={15} className="text-primary" />
+                            Upload Avatar
+                          </span>
+                          <input
+                            name="avatar_upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={(event) => {
+                              setAvatarFile(event.target.files?.[0] ?? null);
+                              setUseGravatar(false);
+                              setUseGeneratedInitials(false);
+                            }}
+                            className="w-full border border-[#333333] bg-[#050505] px-4 py-3 text-sm text-[#bbbbbb] file:mr-4 file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-white"
+                            style={{ fontFamily: 'var(--font-heading)' }}
+                          />
+                          <span className="text-xs leading-5 text-[#888888]">Stores the uploaded image as your user avatar.</span>
+                        </label>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUseGravatar(true);
+                              setUseGeneratedInitials(false);
+                              setAvatarFile(null);
+                            }}
+                            className={`min-h-24 border p-4 text-left transition-colors ${
+                              useGravatar
+                                ? 'border-primary bg-primary/10'
+                                : 'border-[#333333] bg-[#080808] hover:border-primary'
+                            }`}
+                          >
+                            <span className="text-[11px] font-bold uppercase tracking-widest text-primary">Use Gravatar</span>
+                            <span className="mt-3 block break-all text-sm leading-6 text-[#aaaaaa]">{user.email}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUseGravatar(false);
+                              setUseGeneratedInitials(true);
+                              setAvatarFile(null);
+                            }}
+                            className={`min-h-24 border p-4 text-left transition-colors ${
+                              useGeneratedInitials
+                                ? 'border-primary bg-primary/10'
+                                : 'border-[#333333] bg-[#080808] hover:border-primary'
+                            }`}
+                          >
+                            <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#bbbbbb]">
+                              <RotateCcw size={15} className="text-primary" />
+                              Use Generated Initials
+                            </span>
+                            <span className="mt-3 block text-sm leading-6 text-[#888888]">
+                              Use the initials avatar from your display name.
+                            </span>
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => void handleAvatarSave()}
+                          disabled={isAvatarSaving}
+                          className="inline-flex h-11 w-fit items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
+                          style={{ fontFamily: 'var(--font-heading)' }}
+                        >
+                          {isAvatarSaving ? <LoaderCircle size={15} className="animate-spin" /> : <Save size={15} />}
+                          {isAvatarSaving ? 'Saving Avatar' : 'Save Avatar'}
+                        </button>
+                      </div>
                     </div>
+                  )}
 
-                    <button
-                      type="button"
-                      onClick={() => void handleAvatarSave()}
-                      disabled={isAvatarSaving}
-                      className="inline-flex h-11 w-fit items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
-                      style={{ fontFamily: 'var(--font-heading)' }}
-                    >
-                      {isAvatarSaving ? <LoaderCircle size={15} className="animate-spin" /> : <Save size={15} />}
-                      {isAvatarSaving ? 'Saving Avatar' : 'Save Avatar'}
-                    </button>
-                  </div>
+                  {activeTab === 'identity' && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="First Name" name="first_name" value={profileForm.first_name} onChange={(value) => updateProfileField('first_name', value)} />
+                      <Field label="Last Name" name="last_name" value={profileForm.last_name} onChange={(value) => updateProfileField('last_name', value)} />
+                      <Field label="Display Name" name="name" value={profileForm.name} onChange={(value) => updateProfileField('name', value)} />
+                      <Field label="Login Email" name="email" type="email" value={profileForm.email} onChange={(value) => updateProfileField('email', value)} />
+                    </div>
+                  )}
+
+                  {activeTab === 'contact' && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Contact Email" name="contact_email" type="email" value={profileForm.contact_email} onChange={(value) => updateProfileField('contact_email', value)} />
+                      <Field label="Phone" name="phone" type="tel" value={profileForm.phone} placeholder="555-0100" onChange={(value) => updateProfileField('phone', value)} />
+                      <Field label="Birthdate" name="birthdate" type="date" value={profileForm.birthdate} onChange={(value) => updateProfileField('birthdate', value)} />
+                      <TimezoneField value={profileForm.timezone} onChange={(value) => updateProfileField('timezone', value)} />
+                    </div>
+                  )}
+
+                  {activeTab === 'location' && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="City" name="city" value={profileForm.city} onChange={(value) => updateProfileField('city', value)} />
+                      <Field label="State" name="state" value={profileForm.state} onChange={(value) => updateProfileField('state', value)} />
+                      <Field label="Country" name="country" value={profileForm.country} onChange={(value) => updateProfileField('country', value)} />
+                      <Field label="Postal Code" name="postal_code" value={profileForm.postal_code} onChange={(value) => updateProfileField('postal_code', value)} />
+                    </div>
+                  )}
+
+                  {activeTab === 'social' && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Website" name="website_url" type="url" value={profileForm.website_url} onChange={(value) => updateProfileField('website_url', value)} />
+                      <Field label="Instagram" name="instagram_url" type="url" value={profileForm.instagram_url} onChange={(value) => updateProfileField('instagram_url', value)} />
+                      <Field label="YouTube" name="youtube_url" type="url" value={profileForm.youtube_url} onChange={(value) => updateProfileField('youtube_url', value)} />
+                      <Field label="SoundCloud" name="soundcloud_url" type="url" value={profileForm.soundcloud_url} onChange={(value) => updateProfileField('soundcloud_url', value)} />
+                      <Field label="Spotify" name="spotify_url" type="url" value={profileForm.spotify_url} onChange={(value) => updateProfileField('spotify_url', value)} />
+                    </div>
+                  )}
+
+                  {activeTab === 'profile' && (
+                    <div>
+                      <TextAreaField
+                        label="Bio"
+                        name="bio"
+                        value={profileForm.bio}
+                        onChange={(value) => updateProfileField('bio', value)}
+                        placeholder="Tell the community who you are and what sound you bring."
+                      />
+                      <label className="mt-5 flex items-start gap-3 border border-[#333333] bg-[#080808] p-4">
+                        <input
+                          name="marketing_opt_in"
+                          type="checkbox"
+                          checked={profileForm.marketing_opt_in}
+                          onChange={(event) => updateProfileField('marketing_opt_in', event.target.checked)}
+                          className="mt-1 h-4 w-4 accent-primary"
+                        />
+                        <span>
+                          <span className="flex items-center gap-2 text-sm font-semibold text-white">
+                            <Megaphone size={15} className="text-primary" />
+                            Marketing Opt-In
+                          </span>
+                          <span className="mt-1 block text-xs leading-5 text-[#888888]">
+                            Receive event, battle, and platform updates.
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  )}
                 </div>
               </section>
 
-              <section className="border border-[#2a2a2a] bg-[#111111] p-5 sm:p-6">
-                <SectionTitle icon={UserRound} title="Identity" />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="First Name" name="first_name" value={firstName} />
-                  <Field label="Last Name" name="last_name" value={lastName} />
-                  <Field label="Display Name" name="name" value={user.name} />
-                  <Field label="Login Email" name="email" type="email" value={user.email} />
+              {activeTab !== 'avatar' && (
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setToast(null);
+                      setProfileForm(profileFormFromUser(user));
+                    }}
+                    className="inline-flex h-11 items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                    style={{ fontFamily: 'var(--font-heading)' }}
+                  >
+                    <Settings size={15} />
+                    Reset Changes
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isProfileSaving}
+                    className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
+                    style={{ fontFamily: 'var(--font-heading)' }}
+                  >
+                    {isProfileSaving ? <LoaderCircle size={15} className="animate-spin" /> : <Save size={15} />}
+                    {isProfileSaving ? `Saving ${activeTabMeta.label}` : `Save ${activeTabMeta.label}`}
+                  </button>
                 </div>
-              </section>
-
-              <section className="border border-[#2a2a2a] bg-[#111111] p-5 sm:p-6">
-                <SectionTitle icon={Mail} title="Contact" />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field
-                    label="Contact Email"
-                    name="contact_email"
-                    type="email"
-                    value={profile?.contact_email ?? user.email}
-                  />
-                  <Field label="Phone" name="phone" type="tel" value={profile?.phone} placeholder="555-0100" />
-                  <Field label="Birthdate" name="birthdate" type="date" value={profile?.birthdate} />
-                  <TimezoneField value={profile?.timezone} />
-                </div>
-              </section>
-
-              <section className="border border-[#2a2a2a] bg-[#111111] p-5 sm:p-6">
-                <SectionTitle icon={MapPin} title="Location" />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="City" name="city" value={profile?.city} />
-                  <Field label="State" name="state" value={profile?.state} />
-                  <Field label="Country" name="country" value={profile?.country} />
-                  <Field label="Postal Code" name="postal_code" value={profile?.postal_code} />
-                </div>
-              </section>
-
-              <section className="border border-[#2a2a2a] bg-[#111111] p-5 sm:p-6">
-                <SectionTitle icon={Globe} title="Social Links" />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Website" name="website_url" type="url" value={profile?.website_url} />
-                  <Field label="Instagram" name="instagram_url" type="url" value={profile?.instagram_url} />
-                  <Field label="YouTube" name="youtube_url" type="url" value={profile?.youtube_url} />
-                  <Field label="SoundCloud" name="soundcloud_url" type="url" value={profile?.soundcloud_url} />
-                  <Field label="Spotify" name="spotify_url" type="url" value={profile?.spotify_url} />
-                </div>
-              </section>
-
-              <section className="border border-[#2a2a2a] bg-[#111111] p-5 sm:p-6">
-                <SectionTitle icon={AtSign} title="Profile" />
-                <TextAreaField
-                  label="Bio"
-                  name="bio"
-                  value={profile?.bio}
-                  placeholder="Tell the community who you are and what sound you bring."
-                />
-                <label className="mt-5 flex items-start gap-3 border border-[#333333] bg-[#080808] p-4">
-                  <input
-                    name="marketing_opt_in"
-                    type="checkbox"
-                    defaultChecked={Boolean(profile?.marketing_opt_in)}
-                    className="mt-1 h-4 w-4 accent-primary"
-                  />
-                  <span>
-                    <span className="flex items-center gap-2 text-sm font-semibold text-white">
-                      <Megaphone size={15} className="text-primary" />
-                      Marketing Opt-In
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-[#888888]">
-                      Receive event, battle, and platform updates.
-                    </span>
-                  </span>
-                </label>
-              </section>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setToast(null);
-                    refreshUser();
-                  }}
-                  className="inline-flex h-11 items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
-                  style={{ fontFamily: 'var(--font-heading)' }}
-                >
-                  <Settings size={15} />
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isProfileSaving}
-                  className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
-                  style={{ fontFamily: 'var(--font-heading)' }}
-                >
-                  {isProfileSaving ? <LoaderCircle size={15} className="animate-spin" /> : <Save size={15} />}
-                  {isProfileSaving ? 'Saving Profile' : 'Save Profile'}
-                </button>
-              </div>
+              )}
             </form>
           </div>
         </section>
