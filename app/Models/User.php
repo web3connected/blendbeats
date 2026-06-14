@@ -75,4 +75,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserFeatureActivation::class);
     }
+
+    public function adCredits(): HasMany
+    {
+        return $this->hasMany(UserAdCredit::class);
+    }
 }

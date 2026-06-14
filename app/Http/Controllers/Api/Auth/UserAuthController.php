@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\AccountUpdatedNotification;
 use App\Notifications\RegistrationWelcomeNotification;
+use App\Services\UserAdCreditService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,6 +33,8 @@ class UserAuthController extends Controller
         if (Schema::hasTable('notifications')) {
             $user->notify(new RegistrationWelcomeNotification());
         }
+
+        app(UserAdCreditService::class)->grantRegistrationAdCredit($user);
 
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
