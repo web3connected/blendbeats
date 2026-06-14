@@ -156,6 +156,8 @@
                             $webhookIdSource = $provider->valueSourceFor('webhook_id');
                             $webhookSecretSource = $provider->valueSourceFor('webhook_secret');
                             $merchantIdSource = $provider->valueSourceFor('merchant_id');
+                            $secretValue = $provider->effectiveValueFor('secret');
+                            $webhookSecretValue = $provider->effectiveValueFor('webhook_secret');
                             $sourceBadge = fn (string $source): string => match ($source) {
                                 'database' => 'Saved in admin',
                                 'env' => 'Loaded from .env',
@@ -222,12 +224,32 @@
                                         <label for="provider_{{ $provider->id }}_secret">
                                             {{ $provider->provider === 'paypal' ? 'PayPal Secret' : 'Stripe Secret Key' }}
                                         </label>
+                                        @if ($secretValue)
+                                            <div class="input-group mb-2">
+                                                <input
+                                                    type="text"
+                                                    class="form-control"
+                                                    value="{{ $provider->maskedEffectiveValueFor('secret') }}"
+                                                    readonly
+                                                >
+                                                <div class="input-group-append">
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-outline-secondary"
+                                                        data-toggle="modal"
+                                                        data-target="#provider_{{ $provider->id }}_secret_modal"
+                                                    >
+                                                        View / Copy
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        @endif
                                         <input
                                             id="provider_{{ $provider->id }}_secret"
                                             type="password"
                                             name="secret"
                                             class="form-control"
-                                            placeholder="{{ $provider->hasEffectiveSecret() ? $sourceBadge($secretSource).'. Enter a new value to save in admin.' : 'Not saved yet.' }}"
+                                            placeholder="{{ $provider->hasEffectiveSecret() ? 'Enter a new value to replace the current secret.' : 'Not saved yet.' }}"
                                             autocomplete="new-password"
                                         >
                                         <small class="text-muted">
@@ -248,12 +270,32 @@
                                     </div>
                                     <div class="form-group col-md-6">
                                         <label for="provider_{{ $provider->id }}_webhook_secret">Webhook Secret</label>
+                                        @if ($webhookSecretValue)
+                                            <div class="input-group mb-2">
+                                                <input
+                                                    type="text"
+                                                    class="form-control"
+                                                    value="{{ $provider->maskedEffectiveValueFor('webhook_secret') }}"
+                                                    readonly
+                                                >
+                                                <div class="input-group-append">
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-outline-secondary"
+                                                        data-toggle="modal"
+                                                        data-target="#provider_{{ $provider->id }}_webhook_secret_modal"
+                                                    >
+                                                        View / Copy
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        @endif
                                         <input
                                             id="provider_{{ $provider->id }}_webhook_secret"
                                             type="password"
                                             name="webhook_secret"
                                             class="form-control"
-                                            placeholder="{{ $provider->hasEffectiveWebhookSecret() ? $sourceBadge($webhookSecretSource).'. Enter a new value to save in admin.' : 'Not saved yet.' }}"
+                                            placeholder="{{ $provider->hasEffectiveWebhookSecret() ? 'Enter a new value to replace the current webhook secret.' : 'Not saved yet.' }}"
                                             autocomplete="new-password"
                                         >
                                         <small class="text-muted">
@@ -320,10 +362,97 @@
                                     @endcan
                                 </div>
                             </form>
+
+                            @if ($secretValue)
+                                <div class="modal fade" id="provider_{{ $provider->id }}_secret_modal" tabindex="-1" role="dialog" aria-labelledby="provider_{{ $provider->id }}_secret_modal_label" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="provider_{{ $provider->id }}_secret_modal_label">{{ $provider->display_name }} Secret</h5>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <label for="provider_{{ $provider->id }}_secret_full">Full Secret</label>
+                                                <div class="input-group">
+                                                    <input id="provider_{{ $provider->id }}_secret_full" type="text" class="form-control text-monospace" value="{{ $secretValue }}" readonly>
+                                                    <div class="input-group-append">
+                                                        <button type="button" class="btn btn-primary js-copy-provider-secret" data-copy-target="provider_{{ $provider->id }}_secret_full">
+                                                            Copy Code
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted d-block mt-2">Source: {{ $sourceBadge($secretSource) }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if ($webhookSecretValue)
+                                <div class="modal fade" id="provider_{{ $provider->id }}_webhook_secret_modal" tabindex="-1" role="dialog" aria-labelledby="provider_{{ $provider->id }}_webhook_secret_modal_label" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="provider_{{ $provider->id }}_webhook_secret_modal_label">{{ $provider->display_name }} Webhook Secret</h5>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <label for="provider_{{ $provider->id }}_webhook_secret_full">Full Webhook Secret</label>
+                                                <div class="input-group">
+                                                    <input id="provider_{{ $provider->id }}_webhook_secret_full" type="text" class="form-control text-monospace" value="{{ $webhookSecretValue }}" readonly>
+                                                    <div class="input-group-append">
+                                                        <button type="button" class="btn btn-primary js-copy-provider-secret" data-copy-target="provider_{{ $provider->id }}_webhook_secret_full">
+                                                            Copy Code
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted d-block mt-2">Source: {{ $sourceBadge($webhookSecretSource) }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                     @endforeach
                 </div>
             @endif
         </div>
     </div>
+@endsection
+
+@section('js')
+    <script>
+        document.addEventListener('click', function (event) {
+            var button = event.target.closest('.js-copy-provider-secret');
+
+            if (!button) {
+                return;
+            }
+
+            var target = document.getElementById(button.getAttribute('data-copy-target'));
+
+            if (!target) {
+                return;
+            }
+
+            target.select();
+            target.setSelectionRange(0, target.value.length);
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(target.value);
+            } else {
+                document.execCommand('copy');
+            }
+
+            button.textContent = 'Copied';
+
+            window.setTimeout(function () {
+                button.textContent = 'Copy Code';
+            }, 1500);
+        });
+    </script>
 @endsection

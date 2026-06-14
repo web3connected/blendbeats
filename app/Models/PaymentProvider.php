@@ -179,6 +179,17 @@ class PaymentProvider extends Model
         return filled($this->effectiveValueFor($field));
     }
 
+    public function maskedEffectiveValueFor(string $field): ?string
+    {
+        $value = $this->effectiveValueFor($field);
+
+        if (blank($value)) {
+            return null;
+        }
+
+        return Str::substr($value, 0, 6).'***';
+    }
+
     public function hasEffectiveSecret(): bool
     {
         return $this->hasEffectiveValueFor('secret');
