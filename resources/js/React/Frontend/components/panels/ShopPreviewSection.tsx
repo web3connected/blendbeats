@@ -6,7 +6,7 @@ import { siteMedia } from '@/lib/site-media';
 
 const ShopPreviewSection = () => {
   const merchImage = siteMedia('images/pages/home/merch-hoodie');
-  const gearImage = siteMedia('images/pages/home/dj-mixer');
+  const commerceImage = siteMedia('images/pages/home/dj-mixer');
 
   return (
     <section className="py-20 bg-[#0a0a0a] border-t border-[#1a1a1a]">
@@ -69,7 +69,7 @@ const ShopPreviewSection = () => {
               </div>
             </motion.div>
 
-            {/* Gear */}
+            {/* Commerce Router */}
             <motion.div
               custom={1}
               initial="hidden"
@@ -79,10 +79,10 @@ const ShopPreviewSection = () => {
               className="relative overflow-hidden group"
             >
               <div className="aspect-[4/3] bg-[#141414] border border-[#2a2a2a] overflow-hidden">
-                {gearImage ? (
+                {commerceImage ? (
                   <img
-                    src={gearImage}
-                    alt="DJ Gear"
+                    src={commerceImage}
+                    alt="Marketplace products"
                     className="w-full h-full object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-500"
                   />
                 ) : (
@@ -92,18 +92,18 @@ const ShopPreviewSection = () => {
               </div>
               <div className="absolute bottom-0 left-0 right-0 p-6">
                 <p className="text-[#888888] text-xs font-bold tracking-widest uppercase mb-1" style={{ fontFamily: 'var(--font-heading)' }}>
-                  TOOLS OF THE TRADE
+                  ROUTED CHECKOUT
                 </p>
                 <h3 className="text-white text-3xl uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', letterSpacing: '-0.01em' }}>
-                  DJ GEAR
+                  PARTNER PRODUCTS
                 </h3>
                 <Link
-                  to="/gear"
+                  to="/merch"
                   className="inline-flex items-center gap-2 px-6 py-3 bg-[#FFB800] text-[#0a0a0a] text-xs font-bold tracking-widest uppercase hover:bg-[#FFB800]/90 transition-colors"
                   style={{ fontFamily: 'var(--font-heading)' }}
                 >
                   <ShoppingBag size={14} />
-                  SHOP GEAR
+                  VIEW PRODUCTS
                 </Link>
               </div>
             </motion.div>

@@ -20,7 +20,6 @@ export default function Header() {
     { href: '/mixes', label: 'MIXES' },
     { href: '/pricing', label: 'PRICING' },
     { href: '/merch', label: 'MERCH' },
-    { href: '/gear', label: 'GEAR' },
   ];
   const djProfileLabel = user?.dj_profile ? 'EDIT DJ PROFILE' : 'START DJ CAREER';
   const djProfileHref = user?.dj_profile ? '/dj/edit' : '/dj/start';

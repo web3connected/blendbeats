@@ -77,9 +77,9 @@ export default function Footer() {
             <ul className="space-y-2">
               {[
                 { href: '/merch', label: 'Merchandise' },
-                { href: '/gear', label: 'DJ Gear' },
-                { href: '/gear/turntables', label: 'Turntables' },
-                { href: '/gear/mixers', label: 'Mixers' },
+                { href: '/merch', label: 'Print-On-Demand' },
+                { href: '/merch', label: 'Affiliate Picks' },
+                { href: '/merch', label: 'Vendor Products' },
               ].map((item) => (
                 <li key={item.href}>
                   <Link to={item.href} className="text-[#888888] text-sm hover:text-primary transition-colors">
