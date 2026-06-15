@@ -65,7 +65,7 @@ const ShopPreviewSection = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchCommerceProducts({ featured: true, limit: 2 })
+    fetchCommerceProducts({ featured: true, limit: 3 })
       .then(setProducts)
       .catch(() => setError('Featured products could not be loaded.'))
       .finally(() => setIsLoading(false));
@@ -131,7 +131,7 @@ const ShopPreviewSection = () => {
             <p className="mt-4 text-sm text-[#999999]">No featured products are available yet.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {products.map((product, index) => (
               <motion.article
                 key={product.id}
