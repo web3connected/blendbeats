@@ -20,7 +20,7 @@ class CommerceProductSeeder extends Seeder
                 'fulfillment_type' => 'internal',
                 'category' => 'Digital',
                 'image_url' => null,
-                'metadata' => ['lane' => 'internal_checkout'],
+                'metadata' => ['lane' => 'internal_checkout', 'home_featured' => true],
             ],
             [
                 'title' => 'Battle DJ Hoodie',
@@ -37,7 +37,7 @@ class CommerceProductSeeder extends Seeder
                     'color' => ['Black', 'Red', 'Gold'],
                     'fields' => ['dj_handle', 'back_text'],
                 ],
-                'metadata' => ['lane' => 'pod_checkout'],
+                'metadata' => ['lane' => 'pod_checkout', 'home_featured' => true],
             ],
             [
                 'title' => 'Turntable Slipmat Set',

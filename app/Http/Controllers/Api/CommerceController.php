@@ -16,12 +16,50 @@ class CommerceController extends Controller
 
     public function products(Request $request): JsonResponse
     {
-        $products = Product::query()
+        $limit = min(max((int) $request->query('limit', 0), 0), 24);
+        $featuredOnly = $request->boolean('featured');
+
+        $query = Product::query()
             ->where('status', 'active')
             ->when($request->query('category'), fn ($query, $category) => $query->where('category', $category))
             ->orderBy('category')
-            ->orderBy('title')
-            ->get()
+            ->orderBy('title');
+
+        if ($featuredOnly) {
+            $featuredQuery = (clone $query)->where(function ($query): void {
+                $query
+                    ->where('metadata->featured', true)
+                    ->orWhere('metadata->home_featured', true)
+                    ->orWhere('metadata->featured', 'true')
+                    ->orWhere('metadata->home_featured', 'true')
+                    ->orWhere('metadata->featured', 1)
+                    ->orWhere('metadata->home_featured', 1);
+            });
+
+            if ($limit > 0) {
+                $featuredQuery->limit($limit);
+            }
+
+            $products = $featuredQuery->get();
+
+            if ($products->isEmpty()) {
+                $fallbackQuery = clone $query;
+
+                if ($limit > 0) {
+                    $fallbackQuery->limit($limit);
+                }
+
+                $products = $fallbackQuery->get();
+            }
+        } else {
+            if ($limit > 0) {
+                $query->limit($limit);
+            }
+
+            $products = $query->get();
+        }
+
+        $products = $products
             ->map(fn (Product $product): array => $this->productPayload($product))
             ->values();
 

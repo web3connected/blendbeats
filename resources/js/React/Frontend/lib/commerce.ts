@@ -57,8 +57,12 @@ export type CommerceCart = {
   checkout_groups: Record<string, CommerceCheckoutGroup>;
 };
 
-export async function fetchCommerceProducts() {
-  const response = await apiClient.get<{ products: CommerceProduct[] }>('/commerce/products');
+export async function fetchCommerceProducts(params: {
+  category?: string;
+  featured?: boolean;
+  limit?: number;
+} = {}) {
+  const response = await apiClient.get<{ products: CommerceProduct[] }>('/commerce/products', { params });
   return response.data.products;
 }
 
