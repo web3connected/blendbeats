@@ -13,12 +13,16 @@ import {
 } from '@/lib/commerce';
 
 function ProductArtwork({ product }: { product: CommerceProduct }) {
-  if (product.image_url) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageUrl = typeof product.image_url === 'string' && product.image_url.trim() !== '' ? product.image_url : null;
+
+  if (imageUrl && !imageFailed) {
     return (
       <img
-        src={product.image_url}
+        src={imageUrl}
         alt={`${product.title} product image`}
         loading="lazy"
+        onError={() => setImageFailed(true)}
         className="absolute inset-0 h-full w-full object-cover"
       />
     );
