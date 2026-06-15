@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DjProfile;
 use App\Models\Follower;
+use App\Notifications\DjProfileFollowedNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -17,10 +18,14 @@ class DjFollowController extends Controller
 
         abort_if((int) $profile->user_id === (int) $user->id, 422, 'You cannot follow your own DJ profile.');
 
-        Follower::query()->firstOrCreate([
+        $follow = Follower::query()->firstOrCreate([
             'follower_user_id' => $user->id,
             'followed_dj_id' => $profile->id,
         ]);
+
+        if ($follow->wasRecentlyCreated) {
+            $profile->user?->notify(new DjProfileFollowedNotification($profile, $user));
+        }
 
         return response()->json($this->payload($profile, true));
     }
