@@ -208,4 +208,28 @@ class Post extends Model
     {
         return $this->status === self::STATUS_PUBLISHED && $this->published_at !== null;
     }
+
+    public function incrementViewCount(): NewsTrendingMetric
+    {
+        $windowStartedAt = now()->startOfDay();
+        $windowEndedAt = now()->endOfDay();
+
+        $metric = $this->trendingMetrics()->firstOrCreate(
+            [
+                'window_started_at' => $windowStartedAt,
+                'window_ended_at' => $windowEndedAt,
+            ],
+            [
+                'views' => 0,
+                'shares' => 0,
+                'comments_count' => 0,
+                'engagement_score' => 0,
+            ],
+        );
+
+        $metric->increment('views');
+        $metric->increment('engagement_score');
+
+        return $metric->refresh();
+    }
 }

@@ -73,6 +73,20 @@ export default function Header() {
                 {item.label}
               </Link>
             ))}
+            <a
+              href="/news"
+              className={`text-base font-bold tracking-widest transition-colors hover:text-primary ${
+                location.pathname.startsWith('/news')
+                  ? 'border-b-2 border-primary pb-0.5'
+                  : ''
+              }`}
+              style={{ fontFamily: 'var(--font-heading)' }}
+            >
+              <span className={location.pathname.startsWith('/news') ? 'text-primary' : 'text-[#ffffff]'}>
+                BLEND
+              </span>
+              <span className="text-accent">NEWS</span>
+            </a>
             <div ref={djMenuRef} className="relative">
               <button
                 type="button"
@@ -163,6 +177,19 @@ export default function Header() {
                   {item.label}
                 </Link>
               ))}
+              <a
+                href="/news"
+                className={`text-base font-bold tracking-widest py-3 px-2 border-b border-[#1a1a1a] transition-colors hover:text-primary ${
+                  location.pathname.startsWith('/news') ? 'text-primary' : ''
+                }`}
+                style={{ fontFamily: 'var(--font-heading)' }}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <span className={location.pathname.startsWith('/news') ? 'text-primary' : 'text-[#ffffff]'}>
+                  BLEND
+                </span>
+                <span className="text-accent">NEWS</span>
+              </a>
               <div className="mt-2 border border-[#222222] bg-[#0d0d0d] p-2">
                 <p className="px-2 py-2 text-[11px] font-bold uppercase tracking-widest text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
                   DJ

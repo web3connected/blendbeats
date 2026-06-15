@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\FeaturedAdController;
 use App\Http\Controllers\Api\LoungeLiveStateController;
 use App\Http\Controllers\Api\MediaManagerController;
 use App\Http\Controllers\Api\MediaSetupController;
+use App\Http\Controllers\Api\NewsCommentController;
+use App\Http\Controllers\Api\NewsController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\Auth\UserAuthController;
@@ -102,6 +104,22 @@ Route::prefix('dj-hub')
         });
     });
 Route::get('lounge/live-state', [LoungeLiveStateController::class, 'show'])->name('api.lounge.live-state');
+
+Route::prefix('news')
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
+    ->name('api.news.')
+    ->group(function (): void {
+        Route::get('/', [NewsController::class, 'index'])->name('index');
+        Route::get('categories', [NewsController::class, 'categories'])->name('categories');
+        Route::get('categories/{slug}', [NewsController::class, 'category'])->name('categories.show');
+        Route::get('{post:slug}/comments', [NewsCommentController::class, 'index'])->name('comments.index');
+        Route::post('{post:slug}/comments', [NewsCommentController::class, 'store'])->name('comments.store');
+        Route::middleware('public.auth')->group(function (): void {
+            Route::patch('comments/{comment}', [NewsCommentController::class, 'update'])->name('comments.update');
+            Route::delete('comments/{comment}', [NewsCommentController::class, 'destroy'])->name('comments.destroy');
+        });
+        Route::get('{slug}', [NewsController::class, 'show'])->name('show');
+    });
 
 Route::get('featured-ads/preview-status', $previewStatus)
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
