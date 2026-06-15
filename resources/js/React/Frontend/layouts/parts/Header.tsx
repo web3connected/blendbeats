@@ -3,6 +3,7 @@ import { ChevronDown, Headphones, Menu, Music2, Radio, Upload, Users, X } from '
 import { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import HeaderCartDrawer from './HeaderCartDrawer';
 import NotificationHeaderBell from './NotificationHeaderBell';
 import WhosLoggedIn from './WhosLoggedIn';
 import { siteMedia } from '@/lib/site-media';
@@ -126,20 +127,20 @@ export default function Header() {
           {/* CTA + Mobile Toggle */}
           <div className="flex items-center gap-3">
             <Link
-              to="/dj/portfolio?upload=1"
-              className="hidden lg:inline-flex items-center gap-2 border border-[#333333] px-4 py-2 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
-              style={{ fontFamily: 'var(--font-heading)', letterSpacing: '0.1em' }}
-            >
-              <Upload size={14} />
-              Upload A Mix
-            </Link>
-            <Link
               to="/battles"
               className="hidden md:inline-flex items-center px-5 py-2 bg-primary text-white text-xs font-bold tracking-widest uppercase hover:bg-primary/90 transition-colors"
               style={{ fontFamily: 'var(--font-heading)', letterSpacing: '0.1em' }}
             >
               ENTER BATTLE
             </Link>
+            <Link
+              to="/dj/portfolio?upload=1"
+              className="hidden md:inline-flex h-10 w-10 items-center justify-center border border-[#333333] bg-[#111111] text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+              aria-label="Upload a mix"
+            >
+              <Upload size={16} />
+            </Link>
+            <HeaderCartDrawer />
             <NotificationHeaderBell />
             <WhosLoggedIn />
             <button

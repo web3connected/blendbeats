@@ -1,15 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ExternalLink, Loader2, Minus, Plus, Route, ShoppingBag, Trash2 } from 'lucide-react';
+import { Loader2, Plus, ShoppingBag } from 'lucide-react';
 
 import HeaderTitle from '@/layouts/HeaderTitle';
 import {
   addCommerceCartItem,
-  CommerceCart,
   CommerceProduct,
-  fetchCommerceCart,
   fetchCommerceProducts,
-  removeCommerceCartItem,
-  updateCommerceCartItem,
 } from '@/lib/commerce';
 
 function ProductArtwork({ product }: { product: CommerceProduct }) {
@@ -66,19 +62,16 @@ function defaultDesign(product: CommerceProduct) {
 
 export default function MerchPage() {
   const [products, setProducts] = useState<CommerceProduct[]>([]);
-  const [cart, setCart] = useState<CommerceCart | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyProduct, setBusyProduct] = useState<number | null>(null);
-  const [busyItem, setBusyItem] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
 
-    Promise.all([fetchCommerceProducts(), fetchCommerceCart()])
-      .then(([productData, cartData]) => {
+    fetchCommerceProducts()
+      .then((productData) => {
         setProducts(productData);
-        setCart(cartData);
       })
       .catch(() => setError('Commerce data could not be loaded.'))
       .finally(() => setLoading(false));
@@ -102,34 +95,16 @@ export default function MerchPage() {
     setError(null);
 
     try {
-      const updatedCart = await addCommerceCartItem({
+      await addCommerceCartItem({
         product_id: product.id,
         quantity: 1,
         selected_options: defaultOptions(product),
         custom_design_data: defaultDesign(product),
       });
-      setCart(updatedCart);
     } catch (cartError) {
       setError(cartError instanceof Error ? cartError.message : 'Product could not be added.');
     } finally {
       setBusyProduct(null);
-    }
-  }
-
-  async function updateQuantity(itemId: number, quantity: number) {
-    setBusyItem(itemId);
-    setError(null);
-
-    try {
-      if (quantity <= 0) {
-        setCart(await removeCommerceCartItem(itemId));
-      } else {
-        setCart(await updateCommerceCartItem(itemId, quantity));
-      }
-    } catch (cartError) {
-      setError(cartError instanceof Error ? cartError.message : 'Cart could not be updated.');
-    } finally {
-      setBusyItem(null);
     }
   }
 
@@ -168,7 +143,7 @@ export default function MerchPage() {
         </section>
 
         <section className="py-12">
-          <div className="container mx-auto grid grid-cols-1 gap-6 px-4 xl:grid-cols-[1fr_420px]">
+          <div className="container mx-auto px-4">
             <div>
               <div className="mb-5 flex items-center gap-3">
                 <ShoppingBag className="text-primary" size={22} />
@@ -227,72 +202,6 @@ export default function MerchPage() {
               )}
             </div>
 
-            <aside className="border border-[#292929] bg-[#101010] p-5 xl:sticky xl:top-28 xl:self-start">
-              <div className="mb-5 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-widest text-[#ffb800]" style={{ fontFamily: 'var(--font-heading)' }}>
-                    Routing Cart
-                  </p>
-                  <h2 className="text-3xl uppercase" style={{ fontFamily: 'var(--font-heading)' }}>
-                    {cart?.estimated_total_label || '$0.00'}
-                  </h2>
-                </div>
-                <Route className="text-primary" size={28} />
-              </div>
-
-              {!cart || cart.items.length === 0 ? (
-                <div className="border border-[#292929] p-5 text-sm leading-6 text-[#a9a9a9]">
-                  Add products to see how checkout splits between BlendBeats, partner redirects, vendor checkout, and print-on-demand routes.
-                </div>
-              ) : (
-                <div className="space-y-5">
-                  {Object.entries(cart.checkout_groups).map(([key, group]) => (
-                    <section key={key} className="border border-[#292929]">
-                      <div className="border-b border-[#292929] p-4">
-                        <p className="text-lg uppercase" style={{ fontFamily: 'var(--font-heading)' }}>
-                          {group.label}
-                        </p>
-                        <p className="mt-1 text-xs uppercase tracking-widest text-[#888888]">{group.item_count} items / {group.total_label}</p>
-                      </div>
-                      <div className="divide-y divide-[#292929]">
-                        {group.items.map((item) => (
-                          <div key={item.id} className="p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <p className="font-bold">{item.title}</p>
-                                <p className="mt-1 text-xs uppercase tracking-widest text-[#888888]">{item.vendor_name || 'BlendBeats'}</p>
-                              </div>
-                              <p className="text-[#ffb800]" style={{ fontFamily: 'var(--font-heading)' }}>{item.estimated_total_label}</p>
-                            </div>
-                            <div className="mt-4 flex items-center justify-between gap-3">
-                              <div className="flex items-center border border-[#333333]">
-                                <button className="p-2" type="button" onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={busyItem === item.id}>
-                                  <Minus size={14} />
-                                </button>
-                                <span className="min-w-10 text-center text-sm">{item.quantity}</span>
-                                <button className="p-2" type="button" onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={busyItem === item.id}>
-                                  <Plus size={14} />
-                                </button>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {item.external_checkout_required && item.affiliate_tracking_url && (
-                                  <a className="inline-flex items-center gap-2 border border-[#333333] px-3 py-2 text-xs uppercase tracking-widest" href={item.affiliate_tracking_url} target="_blank" rel="noreferrer">
-                                    Partner <ExternalLink size={13} />
-                                  </a>
-                                )}
-                                <button className="inline-flex items-center gap-2 border border-[#333333] px-3 py-2 text-xs uppercase tracking-widest" type="button" onClick={() => updateQuantity(item.id, 0)} disabled={busyItem === item.id}>
-                                  <Trash2 size={13} /> Remove
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  ))}
-                </div>
-              )}
-            </aside>
           </div>
         </section>
       </main>

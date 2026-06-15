@@ -74,15 +74,22 @@ export async function addCommerceCartItem(payload: {
   custom_design_data?: Record<string, unknown>;
 }) {
   const response = await apiClient.post<{ cart: CommerceCart }>('/commerce/cart/items', payload);
+  notifyCommerceCartUpdated(response.data.cart);
   return response.data.cart;
 }
 
 export async function updateCommerceCartItem(itemId: number, quantity: number) {
   const response = await apiClient.patch<{ cart: CommerceCart }>(`/commerce/cart/items/${itemId}`, { quantity });
+  notifyCommerceCartUpdated(response.data.cart);
   return response.data.cart;
 }
 
 export async function removeCommerceCartItem(itemId: number) {
   const response = await apiClient.delete<{ cart: CommerceCart }>(`/commerce/cart/items/${itemId}`);
+  notifyCommerceCartUpdated(response.data.cart);
   return response.data.cart;
+}
+
+function notifyCommerceCartUpdated(cart: CommerceCart) {
+  window.dispatchEvent(new CustomEvent('commerce-cart-updated', { detail: cart }));
 }
