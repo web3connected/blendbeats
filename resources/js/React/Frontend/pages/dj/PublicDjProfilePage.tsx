@@ -5,19 +5,24 @@ import {
   Disc3,
   FileAudio,
   Headphones,
+  Loader2,
   MapPin,
   Pause,
   Play,
   Radio,
   ShieldCheck,
   Star,
+  UserCheck,
+  UserPlus,
   Users,
   Video,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import { useAuth } from '@/components/auth/AuthProvider';
 import { usePlayer } from '@/components/player/PlayerProvider';
+import { useDjFollow } from '@/hooks/useDjFollow';
 import { useCounter } from '@/hooks/useCounter';
 import { getDjHubDj, type DjHubDj } from '@/lib/dj-hub';
 
@@ -39,6 +44,8 @@ function mediaKindLabel(kind: string | null, fallback: string) {
 
 export default function PublicDjProfilePage() {
   const { handle } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
   const [dj, setDj] = useState<DjHubDj | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,6 +87,20 @@ export default function PublicDjProfilePage() {
     () => [dj?.primary_genre, ...(dj?.secondary_genres ?? [])].filter(Boolean) as string[],
     [dj?.primary_genre, dj?.secondary_genres],
   );
+  const follow = useDjFollow({
+    handle: dj?.handle ?? handle ?? '',
+    initialIsFollowing: dj?.is_following ?? false,
+    initialFollowersCount: dj?.followers_count ?? 0,
+    onUnauthenticated: () => navigate(`/login?redirect=${encodeURIComponent(`/djs/${handle ?? ''}`)}`),
+    onChange: ({ isFollowing, followersCount }) => {
+      setDj((current) => current ? {
+        ...current,
+        is_following: isFollowing,
+        followers_count: followersCount,
+      } : current);
+    },
+  });
+  const isOwnProfile = Boolean(user?.dj_profile?.handle && user.dj_profile.handle === dj?.handle);
 
   if (isLoading) {
     return (
@@ -145,7 +166,7 @@ export default function PublicDjProfilePage() {
                   <div className="border border-[#2a2a2a] bg-[#080808] p-3">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Followers</p>
                     <p className="mt-1 text-2xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                      {dj.followers_count.toLocaleString()}
+                      {follow.followersCount.toLocaleString()}
                     </p>
                   </div>
                   <div className="border border-[#2a2a2a] bg-[#080808] p-3">
@@ -181,6 +202,28 @@ export default function PublicDjProfilePage() {
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-3 text-sm text-[#dddddd]">
+                  {!isOwnProfile && (
+                    <button
+                      type="button"
+                      onClick={follow.toggleFollow}
+                      disabled={follow.isSaving}
+                      className={`inline-flex h-10 items-center gap-2 px-4 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-wait disabled:opacity-70 ${
+                        follow.isFollowing
+                          ? 'border border-[#444444] bg-[#111111] text-[#dddddd] hover:border-primary hover:text-primary'
+                          : 'border border-primary bg-primary text-white hover:bg-primary/90'
+                      }`}
+                      style={{ fontFamily: 'var(--font-heading)' }}
+                    >
+                      {follow.isSaving ? (
+                        <Loader2 size={15} className="animate-spin" />
+                      ) : follow.isFollowing ? (
+                        <UserCheck size={15} />
+                      ) : (
+                        <UserPlus size={15} />
+                      )}
+                      {follow.isFollowing ? 'Following' : 'Follow DJ'}
+                    </button>
+                  )}
                   {dj.location && (
                     <span className="inline-flex h-10 items-center gap-2 border border-[#333333] px-3">
                       <MapPin size={15} className="text-primary" />
@@ -189,7 +232,7 @@ export default function PublicDjProfilePage() {
                   )}
                   <span className="inline-flex h-10 items-center gap-2 border border-[#333333] px-3">
                     <Users size={15} className="text-primary" />
-                    {dj.followers_count.toLocaleString()} followers
+                    {follow.followersCount.toLocaleString()} followers
                   </span>
                   {dj.open_for_bookings && (
                     <span className="inline-flex h-10 items-center gap-2 border border-primary/50 px-3 text-primary">
@@ -198,6 +241,9 @@ export default function PublicDjProfilePage() {
                     </span>
                   )}
                 </div>
+                {follow.error && (
+                  <p className="mt-3 text-sm text-primary">{follow.error}</p>
+                )}
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {[

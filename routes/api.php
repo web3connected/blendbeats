@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AdvertisementEventController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\CommerceController;
 use App\Http\Controllers\Api\CounterController;
+use App\Http\Controllers\Api\DjFollowController;
 use App\Http\Controllers\Api\DjHubController;
 use App\Http\Controllers\Api\DjLoungeController;
 use App\Http\Controllers\Api\DjProfileController;
@@ -88,8 +89,18 @@ Route::prefix('media')
         Route::delete('files/{file}', [MediaManagerController::class, 'destroy'])->name('files.destroy');
     });
 
-Route::get('dj-hub/djs', [DjHubController::class, 'index'])->name('api.dj-hub.index');
-Route::get('dj-hub/djs/{handle}', [DjHubController::class, 'show'])->name('api.dj-hub.show');
+Route::prefix('dj-hub')
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
+    ->name('api.dj-hub.')
+    ->group(function (): void {
+        Route::get('djs', [DjHubController::class, 'index'])->name('index');
+        Route::get('djs/{handle}', [DjHubController::class, 'show'])->name('show');
+
+        Route::middleware('public.auth')->group(function (): void {
+            Route::post('djs/{handle}/follow', [DjFollowController::class, 'store'])->name('follow');
+            Route::delete('djs/{handle}/follow', [DjFollowController::class, 'destroy'])->name('unfollow');
+        });
+    });
 Route::get('lounge/live-state', [LoungeLiveStateController::class, 'show'])->name('api.lounge.live-state');
 
 Route::get('featured-ads/preview-status', $previewStatus)

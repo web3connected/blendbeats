@@ -1,3 +1,5 @@
+import apiClient from '@/lib/api-client';
+
 const API_BASE = import.meta.env?.VITE_API_BASE || '/api';
 
 export type DjHubDj = {
@@ -16,6 +18,7 @@ export type DjHubDj = {
   country: string | null;
   open_for_bookings: boolean;
   followers_count: number;
+  is_following: boolean;
   view_count: number;
   featured_slot: number | null;
   featured_statuses: string[];
@@ -107,4 +110,19 @@ export async function getDjHubDj(handle: string): Promise<DjHubDj> {
 
   const data = await parseJson<{ dj: DjHubDj }>(response);
   return data.dj;
+}
+
+export type DjFollowResponse = {
+  is_following: boolean;
+  followers_count: number;
+};
+
+export async function followDj(handle: string): Promise<DjFollowResponse> {
+  const response = await apiClient.post<DjFollowResponse>(`/dj-hub/djs/${handle}/follow`);
+  return response.data;
+}
+
+export async function unfollowDj(handle: string): Promise<DjFollowResponse> {
+  const response = await apiClient.delete<DjFollowResponse>(`/dj-hub/djs/${handle}/follow`);
+  return response.data;
 }

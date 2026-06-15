@@ -158,6 +158,7 @@ class DjHubController extends Controller
             'country' => $profile->country ?? null,
             'open_for_bookings' => (bool) ($profile->booking_enabled ?? false),
             'followers_count' => (int) ($profile->followers_count ?? 0),
+            'is_following' => $this->isFollowing((int) $profile->id),
             'view_count' => (int) ($profile->view_count ?? 0),
             'featured_slot' => $this->featuredSlotFor((int) $profile->id),
             'featured_statuses' => $this->featuredStatusesFor((int) $profile->id),
@@ -190,6 +191,20 @@ class DjHubController extends Controller
             ->value('slot_number');
 
         return $slot ? (int) $slot : null;
+    }
+
+    private function isFollowing(int $profileId): bool
+    {
+        $userId = auth('web')->id();
+
+        if (! $userId || ! Schema::hasTable('followers')) {
+            return false;
+        }
+
+        return DB::table('followers')
+            ->where('follower_user_id', $userId)
+            ->where('followed_dj_id', $profileId)
+            ->exists();
     }
 
     private function genresFor(int $profileId): array
