@@ -39,7 +39,9 @@ class Category extends Model
 
     public function posts(): BelongsToMany
     {
-        return $this->belongsToMany(Post::class, 'category_post')->withTimestamps();
+        return $this->belongsToMany(Post::class, 'category_post')
+            ->using(PostCategory::class)
+            ->withTimestamps();
     }
 
     public function scopeActive(Builder $query): Builder
