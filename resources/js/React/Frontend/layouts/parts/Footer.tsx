@@ -1,10 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Instagram, Twitter, Youtube, Facebook } from 'lucide-react';
-import { siteMedia } from '@/lib/site-media';
+import logoImage from '../../../../../assets/logo.png';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
-  const logoImage = siteMedia('images/logo/horizontal');
 
   return (
     <footer className="bg-[#0a0a0a] border-t-2 border-primary mt-auto">
@@ -15,18 +14,12 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="md:col-span-1">
-            <Link to="/" className="inline-block mb-4">
-              {logoImage ? (
-                <img
-                  src={logoImage}
-                  alt="The Blend Battlegrounds"
-                  className="h-10 w-auto object-contain shrink-0"
-                />
-              ) : (
-                <span className="text-2xl uppercase leading-none text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                  Blend<span className="text-primary">Beats</span>
-                </span>
-              )}
+            <Link to="/" className="mb-4 inline-flex max-w-[240px] items-center overflow-hidden">
+              <img
+                src={logoImage}
+                alt="The Blend Battlegrounds"
+                className="h-14 w-auto max-w-full object-contain shrink-0"
+              />
             </Link>
             <p className="text-[#888888] text-sm leading-relaxed mb-4">
               The premier underground DJ battle platform. Where the culture lives, the craft is tested, and legends are made.

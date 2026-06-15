@@ -3,10 +3,10 @@ import { ChevronDown, Headphones, Menu, Music2, Radio, Upload, Users, X } from '
 import { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import logoImage from '../../../../../assets/logo.png';
 import HeaderCartDrawer from './HeaderCartDrawer';
 import NotificationHeaderBell from './NotificationHeaderBell';
 import WhosLoggedIn from './WhosLoggedIn';
-import { siteMedia } from '@/lib/site-media';
 
 export default function Header() {
   const location = useLocation();
@@ -14,7 +14,6 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDjMenuOpen, setIsDjMenuOpen] = useState(false);
   const djMenuRef = useRef<HTMLDivElement | null>(null);
-  const logoImage = siteMedia('images/logo/horizontal');
 
   const navItems = [
     { href: '/battles', label: 'BATTLES' },
@@ -50,18 +49,12 @@ export default function Header() {
       <div className="container mx-auto px-4">
         <div className="flex h-20 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center shrink-0">
-            {logoImage ? (
-              <img
-                src={logoImage}
-                alt="The Blend Battlegrounds"
-                className="h-10 w-auto object-contain shrink-0"
-              />
-            ) : (
-              <span className="text-2xl uppercase leading-none text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                Blend<span className="text-primary">Beats</span>
-              </span>
-            )}
+          <Link to="/" className="flex max-w-[220px] items-center shrink-0 overflow-hidden">
+            <img
+              src={logoImage}
+              alt="The Blend Battlegrounds"
+              className="h-12 w-auto max-w-full object-contain shrink-0"
+            />
           </Link>
 
           {/* Desktop Nav */}
