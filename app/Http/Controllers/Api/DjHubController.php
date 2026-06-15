@@ -21,7 +21,7 @@ class DjHubController extends Controller
             'dj_type' => ['nullable', 'string', 'max:80'],
             'location' => ['nullable', 'string', 'max:255'],
             'bookings' => ['nullable', 'boolean'],
-            'sort' => ['nullable', 'in:featured,new,followers,name'],
+            'sort' => ['nullable', 'in:featured,new,followers,top,name'],
         ]);
 
         if (! $this->hasDjHubTables()) {
@@ -63,6 +63,7 @@ class DjHubController extends Controller
         match ($filters['sort'] ?? 'featured') {
             'new' => $profiles->orderByDesc('dj_profiles.published_at')->orderByDesc('dj_profiles.created_at'),
             'followers' => $profiles->orderByDesc('followers_count'),
+            'top' => $profiles->orderByDesc('engagement_score')->orderByDesc('followers_count')->orderByDesc('dj_profiles.view_count'),
             'name' => $profiles->orderBy('dj_profiles.dj_name'),
             default => $profiles->orderByDesc('featured_count')->orderByDesc('followers_count')->orderByDesc('dj_profiles.published_at'),
         };
@@ -116,6 +117,12 @@ class DjHubController extends Controller
                 ->where('dj_featured_status.status', 'active')
             : DB::query()->selectRaw('0');
 
+        $engagementScoreSubquery = Schema::hasTable('followers')
+            ? DB::table('followers')
+                ->selectRaw('(count(*) * 2) + coalesce(dj_profiles.view_count, 0)')
+                ->whereColumn('followers.followed_dj_id', 'dj_profiles.id')
+            : DB::query()->selectRaw('coalesce(dj_profiles.view_count, 0)');
+
         return DB::table('dj_profiles')
             ->join('users', 'users.id', '=', 'dj_profiles.user_id')
             ->select([
@@ -128,6 +135,7 @@ class DjHubController extends Controller
             ])
             ->selectSub($followersSubquery, 'followers_count')
             ->selectSub($featuredSubquery, 'featured_count')
+            ->selectSub($engagementScoreSubquery, 'engagement_score')
             ->where('dj_profiles.visibility', 'public')
             ->where('dj_profiles.profile_status', 'active');
     }
@@ -159,6 +167,7 @@ class DjHubController extends Controller
             'open_for_bookings' => (bool) ($profile->booking_enabled ?? false),
             'followers_count' => (int) ($profile->followers_count ?? 0),
             'is_following' => $this->isFollowing((int) $profile->id),
+            'engagement_score' => (int) ($profile->engagement_score ?? 0),
             'view_count' => (int) ($profile->view_count ?? 0),
             'featured_slot' => $this->featuredSlotFor((int) $profile->id),
             'featured_statuses' => $this->featuredStatusesFor((int) $profile->id),

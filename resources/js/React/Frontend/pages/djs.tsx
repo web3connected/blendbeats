@@ -1,7 +1,7 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { CalendarCheck, Headphones, MapPin, Pause, Play, Search, SlidersHorizontal, Star, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import GroupAAndBDisplay from '@/components/advertising/GroupAAndBDisplay';
 import GroupCAndDDisplay from '@/components/advertising/GroupCAndDDisplay';
@@ -10,6 +10,7 @@ import { getDjHubDjs, type DjHubDj, type DjHubFilters, type DjHubQuery } from '@
 
 const sortOptions: Array<{ label: string; value: NonNullable<DjHubQuery['sort']> }> = [
   { label: 'Featured', value: 'featured' },
+  { label: 'Top DJs', value: 'top' },
   { label: 'Most Followed', value: 'followers' },
   { label: 'New DJs', value: 'new' },
   { label: 'Name', value: 'name' },
@@ -135,7 +136,13 @@ function DjCard({ dj }: { dj: DjHubDj }) {
 }
 
 export default function DjsPage() {
-  const [query, setQuery] = useState<DjHubQuery>({ sort: 'featured' });
+  const [searchParams] = useSearchParams();
+  const initialSort = searchParams.get('sort');
+  const [query, setQuery] = useState<DjHubQuery>({
+    sort: ['featured', 'new', 'followers', 'top', 'name'].includes(initialSort ?? '')
+      ? initialSort as DjHubQuery['sort']
+      : 'featured',
+  });
   const [searchInput, setSearchInput] = useState('');
   const [djs, setDjs] = useState<DjHubDj[]>([]);
   const [filters, setFilters] = useState<DjHubFilters>({ genres: [], dj_types: [] });

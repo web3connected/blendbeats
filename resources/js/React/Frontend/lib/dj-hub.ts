@@ -19,6 +19,7 @@ export type DjHubDj = {
   open_for_bookings: boolean;
   followers_count: number;
   is_following: boolean;
+  engagement_score: number;
   view_count: number;
   featured_slot: number | null;
   featured_statuses: string[];
@@ -62,7 +63,7 @@ export type DjHubQuery = {
   dj_type?: string;
   location?: string;
   bookings?: boolean;
-  sort?: 'featured' | 'new' | 'followers' | 'name';
+  sort?: 'featured' | 'new' | 'followers' | 'top' | 'name';
 };
 
 async function parseJson<T>(response: Response): Promise<T> {
