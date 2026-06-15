@@ -7,6 +7,8 @@ use App\Http\Controllers\Admin\AdminCenter\LoungePlaylistController;
 use App\Http\Controllers\Admin\AdminCenter\PaymentProviderController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\CommerceCartController;
+use App\Http\Controllers\Admin\CommerceProductController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ResourcePlaceholderController;
 use App\Http\Controllers\Admin\UserController;
@@ -99,6 +101,8 @@ Route::middleware('admin.auth')->group(function (): void {
     Route::get('admin_center/paymentproviders', fn () => redirect()->route('admin.admincenter.paymentproviders.index'));
 
     Route::resource('users', UserController::class);
+    Route::resource('products', CommerceProductController::class)->except(['show']);
+    Route::get('carts', [CommerceCartController::class, 'index'])->name('carts.index');
 
     Route::prefix('resources')->name('resources.')->group(function (): void {
         Route::get('{resource}', ResourcePlaceholderController::class)

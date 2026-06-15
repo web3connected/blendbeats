@@ -378,6 +378,17 @@ return [
             'url' => 'admin/users',
             'icon' => 'fas fa-fw fa-users',
         ],
+        ['header' => 'Commerce'],
+        [
+            'text' => 'Products',
+            'url' => 'admin/products',
+            'icon' => 'fas fa-fw fa-shopping-bag',
+        ],
+        [
+            'text' => 'Carts',
+            'url' => 'admin/carts',
+            'icon' => 'fas fa-fw fa-shopping-cart',
+        ],
         [
             'text' => 'Settings',
             'url' => 'admin/resources/settings',
