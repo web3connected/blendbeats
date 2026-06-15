@@ -14,11 +14,11 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="md:col-span-1">
-            <Link to="/" className="mb-4 inline-flex max-w-[280px] items-center overflow-hidden">
+            <Link to="/" className="mb-4 inline-flex max-w-[390px] items-center overflow-hidden">
               <img
                 src={logoImage}
                 alt="The Blend Battlegrounds"
-                className="h-16 w-auto max-w-full object-contain shrink-0"
+                className="h-24 w-auto max-w-full object-contain shrink-0"
               />
             </Link>
             <p className="text-[#888888] text-sm leading-relaxed mb-4">
