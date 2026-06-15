@@ -16,16 +16,21 @@ class AutomationProxyController extends Controller
         $targetPath = trim($path ?? '', '/');
         $targetUrl = self::UPSTREAM.($targetPath ? '/'.$targetPath : '/');
 
+        $options = [
+            'query' => $request->query(),
+        ];
+
+        if (! in_array($request->method(), ['GET', 'HEAD'], true)) {
+            $options['body'] = $request->getContent();
+        }
+
         try {
             $upstream = Http::withOptions([
                 'allow_redirects' => false,
                 'http_errors' => false,
             ])
                 ->withHeaders($this->forwardHeaders($request))
-                ->send($request->method(), $targetUrl, [
-                    'query' => $request->query(),
-                    'body' => $request->getContent(),
-                ]);
+                ->send($request->method(), $targetUrl, $options);
         } catch (ConnectionException) {
             return response('Automation service is not available.', 502);
         }

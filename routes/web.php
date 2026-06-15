@@ -19,7 +19,13 @@ Route::get('/', function () {
 
 Route::any('/automation/{path?}', AutomationProxyController::class)
     ->where('path', '.*')
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class])
+    ->withoutMiddleware([
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+        \Illuminate\Cookie\Middleware\EncryptCookies::class,
+        \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+    ])
     ->name('automation.proxy');
 
 Route::get('/news', function (Request $request) {
