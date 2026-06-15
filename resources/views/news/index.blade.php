@@ -1,19 +1,9 @@
-<!doctype html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+@extends('news.layouts.app')
 
-    <title>News | The Blend Battlegrounds</title>
-    <meta
-        name="description"
-        content="Latest Blend Battlegrounds news, platform updates, DJ milestones, event coverage, and community stories."
-    >
+@section('title', 'News | The Blend Battlegrounds')
+@section('description', 'Latest Blend Battlegrounds news, platform updates, DJ milestones, event coverage, and community stories.')
 
-    @vite(['resources/js/React/Frontend/styles/app.css'])
-</head>
-<body>
-    <main class="min-h-screen bg-background text-foreground">
+@section('content')
         <section class="border-b border-border bg-[linear-gradient(135deg,rgba(255,31,31,0.16),rgba(255,191,0,0.08)_38%,rgba(0,0,0,0)_72%)]">
             <div class="mx-auto max-w-[1520px] px-4 py-16 sm:px-6 lg:px-12 xl:px-16">
                 <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
@@ -66,6 +56,4 @@
                 </aside>
             </div>
         </section>
-    </main>
-</body>
-</html>
+@endsection

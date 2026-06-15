@@ -1,19 +1,9 @@
-<!doctype html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+@extends('news.layouts.app')
 
-    <title>{{ $category->name }} News | The Blend Battlegrounds</title>
-    <meta
-        name="description"
-        content="{{ $category->description ?: 'Browse '.$category->name.' news, stories, updates, and milestones from The Blend Battlegrounds.' }}"
-    >
+@section('title', $category->name.' News | The Blend Battlegrounds')
+@section('description', $category->description ?: 'Browse '.$category->name.' news, stories, updates, and milestones from The Blend Battlegrounds.')
 
-    @vite(['resources/js/React/Frontend/styles/app.css'])
-</head>
-<body>
-    <main class="min-h-screen bg-background text-foreground">
+@section('content')
         <section class="mx-auto max-w-[1520px] px-4 py-10 sm:px-6 lg:px-12 xl:px-16">
             <div class="grid grid-cols-1 gap-8 lg:grid-cols-4">
                 <div class="lg:col-span-3">
@@ -63,6 +53,4 @@
                 </aside>
             </div>
         </section>
-    </main>
-</body>
-</html>
+@endsection

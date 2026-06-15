@@ -6,14 +6,12 @@
     $views = $post->trendingMetric?->views ?? 0;
 @endphp
 
-<!doctype html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+@extends('news.layouts.app')
 
-    <title>{{ $post->title }} | The Blend Battlegrounds</title>
-    <meta name="description" content="{{ $description }}">
+@section('title', $post->title.' | The Blend Battlegrounds')
+@section('description', $description)
+
+@push('head')
     <meta property="og:title" content="{{ $post->title }}">
     <meta property="og:description" content="{{ $description }}">
     @if($featuredImageUrl)
@@ -23,11 +21,9 @@
     <meta property="article:author" content="{{ $post->author?->name ?? 'Blend Newsroom' }}">
     <meta property="article:published_time" content="{{ $post->published_at?->toISOString() ?? $post->created_at?->toISOString() }}">
     <meta property="article:section" content="{{ $category?->name ?? 'News' }}">
+@endpush
 
-    @vite(['resources/js/React/Frontend/styles/app.css'])
-</head>
-<body>
-    <main class="min-h-screen bg-background text-foreground">
+@section('content')
         <section class="border-b border-border bg-[linear-gradient(135deg,rgba(255,31,31,0.14),rgba(255,191,0,0.08)_34%,rgba(0,0,0,0)_76%)]">
             <div class="mx-auto max-w-[1520px] px-4 py-10 sm:px-6 lg:px-12 xl:px-16">
                 <nav class="mb-8 text-sm text-muted-foreground">
@@ -150,6 +146,4 @@
                 </aside>
             </div>
         </section>
-    </main>
-</body>
-</html>
+@endsection
