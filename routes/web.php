@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AutomationProxyController;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\Tag;
@@ -15,6 +16,11 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
+
+Route::any('/automation/{path?}', AutomationProxyController::class)
+    ->where('path', '.*')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class])
+    ->name('automation.proxy');
 
 Route::get('/news', function (Request $request) {
     $posts = Post::query()
