@@ -49,11 +49,11 @@ export default function Header() {
       <div className="container mx-auto px-4">
         <div className="flex h-20 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex max-w-[220px] items-center shrink-0 overflow-hidden">
+          <Link to="/" className="flex max-w-[280px] items-center shrink-0 overflow-hidden">
             <img
               src={logoImage}
               alt="The Blend Battlegrounds"
-              className="h-12 w-auto max-w-full object-contain shrink-0"
+              className="h-14 w-auto max-w-full object-contain shrink-0"
             />
           </Link>
 
