@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphedByMany;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Support\Str;
 
 class Tag extends Model
@@ -34,7 +34,7 @@ class Tag extends Model
         });
     }
 
-    public function posts(): MorphedByMany
+    public function posts(): MorphToMany
     {
         return $this->morphedByMany(Post::class, 'taggable')->withTimestamps();
     }
