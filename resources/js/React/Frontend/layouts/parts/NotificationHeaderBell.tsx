@@ -7,6 +7,7 @@ import {
   getNotifications,
   getUnreadNotificationCount,
   markAllNotificationsRead,
+  markNotificationRead,
   type NotificationRecord,
 } from '@/lib/notifications';
 
@@ -93,6 +94,24 @@ export default function NotificationHeaderBell() {
 
   if (!user) return null;
 
+  const markNotificationAsRead = (notification: NotificationRecord) => {
+    if (notification.read_at) return;
+
+    const readAt = new Date().toISOString();
+    setNotifications((current) => current.map((item) => (item.id === notification.id ? { ...item, read_at: readAt } : item)));
+    setUnreadCount((current) => Math.max(0, current - 1));
+
+    void markNotificationRead(notification.id)
+      .then((response) => {
+        setUnreadCount(response.unread_count);
+        setNotifications((current) => current.map((item) => (item.id === response.notification.id ? response.notification : item)));
+      })
+      .catch(() => {
+        setNotifications((current) => current.map((item) => (item.id === notification.id ? notification : item)));
+        setUnreadCount((current) => current + 1);
+      });
+  };
+
   return (
     <div ref={menuRef} className="relative hidden md:block">
       <button
@@ -155,7 +174,10 @@ export default function NotificationHeaderBell() {
                 <Link
                   key={notification.id}
                   to={notification.action_url || '/account/notifications'}
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => {
+                    markNotificationAsRead(notification);
+                    setIsOpen(false);
+                  }}
                   className={`block border-b border-[#1f1f1f] px-3 py-3 transition-colors last:border-b-0 hover:bg-[#171717] ${
                     isUnread ? 'bg-primary/10' : ''
                   }`}
