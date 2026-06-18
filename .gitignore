@@ -18,6 +18,7 @@
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
+/resources/assets/*.zip
 /storage/*.key
 /storage/pail
 /vendor
@@ -25,6 +26,8 @@
 /_docs
 /docs/*
 !/docs/stripe-subscriptions-audit.md
+!/docs/dj-battle-arena-build-plan.md
+!/docs/video-player-replacement-plan.md
 /frontend
 _ide_helper.php
 Homestead.json

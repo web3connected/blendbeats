@@ -61,15 +61,23 @@ function CoverArt({ mix, compact = false }: { mix: PublicMix; compact?: boolean 
   );
 }
 
-function PlayButton({ mix, onPlay }: { mix: PublicMix; onPlay: (mix: PublicMix) => void }) {
+function PlayButton({
+  mix,
+  onPlay,
+  compact = false,
+}: {
+  mix: PublicMix;
+  onPlay: (mix: PublicMix) => void;
+  compact?: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={() => onPlay(mix)}
-      className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#FFB800] text-[#0a0a0a] transition-transform hover:scale-105"
+      className={`${compact ? 'h-9 w-9' : 'h-11 w-11'} inline-flex items-center justify-center rounded-full bg-[#FFB800] text-[#0a0a0a] transition-transform hover:scale-105`}
       aria-label={`Play ${mix.title}`}
     >
-      <Play size={17} fill="currentColor" />
+      <Play size={compact ? 15 : 17} fill="currentColor" />
     </button>
   );
 }
@@ -179,8 +187,8 @@ function FeaturedMixCard({
   onRated: (mixId: number, rating: RatingSummary) => void;
 }) {
   return (
-    <article className="group grid overflow-hidden border border-[#2a2a2a] bg-[#111] md:grid-cols-[0.9fr_1.1fr]">
-      <div className="relative min-h-[260px] overflow-hidden">
+    <article className="group grid overflow-hidden border border-[#2a2a2a] bg-[#111] md:grid-cols-[0.85fr_1.15fr]">
+      <div className="relative min-h-[220px] overflow-hidden">
         <CoverArt mix={mix} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
         <div className="absolute left-5 top-5 border border-[#FFB800]/50 bg-black/50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">
@@ -188,13 +196,13 @@ function FeaturedMixCard({
         </div>
       </div>
 
-      <div className="flex flex-col justify-between p-6">
+      <div className="flex flex-col justify-between p-5">
         <div>
           <div className="mb-4 flex items-center justify-between gap-4">
             <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#FFB800]">{mix.genre || 'Open Format'}</span>
             <MixRatingStars mix={mix} canRate={canRate} onRated={onRated} />
           </div>
-          <h3 className="text-4xl uppercase leading-none text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+          <h3 className="text-3xl uppercase leading-none text-white" style={{ fontFamily: 'var(--font-heading)' }}>
             {mix.title}
           </h3>
           <p className="mt-2 text-sm text-[#888]">by {mix.dj.name}</p>
@@ -203,7 +211,7 @@ function FeaturedMixCard({
           </p>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center gap-3">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <PlayButton mix={mix} onPlay={onPlay} />
           <Link
             to={`/mixes/${mix.slug}`}
@@ -232,31 +240,31 @@ function MixCard({
 }) {
   return (
     <article id={`mix-${mix.id}`} className="group overflow-hidden border border-[#242424] bg-[#121212] transition-colors hover:border-[#FFB800]/60">
-      <div className="relative aspect-square overflow-hidden">
-        <CoverArt mix={mix} />
+      <div className="relative aspect-[4/3] overflow-hidden">
+        <CoverArt mix={mix} compact />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent opacity-90" />
-        <div className="absolute bottom-4 right-4">
-          <PlayButton mix={mix} onPlay={onPlay} />
+        <div className="absolute bottom-3 right-3">
+          <PlayButton mix={mix} onPlay={onPlay} compact />
         </div>
       </div>
 
-      <div className="p-5">
-        <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="p-4">
+        <div className="mb-2 flex items-center justify-between gap-3">
           <span className="text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">{mix.genre || 'Open Format'}</span>
           <span className="text-xs text-[#777]">{formatDuration(mix.duration)}</span>
         </div>
-        <h3 className="text-2xl uppercase leading-tight text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+        <h3 className="text-xl uppercase leading-tight text-white" style={{ fontFamily: 'var(--font-heading)' }}>
           {mix.title}
         </h3>
-        <p className="mt-1 text-sm text-[#888]">by {mix.dj.name}</p>
+        <p className="mt-1 text-xs text-[#888]">by {mix.dj.name}</p>
 
-        <div className="mt-5 flex items-center justify-between gap-3">
+        <div className="mt-4 flex items-center justify-between gap-3">
           <MixRatingStars mix={mix} canRate={canRate} onRated={onRated} />
           <span className="text-xs text-[#777]">{formatNumber(mix.play_count)} plays</span>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 border-t border-[#242424] pt-4 text-xs text-[#777]">
-          <CalendarDays size={14} className="text-[#FFB800]" />
+        <div className="mt-3 flex items-center gap-2 border-t border-[#242424] pt-3 text-xs text-[#777]">
+          <CalendarDays size={13} className="text-[#FFB800]" />
           {formatDate(mix.published_at || mix.created_at)}
         </div>
       </div>
@@ -283,16 +291,16 @@ function GenreRow({
       </div>
       <div className="flex gap-4 overflow-x-auto pb-3" style={{ scrollbarWidth: 'none' }}>
         {mixes.map((mix) => (
-          <article key={mix.id} className="min-w-[240px] border border-[#242424] bg-[#111]">
+          <article key={mix.id} className="min-w-[210px] border border-[#242424] bg-[#111]">
             <div className="relative aspect-[4/3] overflow-hidden">
               <CoverArt mix={mix} compact />
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 to-transparent" />
               <div className="absolute bottom-3 right-3">
-                <PlayButton mix={mix} onPlay={onPlay} />
+                <PlayButton mix={mix} onPlay={onPlay} compact />
               </div>
             </div>
-            <div className="p-4">
-              <h4 className="text-xl uppercase leading-tight text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+            <div className="p-3">
+              <h4 className="text-lg uppercase leading-tight text-white" style={{ fontFamily: 'var(--font-heading)' }}>
                 {mix.title}
               </h4>
               <p className="mt-1 text-xs text-[#888]">by {mix.dj.name}</p>
@@ -471,7 +479,7 @@ export default function MixesPage() {
           <section className="container mx-auto px-4 py-20">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               {[0, 1, 2].map((item) => (
-                <div key={item} className="h-[360px] animate-pulse border border-[#222] bg-[#111]" />
+                <div key={item} className="h-[300px] animate-pulse border border-[#222] bg-[#111]" />
               ))}
             </div>
           </section>
@@ -532,7 +540,7 @@ export default function MixesPage() {
                   </div>
                   <span className="text-sm text-[#888]">{data?.mixes.length} public mixes</span>
                 </div>
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
                   {data?.mixes.map((mix) => (
                     <MixCard
                       key={mix.id}

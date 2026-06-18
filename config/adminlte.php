@@ -372,37 +372,74 @@ return [
                 ],
             ],
         ],
-        ['header' => 'User Management'],
         [
-            'text' => 'User Accounts',
-            'url' => 'admin/users',
+            'text' => 'User Management',
             'icon' => 'fas fa-fw fa-users',
-        ],
-        ['header' => 'Commerce'],
-        [
-            'text' => 'Products',
-            'url' => 'admin/products',
-            'icon' => 'fas fa-fw fa-shopping-bag',
-        ],
-        [
-            'text' => 'Carts',
-            'url' => 'admin/carts',
-            'icon' => 'fas fa-fw fa-shopping-cart',
+            'submenu' => [
+                [
+                    'text' => 'User Accounts',
+                    'url' => 'admin/users',
+                    'icon' => 'fas fa-fw fa-user',
+                ],
+            ],
         ],
         [
-            'text' => 'Settings',
-            'url' => 'admin/resources/settings',
-            'icon' => 'fas fa-fw fa-cogs',
+            'text' => 'BlendNews',
+            'icon' => 'fas fa-fw fa-newspaper',
+            'submenu' => [
+                [
+                    'text' => 'Stories',
+                    'url' => 'admin/blendnews',
+                    'icon' => 'fas fa-fw fa-list',
+                ],
+                [
+                    'text' => 'Create Story',
+                    'url' => 'admin/blendnews/create',
+                    'icon' => 'fas fa-fw fa-plus',
+                ],
+                [
+                    'text' => 'View Public News',
+                    'url' => 'news',
+                    'icon' => 'fas fa-fw fa-external-link-alt',
+                ],
+            ],
         ],
         [
-            'text' => 'Content Management',
-            'url' => 'admin/resources/content',
-            'icon' => 'fas fa-fw fa-file-alt',
+            'text' => 'Commerce',
+            'icon' => 'fas fa-fw fa-store',
+            'submenu' => [
+                [
+                    'text' => 'Products',
+                    'url' => 'admin/products',
+                    'icon' => 'fas fa-fw fa-shopping-bag',
+                ],
+                [
+                    'text' => 'Carts',
+                    'url' => 'admin/carts',
+                    'icon' => 'fas fa-fw fa-shopping-cart',
+                ],
+            ],
         ],
         [
-            'text' => 'Reporting',
-            'url' => 'admin/resources/reports',
-            'icon' => 'fas fa-fw fa-chart-line',
+            'text' => 'Platform',
+            'icon' => 'fas fa-fw fa-layer-group',
+            'submenu' => [
+                [
+                    'text' => 'Settings',
+                    'url' => 'admin/resources/settings',
+                    'icon' => 'fas fa-fw fa-cogs',
+                ],
+                [
+                    'text' => 'Content Management',
+                    'url' => 'admin/resources/content',
+                    'icon' => 'fas fa-fw fa-file-alt',
+                ],
+                [
+                    'text' => 'Reporting',
+                    'url' => 'admin/resources/reports',
+                    'icon' => 'fas fa-fw fa-chart-line',
+                ],
+            ],
         ],
     ],
 

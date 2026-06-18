@@ -57,6 +57,11 @@ class ResourcePlaceholderController extends Controller
                 'icon' => 'fas fa-file-alt',
                 'description' => 'Organize future pages, posts, media, and editorial workflows.',
             ],
+            'blendnews' => [
+                'title' => 'BlendNews',
+                'icon' => 'fas fa-newspaper',
+                'description' => 'Prepare the news publishing workflow, categories, sources, and editorial review tools.',
+            ],
             'reports' => [
                 'title' => 'Reporting',
                 'icon' => 'fas fa-chart-line',
