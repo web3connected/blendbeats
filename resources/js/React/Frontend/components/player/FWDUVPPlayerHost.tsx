@@ -260,21 +260,65 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
           playerRef.current = player;
           player.setVolume?.(Math.min(1, Math.max(0, volume)));
 
-          const listeners: Array<[string | undefined, (event: FWDUVPEvent) => void]> = [
-            [window.FWDUVPlayer.READY, () => {
-              if (playbackRequest.startAtSeconds > 0) {
-                player.scrubbAtTime?.(secondsToFWDUVPTime(playbackRequest.startAtSeconds));
+          const autoplayTimers: number[] = [];
+          let autoplayStarted = false;
+          let playlistReady = false;
+          let initialVideoRequested = false;
+
+          const clearAutoplayTimers = () => {
+            autoplayTimers.forEach((timer) => window.clearTimeout(timer));
+            autoplayTimers.length = 0;
+          };
+
+          const syncStartPosition = () => {
+            if (playbackRequest.startAtSeconds > 0) {
+              player.scrubbAtTime?.(secondsToFWDUVPTime(playbackRequest.startAtSeconds));
+            }
+          };
+
+          const attemptAutoplay = () => {
+            if (cancelled || autoplayStarted || !playbackRequest.autoplay) return;
+
+            try {
+              if (playlistReady && !initialVideoRequested) {
+                initialVideoRequested = true;
+                player.playVideo?.(safeQueueIndex);
               }
 
-              if (playbackRequest.autoplay) {
-                try {
-                  player.play();
-                } catch {
-                  onPlaybackBlocked();
-                }
-              }
+              player.play();
+            } catch {
+              onPlaybackBlocked();
+            }
+          };
+
+          const queueAutoplayAttempt = (delay: number) => {
+            if (!playbackRequest.autoplay) return;
+
+            const timer = window.setTimeout(attemptAutoplay, delay);
+            autoplayTimers.push(timer);
+          };
+
+          const listeners: Array<[string | undefined, (event: FWDUVPEvent) => void]> = [
+            [window.FWDUVPlayer.READY, () => {
+              syncStartPosition();
+              queueAutoplayAttempt(0);
+              queueAutoplayAttempt(300);
             }],
-            [window.FWDUVPlayer.PLAY, onPlay],
+            [window.FWDUVPlayer.LOAD_PLAYLIST_COMPLETE, () => {
+              playlistReady = true;
+              syncStartPosition();
+              queueAutoplayAttempt(0);
+              queueAutoplayAttempt(300);
+            }],
+            [window.FWDUVPlayer.SAFE_TO_SCRUB, () => {
+              syncStartPosition();
+              queueAutoplayAttempt(0);
+            }],
+            [window.FWDUVPlayer.PLAY, () => {
+              autoplayStarted = true;
+              clearAutoplayTimers();
+              onPlay();
+            }],
             [window.FWDUVPlayer.PAUSE, onPause],
             [window.FWDUVPlayer.STOP, onStop],
             [window.FWDUVPlayer.ERROR, () => onError('The new player could not load this track.')],
@@ -301,10 +345,15 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
           });
 
           listenerCleanupRef.current = () => {
+            clearAutoplayTimers();
             listeners.forEach(([eventName, handler]) => {
               if (eventName) player.removeListener?.(eventName, handler);
             });
           };
+
+          queueAutoplayAttempt(0);
+          queueAutoplayAttempt(500);
+          queueAutoplayAttempt(1200);
         })
         .catch((loadErrorValue) => {
           const message = loadErrorValue instanceof Error ? loadErrorValue.message : 'Unable to load the new player.';
