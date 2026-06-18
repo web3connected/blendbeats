@@ -6,8 +6,6 @@ import {
   Pencil,
   PlayCircle,
   Radio,
-  Repeat2,
-  Bookmark,
   Flag,
   Send,
   Share2,
@@ -33,9 +31,7 @@ import {
   type DjLoungeStats,
   getDjLoungeFeed,
   getDjLoungePosts,
-  toggleDjLoungePostBookmark,
   toggleDjLoungePostReaction,
-  toggleDjLoungePostRepost,
   updateDjLoungePost,
 } from '@/lib/dj-lounge';
 import { getLoungeLiveState } from '@/lib/lounge-live';
@@ -172,8 +168,6 @@ function PostCard({
   canReply,
   isSubmittingReply,
   onLike,
-  onRepost,
-  onBookmark,
   onEdit,
   onDelete,
   onReport,
@@ -183,8 +177,6 @@ function PostCard({
   canReply: boolean;
   isSubmittingReply: boolean;
   onLike: (postId: string) => void;
-  onRepost: (postId: string) => void;
-  onBookmark: (postId: string) => void;
   onEdit: (postId: string, body: string) => Promise<void>;
   onDelete: (postId: string) => Promise<void>;
   onReport: (postId: string) => Promise<void>;
@@ -209,8 +201,35 @@ function PostCard({
     setIsMenuOpen(false);
   };
 
+  const handleShare = async () => {
+    const url = `${window.location.origin}/dj-lounge#post-${post.id}`;
+    const shareData = {
+      title: `${post.authorName} on DJLounge`,
+      text: post.body.slice(0, 160),
+      url,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        return;
+      }
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === 'AbortError') {
+        return;
+      }
+    }
+
+    window.prompt('Copy post link', url);
+  };
+
   return (
-    <article className="border-b border-[#222222] bg-[#0d0d0d] p-4 transition-colors hover:bg-[#111111] sm:p-5">
+    <article id={`post-${post.id}`} className="border-b border-[#222222] bg-[#0d0d0d] p-4 transition-colors hover:bg-[#111111] sm:p-5">
       <div className="flex gap-3">
         <LoungeAvatar
           src={post.avatarUrl}
@@ -357,24 +376,15 @@ function PostCard({
             </div>
           )}
 
-          <div className="mt-4 flex items-center justify-between gap-2 text-[#888888] sm:max-w-md">
+          <div className="mt-4 flex items-center gap-10 text-[#888888]">
             <button
               type="button"
               onClick={() => setIsThreadOpen((current) => !current)}
               className="inline-flex items-center gap-2 text-sm transition-colors hover:text-primary"
+              aria-label="Reply"
             >
               <MessageCircle size={17} />
               {post.comments}
-            </button>
-            <button
-              type="button"
-              onClick={() => onRepost(post.id)}
-              className={`inline-flex items-center gap-2 text-sm transition-colors hover:text-[#FFB800] ${
-                post.reposted ? 'text-[#FFB800]' : ''
-              }`}
-            >
-              <Repeat2 size={17} />
-              {post.reposts}
             </button>
             <button
               type="button"
@@ -382,25 +392,18 @@ function PostCard({
               className={`inline-flex items-center gap-2 text-sm transition-colors hover:text-primary ${
                 post.liked ? 'text-primary' : ''
               }`}
+              aria-label={post.liked ? 'Unlike post' : 'Like post'}
             >
               <Heart size={17} className={post.liked ? 'fill-primary' : ''} />
               {post.likes}
             </button>
             <button
               type="button"
+              onClick={() => void handleShare()}
               className="inline-flex items-center gap-2 text-sm transition-colors hover:text-white"
+              aria-label="Share post"
             >
               <Share2 size={17} />
-            </button>
-            <button
-              type="button"
-              onClick={() => onBookmark(post.id)}
-              className={`inline-flex items-center gap-2 text-sm transition-colors hover:text-[#FFB800] ${
-                post.bookmarked ? 'text-[#FFB800]' : ''
-              }`}
-              aria-label={post.bookmarked ? 'Remove bookmark' : 'Bookmark post'}
-            >
-              <Bookmark size={17} className={post.bookmarked ? 'fill-[#FFB800]' : ''} />
             </button>
           </div>
 
@@ -590,66 +593,6 @@ export default function DjLoungePage() {
       );
     } catch (likeError) {
       setError(likeError instanceof Error ? likeError.message : 'That reaction did not save.');
-      const nextPosts = await getDjLoungePosts();
-      setPosts(nextPosts);
-    }
-  };
-
-  const handleRepost = async (postId: string) => {
-    if (!user) return;
-
-    setPosts((currentPosts) =>
-      currentPosts.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              reposted: !post.reposted,
-              reposts: post.reposted ? post.reposts - 1 : post.reposts + 1,
-            }
-          : post,
-      ),
-    );
-
-    try {
-      const result = await toggleDjLoungePostRepost(postId);
-      setPosts((currentPosts) =>
-        currentPosts.map((post) =>
-          post.id === postId ? { ...post, reposted: result.reposted, reposts: result.repost_count } : post,
-        ),
-      );
-    } catch (repostError) {
-      setError(repostError instanceof Error ? repostError.message : 'That repost did not save.');
-      const nextPosts = await getDjLoungePosts();
-      setPosts(nextPosts);
-    }
-  };
-
-  const handleBookmark = async (postId: string) => {
-    if (!user) return;
-
-    setPosts((currentPosts) =>
-      currentPosts.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              bookmarked: !post.bookmarked,
-              bookmarks: post.bookmarked ? post.bookmarks - 1 : post.bookmarks + 1,
-            }
-          : post,
-      ),
-    );
-
-    try {
-      const result = await toggleDjLoungePostBookmark(postId);
-      setPosts((currentPosts) =>
-        currentPosts.map((post) =>
-          post.id === postId
-            ? { ...post, bookmarked: result.bookmarked, bookmarks: result.bookmark_count }
-            : post,
-        ),
-      );
-    } catch (bookmarkError) {
-      setError(bookmarkError instanceof Error ? bookmarkError.message : 'That bookmark did not save.');
       const nextPosts = await getDjLoungePosts();
       setPosts(nextPosts);
     }
@@ -878,8 +821,6 @@ export default function DjLoungePage() {
                     canReply={Boolean(user)}
                     isSubmittingReply={replyingPostId === post.id}
                     onLike={handleLike}
-                    onRepost={handleRepost}
-                    onBookmark={handleBookmark}
                     onEdit={handleEditPost}
                     onDelete={handleDeletePost}
                     onReport={handleReportPost}
