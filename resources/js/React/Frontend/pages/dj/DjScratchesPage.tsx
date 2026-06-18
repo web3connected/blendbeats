@@ -6,6 +6,7 @@ import {
   Play,
   Search,
   SlidersHorizontal,
+  Trash2,
   Upload,
   UserRound,
   Video,
@@ -22,7 +23,7 @@ import {
   type DjScratchStats,
   type DjScratchesQuery,
 } from '@/lib/dj-scratches';
-import { linkYoutubeMediaFile, MediaManagerApiError, uploadMediaFile } from '@/lib/media-manager';
+import { deleteMediaFile, linkYoutubeMediaFile, MediaManagerApiError, uploadMediaFile } from '@/lib/media-manager';
 
 const MAX_SCRATCH_DURATION_SECONDS = 300;
 type UploadSource = 'upload' | 'youtube';
@@ -450,6 +451,7 @@ export default function DjScratchesPage() {
   const [searchInput, setSearchInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [deletingScratchId, setDeletingScratchId] = useState<number | null>(null);
   const [error, setError] = useState('');
 
   const activeScratch = useMemo(
@@ -492,6 +494,22 @@ export default function DjScratchesPage() {
     await loadScratches(query);
   };
 
+  const handleDeleteScratch = async (scratch: DjScratch) => {
+    if (!window.confirm('Remove this Scratch Routine?')) return;
+
+    setError('');
+    setDeletingScratchId(scratch.id);
+
+    try {
+      await deleteMediaFile(scratch.id);
+      await loadScratches(query);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Unable to remove Scratch Routine.');
+    } finally {
+      setDeletingScratchId(null);
+    }
+  };
+
   const uploadAction = user?.dj_profile ? (
     <button
       type="button"
@@ -521,6 +539,7 @@ export default function DjScratchesPage() {
       Login To Upload
     </Link>
   );
+  const canManageActiveScratch = Boolean(user?.dj_profile && activeScratch?.dj.id === user.dj_profile.id);
 
   return (
     <>
@@ -643,15 +662,29 @@ export default function DjScratchesPage() {
                           <span>{formatDate(activeScratch.created_at)}</span>
                         </div>
                       </div>
-                      {activeScratch.dj.handle && (
-                        <Link
-                          to={`/djs/${activeScratch.dj.handle}`}
-                          className="inline-flex h-11 items-center justify-center border border-[#444444] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
-                          style={{ fontFamily: 'var(--font-heading)' }}
-                        >
-                          View DJ
-                        </Link>
-                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {canManageActiveScratch && (
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteScratch(activeScratch)}
+                            disabled={deletingScratchId === activeScratch.id}
+                            className="inline-flex h-11 items-center justify-center gap-2 border border-[#444444] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                            style={{ fontFamily: 'var(--font-heading)' }}
+                          >
+                            <Trash2 size={15} />
+                            {deletingScratchId === activeScratch.id ? 'Removing' : 'Remove'}
+                          </button>
+                        )}
+                        {activeScratch.dj.handle && (
+                          <Link
+                            to={`/djs/${activeScratch.dj.handle}`}
+                            className="inline-flex h-11 items-center justify-center border border-[#444444] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                            style={{ fontFamily: 'var(--font-heading)' }}
+                          >
+                            View DJ
+                          </Link>
+                        )}
+                      </div>
                     </div>
 
                     <div className="mt-5 flex items-start gap-3">
