@@ -90,6 +90,8 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
     const playlistId = `${idPrefix.current}-playlist`;
     const trackSources = useMemo(() => toFWDUVPTrackSources(queue), [queue]);
     const safeQueueIndex = Math.max(0, Math.min(queueIndex, Math.max(0, queue.length - 1)));
+    const playerHeight = mode === 'lounge_live' ? 118 : 156;
+    const showQueueControls = queue.length > 1 && mode !== 'lounge_live';
 
     const cleanupPlayer = () => {
       listenerCleanupRef.current?.();
@@ -177,23 +179,43 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
             autoPlayText: '',
             autoScale: 'no',
             maxWidth: 980,
-            maxHeight: 260,
+            maxHeight: playerHeight,
             startAtPlaylist: 0,
             startAtVideo: safeQueueIndex,
+            backgroundColor: '#050505',
+            videoBackgroundColor: '#050505',
+            posterBackgroundColor: '#050505',
+            playlistBackgroundColor: '#050505',
+            showPoster: 'yes',
+            fillEntireVideoScreen: 'no',
+            fillEntireposterScreen: 'yes',
             showPlaylistsSearchInput: 'no',
+            showSearchInput: 'no',
             usePlaylistsSelectBox: 'no',
             showPlaylistsButtonAndPlaylists: 'no',
-            showPlaylistButtonAndPlaylist: queue.length > 1 ? 'yes' : 'no',
-            showPlaylistByDefault: queue.length > 1 ? 'yes' : 'no',
+            showPlaylistsByDefault: 'no',
+            showPlaylistButtonAndPlaylist: 'no',
+            showPlaylistByDefault: 'no',
             showPlaylistName: 'no',
             playlistPosition: 'bottom',
-            playlistBottomHeight: 96,
+            playlistBottomHeight: 0,
             maxPlaylistItems: 24,
             randomizePlaylist: 'no',
             stopAfterLastVideoHasPlayed: 'no',
             showDownloadButton: 'no',
             showShareButton: 'no',
             showEmbedButton: 'no',
+            showFullScreenButton: 'no',
+            showInfoButton: 'no',
+            showLogo: 'no',
+            showContextmenu: 'no',
+            showShuffleButton: 'no',
+            showLoopButton: 'no',
+            showRewindButton: 'no',
+            showChromecastButton: 'no',
+            showPlaybackRateButton: 'no',
+            showNextAndPrevButtons: showQueueControls ? 'yes' : 'no',
+            showNextAndPrevButtonsInController: showQueueControls ? 'yes' : 'no',
             showControllerWhenVideoIsStopped: 'yes',
             folderAudioSecondTitleColor: '#999999',
             audioVisualizerLinesColor: '#ff1d1d',
@@ -273,10 +295,12 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
       playbackRequest.autoplay,
       playbackRequest.revision,
       playbackRequest.startAtSeconds,
+      playerHeight,
       playlistsId,
       queue,
       queue.length,
       safeQueueIndex,
+      showQueueControls,
       trackSources,
       volume,
     ]);
@@ -299,7 +323,7 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
               {loadError}
             </div>
           ) : (
-            <div id={parentId} className="min-h-[220px] w-full overflow-hidden" />
+            <div id={parentId} className="w-full overflow-hidden" style={{ height: playerHeight }} />
           )}
         </div>
 
