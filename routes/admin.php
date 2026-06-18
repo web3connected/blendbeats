@@ -18,6 +18,10 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest:admin')->group(function (): void {
     Route::get('login', [AuthController::class, 'create'])->name('login');
     Route::post('login', [AuthController::class, 'store'])->name('login.store');
+    Route::get('password/forgot', [AuthController::class, 'forgotPassword'])->name('password.request');
+    Route::post('password/email', [AuthController::class, 'sendPasswordResetLink'])->name('password.email');
+    Route::get('password/reset/{token}', [AuthController::class, 'resetPassword'])->name('password.reset');
+    Route::post('password/reset', [AuthController::class, 'updatePassword'])->name('password.update');
 });
 
 Route::middleware('admin.auth')->group(function (): void {

@@ -1,7 +1,7 @@
-import type { PlayerTrack } from './PlayerProvider';
+import type { PlayerTrack } from './player-types';
 import type { FWDUVPSourceType, FWDUVPTrackSource } from './fwduvp-types';
 
-function normalizeSource(src: string) {
+export function normalizeFWDUVPSource(src: string) {
   const normalizedSrc = src.trim().replace(/\\/g, '/');
 
   if (!normalizedSrc) return normalizedSrc;
@@ -36,12 +36,12 @@ function inferSourceType(src: string): FWDUVPSourceType {
 }
 
 export function toFWDUVPTrackSource(track: PlayerTrack): FWDUVPTrackSource {
-  const source = normalizeSource(track.src);
+  const source = normalizeFWDUVPSource(track.src);
 
   return {
     source,
     sourceType: inferSourceType(source),
-    poster: track.artwork ? normalizeSource(track.artwork) : null,
+    poster: track.artwork ? normalizeFWDUVPSource(track.artwork) : null,
     title: track.title,
     subtitle: track.artist ?? track.meta ?? null,
   };

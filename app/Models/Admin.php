@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\AdminPasswordResetNotification;
 use App\Traits\AvatarTrait;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -18,6 +19,11 @@ class Admin extends Authenticatable
     use AvatarTrait, HasRoles, Notifiable;
 
     protected string $guard_name = 'admin';
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new AdminPasswordResetNotification($token, $this->email));
+    }
 
     public function adminlte_image(): string
     {

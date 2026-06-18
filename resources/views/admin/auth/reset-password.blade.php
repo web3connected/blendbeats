@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name') }} Admin Login</title>
+    <title>{{ config('app.name') }} Reset Admin Password</title>
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome-free/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/adminlte/dist/css/adminlte.min.css') }}">
     <style>
@@ -23,8 +23,7 @@
             color: #d1d5db;
         }
 
-        .login-box-msg,
-        .icheck-primary label {
+        .login-box-msg {
             color: #d1d5db;
         }
 
@@ -54,7 +53,7 @@
 
         <div class="card card-outline card-primary">
             <div class="card-body login-card-body">
-                <p class="login-box-msg">Sign in to manage the platform</p>
+                <p class="login-box-msg">Choose a new administrator password.</p>
 
                 @if ($errors->any())
                     <div class="alert alert-danger">
@@ -62,22 +61,18 @@
                     </div>
                 @endif
 
-                @if (session('status'))
-                    <div class="alert alert-success">
-                        {{ session('status') }}
-                    </div>
-                @endif
-
-                <form method="POST" action="{{ route('admin.login.store') }}">
+                <form method="POST" action="{{ route('admin.password.update') }}">
                     @csrf
+
+                    <input type="hidden" name="token" value="{{ $token }}">
 
                     <div class="input-group mb-3">
                         <input
                             type="email"
                             name="email"
-                            value="{{ old('email') }}"
+                            value="{{ old('email', $email) }}"
                             class="form-control @error('email') is-invalid @enderror"
-                            placeholder="Email"
+                            placeholder="Admin email"
                             autocomplete="email"
                             required
                             autofocus
@@ -94,8 +89,8 @@
                             type="password"
                             name="password"
                             class="form-control @error('password') is-invalid @enderror"
-                            placeholder="Password"
-                            autocomplete="current-password"
+                            placeholder="New password"
+                            autocomplete="new-password"
                             required
                         >
                         <div class="input-group-append">
@@ -105,20 +100,26 @@
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-8">
-                            <div class="icheck-primary">
-                                <input type="checkbox" id="remember" name="remember" value="1">
-                                <label for="remember">Remember me</label>
+                    <div class="input-group mb-3">
+                        <input
+                            type="password"
+                            name="password_confirmation"
+                            class="form-control"
+                            placeholder="Confirm new password"
+                            autocomplete="new-password"
+                            required
+                        >
+                        <div class="input-group-append">
+                            <div class="input-group-text">
+                                <span class="fas fa-lock"></span>
                             </div>
-                        </div>
-                        <div class="col-4">
-                            <button type="submit" class="btn btn-primary btn-block">Sign in</button>
                         </div>
                     </div>
 
+                    <button type="submit" class="btn btn-primary btn-block">Reset password</button>
+
                     <p class="mt-3 mb-0">
-                        <a href="{{ route('admin.password.request') }}">Forgot your admin password?</a>
+                        <a href="{{ route('admin.login') }}">Back to admin login</a>
                     </p>
                 </form>
             </div>

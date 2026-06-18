@@ -1,29 +1,14 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { CircleStop, Pause, Play, Volume2, X } from 'lucide-react';
 
-export type PlayerTrack = {
-  id: string | number;
-  title: string;
-  artist?: string | null;
-  src: string;
-  artwork?: string | null;
-  meta?: string | null;
-  duration?: number | null;
-  countLabel?: string | null;
-  countValue?: number | null;
-};
+import {
+  FWDUVPPlayerHost,
+  type FWDUVPPlaybackRequest,
+  type FWDUVPPlayerHostHandle,
+} from './FWDUVPPlayerHost';
+import { LegacyAudioPlayerHost, type LegacyAudioPlayerHandle, resolvePlayableSource } from './LegacyAudioPlayerHost';
+import type { PlayerMode, PlayerQueueOptions, PlayerTrack } from './player-types';
 
-export type PlayerMode = 'standard' | 'lounge_live';
-
-export type PlayerQueueOptions = {
-  tracks: PlayerTrack[];
-  mode?: PlayerMode;
-  currentTrackId?: string | number | null;
-  currentPositionSeconds?: number;
-  playlistVersion?: string | null;
-  volume?: number;
-  autoplay?: boolean;
-};
+export type { PlayerMode, PlayerQueueOptions, PlayerTrack } from './player-types';
 
 type PlayerContextValue = {
   currentTrack: PlayerTrack | null;
@@ -38,83 +23,31 @@ type PlayerContextValue = {
   stop: () => void;
 };
 
+type PlayerEngine = 'legacy' | 'fwduvp';
+
+const PLAYER_ENGINE: PlayerEngine = import.meta.env.VITE_PLAYER_ENGINE === 'fwduvp' ? 'fwduvp' : 'legacy';
+
 const PlayerContext = createContext<PlayerContextValue | undefined>(undefined);
 
-function formatTime(seconds: number) {
-  if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
-
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+function clampVolume(volume: number) {
+  return Math.min(1, Math.max(0, volume));
 }
 
-function resolvePlayableSource(src: string) {
-  const normalizedSrc = src.trim().replace(/\\/g, '/');
-
-  if (!normalizedSrc) return normalizedSrc;
-
-  if (normalizedSrc.startsWith('media/') || normalizedSrc.startsWith('storage/')) {
-    return `/${normalizedSrc}`;
-  }
-
-  try {
-    const url = new URL(normalizedSrc, window.location.origin);
-
-    if (url.pathname.startsWith('/media/') || url.pathname.startsWith('/storage/')) {
-      return `${url.pathname}${url.search}${url.hash}`;
-    }
-
-    return url.href;
-  } catch {
-    return normalizedSrc;
-  }
-}
-
-export function PlayerVisualizer({
-  isPlaying,
-  hasError,
-  barCount = 28,
-  className = 'h-12 border-x border-[#1f1f1f] px-3',
-}: {
-  isPlaying: boolean;
-  hasError: boolean;
-  barCount?: number;
-  className?: string;
-}) {
-  const bars = Array.from({ length: barCount }, (_, index) => index);
-
-  return (
-    <div
-      className={`flex items-end gap-1 ${className}`}
-      aria-hidden="true"
-    >
-      {bars.map((bar) => {
-        const height = 18 + ((bar * 11) % 28);
-
-        return (
-          <span
-            key={bar}
-            className="block w-1 bg-primary/85 shadow-[0_0_12px_rgba(255,29,29,0.35)]"
-            style={{
-              height: hasError ? 8 : height,
-              animation: `blendbeats-player-bar ${0.72 + (bar % 7) * 0.08}s ease-in-out infinite alternate`,
-              animationDelay: `${bar * -0.045}s`,
-              animationPlayState: isPlaying && !hasError ? 'running' : 'paused',
-              opacity: isPlaying && !hasError ? 1 : 0.35,
-              transformOrigin: 'bottom',
-            }}
-          />
-        );
-      })}
-    </div>
-  );
+function normalizeTrack(track: PlayerTrack): PlayerTrack {
+  return {
+    ...track,
+    src: resolvePlayableSource(track.src),
+    artwork: track.artwork ? resolvePlayableSource(track.artwork) : track.artwork,
+  };
 }
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const legacyPlayerRef = useRef<LegacyAudioPlayerHandle | null>(null);
+  const fwduvpPlayerRef = useRef<FWDUVPPlayerHostHandle | null>(null);
   const currentTrackRef = useRef<PlayerTrack | null>(null);
   const queueRef = useRef<PlayerTrack[]>([]);
   const queueIndexRef = useRef(0);
+  const currentTimeRef = useRef(0);
   const modeRef = useRef<PlayerMode>('standard');
   const playlistVersionRef = useRef<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState<PlayerTrack | null>(null);
@@ -125,16 +58,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [playbackBlocked, setPlaybackBlocked] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [duration, setDuration] = useState(0);
+  const [, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(0.85);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    audio.volume = volume;
-  }, [volume]);
+  const [fwduvpPlaybackRequest, setFwduvpPlaybackRequest] = useState<FWDUVPPlaybackRequest>({
+    autoplay: false,
+    revision: 0,
+    startAtSeconds: 0,
+  });
 
   useEffect(() => {
     currentTrackRef.current = currentTrack;
@@ -149,6 +80,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [queueIndex]);
 
   useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
+
+  useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
 
@@ -156,61 +91,67 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     playlistVersionRef.current = playlistVersion;
   }, [playlistVersion]);
 
-  const startAudio = useCallback((autoplay = true) => {
-    const audio = audioRef.current;
-    if (!audio || !autoplay) return;
+  const handlePlay = useCallback(() => {
+    setIsPlaying(true);
+    setPlaybackBlocked(false);
+  }, []);
 
-    audio.play()
-      .then(() => {
-        setIsPlaying(true);
-        setPlaybackBlocked(false);
-      })
-      .catch((playError: unknown) => {
-        setIsPlaying(false);
+  const handlePause = useCallback(() => {
+    setIsPlaying(false);
+  }, []);
 
-        if (playError instanceof DOMException && playError.name === 'NotAllowedError') {
-          setPlaybackBlocked(true);
-          return;
-        }
+  const handlePlaybackBlocked = useCallback(() => {
+    setIsPlaying(false);
+    setPlaybackBlocked(true);
+  }, []);
 
-        setError('Audio file could not be loaded.');
-      });
+  const handleError = useCallback((message: string) => {
+    setIsPlaying(false);
+    setError(message);
+  }, []);
+
+  const handleTimeUpdate = useCallback((time: number) => {
+    setCurrentTime(time);
+  }, []);
+
+  const handleDurationChange = useCallback((nextDuration: number) => {
+    setDuration(nextDuration);
+  }, []);
+
+  const resetPlayerState = useCallback(() => {
+    setCurrentTrack(null);
+    setQueue([]);
+    setQueueIndex(0);
+    setMode('standard');
+    setPlaylistVersion(null);
+    setPlaybackBlocked(false);
+    setIsPlaying(false);
+    setError(null);
+    setCurrentTime(0);
+    setDuration(0);
   }, []);
 
   const playQueuedTrack = useCallback((track: PlayerTrack, startAtSeconds = 0, autoplay = true) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const playableTrack = {
-      ...track,
-      src: resolvePlayableSource(track.src),
-    };
-    const isSameTrack = currentTrackRef.current?.src === playableTrack.src;
+    const playableTrack = normalizeTrack(track);
     const safeStartAtSeconds = Math.max(0, startAtSeconds);
 
     setError(null);
+    setPlaybackBlocked(false);
     setCurrentTrack(playableTrack);
+    setCurrentTime(safeStartAtSeconds);
+    setDuration(playableTrack.duration ?? 0);
 
-    if (!isSameTrack) {
-      audio.src = playableTrack.src;
-      audio.load();
-      setDuration(0);
+    if (PLAYER_ENGINE === 'fwduvp') {
+      setFwduvpPlaybackRequest((currentRequest) => ({
+        autoplay,
+        revision: currentRequest.revision + 1,
+        startAtSeconds: safeStartAtSeconds,
+      }));
+      return;
     }
 
-    if (!isSameTrack || Math.abs(audio.currentTime - safeStartAtSeconds) > 8) {
-      try {
-        audio.currentTime = safeStartAtSeconds;
-      } catch {
-        audio.addEventListener('loadedmetadata', () => {
-          audio.currentTime = safeStartAtSeconds;
-        }, { once: true });
-      }
-
-      setCurrentTime(safeStartAtSeconds);
-    }
-
-    startAudio(autoplay);
-  }, [startAudio]);
+    legacyPlayerRef.current?.loadTrack(playableTrack, safeStartAtSeconds, autoplay);
+  }, []);
 
   const playTrack = useCallback((track: PlayerTrack) => {
     setQueue([]);
@@ -223,6 +164,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const updateCurrentTrack = useCallback((patch: Partial<PlayerTrack>) => {
     setCurrentTrack((track) => (track ? { ...track, ...patch } : track));
+    setQueue((currentQueue) =>
+      currentQueue.map((track) =>
+        currentTrackRef.current && String(track.id) === String(currentTrackRef.current.id) ? { ...track, ...patch } : track,
+      ),
+    );
   }, []);
 
   const loadQueue = useCallback(({
@@ -236,7 +182,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }: PlayerQueueOptions) => {
     const playableTracks = tracks
       .filter((track) => track.src)
-      .map((track) => ({ ...track, src: resolvePlayableSource(track.src) }));
+      .map(normalizeTrack);
 
     if (playableTracks.length === 0) return;
 
@@ -255,14 +201,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setPlaylistVersion(nextPlaylistVersion);
 
     if (typeof nextVolume === 'number') {
-      setVolume(Math.min(1, Math.max(0, nextVolume)));
+      const safeVolume = clampVolume(nextVolume);
+      setVolume(safeVolume);
+      fwduvpPlayerRef.current?.setVolume(safeVolume);
     }
 
-    if (isSameLiveState && audioRef.current) {
-      const drift = Math.abs(audioRef.current.currentTime - currentPositionSeconds);
+    if (isSameLiveState) {
+      const drift = Math.abs(currentTimeRef.current - currentPositionSeconds);
 
       if (drift > 8) {
-        audioRef.current.currentTime = Math.max(0, currentPositionSeconds);
+        if (PLAYER_ENGINE === 'fwduvp') {
+          fwduvpPlayerRef.current?.seekToSeconds(currentPositionSeconds);
+        } else {
+          legacyPlayerRef.current?.seekToSeconds(currentPositionSeconds);
+        }
+
         setCurrentTime(Math.max(0, currentPositionSeconds));
       }
 
@@ -276,7 +229,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const playNextQueuedTrack = useCallback(() => {
     const currentQueue = queueRef.current;
 
-    if (currentQueue.length === 0) {
+    if (currentQueue.length <= 1) {
       setIsPlaying(false);
       return;
     }
@@ -289,36 +242,43 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [playQueuedTrack]);
 
   const togglePlay = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio || !currentTrackRef.current) return;
+    if (!currentTrackRef.current) return;
 
-    if (audio.paused) {
-      startAudio(true);
+    if (PLAYER_ENGINE === 'fwduvp') {
+      if (isPlaying) {
+        fwduvpPlayerRef.current?.pause();
+        setIsPlaying(false);
+        return;
+      }
+
+      fwduvpPlayerRef.current?.play();
       return;
     }
 
-    audio.pause();
-    setIsPlaying(false);
-  }, [startAudio]);
-
-  const stop = useCallback(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      audio.pause();
-      audio.removeAttribute('src');
-      audio.load();
+    if (isPlaying) {
+      legacyPlayerRef.current?.pause();
+      setIsPlaying(false);
+      return;
     }
 
-    setCurrentTrack(null);
-    setQueue([]);
-    setQueueIndex(0);
-    setMode('standard');
-    setPlaylistVersion(null);
-    setPlaybackBlocked(false);
-    setIsPlaying(false);
-    setError(null);
+    legacyPlayerRef.current?.play();
+  }, [isPlaying]);
+
+  const stop = useCallback(() => {
+    if (PLAYER_ENGINE === 'fwduvp') {
+      fwduvpPlayerRef.current?.stop();
+    } else {
+      legacyPlayerRef.current?.stop();
+    }
+
+    resetPlayerState();
+  }, [resetPlayerState]);
+
+  const handleFWDUVPTrackChange = useCallback((track: PlayerTrack, index: number) => {
+    setCurrentTrack(track);
+    setQueueIndex(index);
     setCurrentTime(0);
-    setDuration(0);
+    setDuration(track.duration ?? 0);
   }, []);
 
   const value = useMemo(
@@ -326,126 +286,51 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [currentTrack, isPlaying, error, mode, playbackBlocked, playTrack, updateCurrentTrack, loadQueue, togglePlay, stop],
   );
 
-  const displayDuration = duration || currentTrack?.duration || 0;
-  const progress = displayDuration > 0 ? (currentTime / displayDuration) * 100 : 0;
+  const fwduvpQueue = useMemo(() => (queue.length > 0 ? queue : currentTrack ? [currentTrack] : []), [currentTrack, queue]);
+  const fwduvpQueueIndex = queue.length > 0 ? queueIndex : 0;
 
   return (
     <PlayerContext.Provider value={value}>
       {children}
-      <style>
-        {`
-          @keyframes blendbeats-player-bar {
-            0% { transform: scaleY(0.35); }
-            45% { transform: scaleY(1); }
-            100% { transform: scaleY(0.55); }
-          }
-        `}
-      </style>
-      <audio
-        ref={audioRef}
-        onLoadedMetadata={(event) => {
-          const loadedDuration = event.currentTarget.duration;
-          setDuration(Number.isFinite(loadedDuration) ? loadedDuration : currentTrack?.duration ?? 0);
-        }}
-        onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-        onPlay={() => {
-          setIsPlaying(true);
-          setPlaybackBlocked(false);
-        }}
-        onPause={() => setIsPlaying(false)}
-        onEnded={playNextQueuedTrack}
-        onError={() => {
-          setIsPlaying(false);
-          setError('Audio file could not be loaded.');
-        }}
-      >
-        <track kind="captions" />
-      </audio>
 
-      {currentTrack && (
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#2a2a2a] bg-[#080808]/95 px-4 py-3 text-white shadow-2xl shadow-black/60 backdrop-blur lg:px-8">
-          <div className="container mx-auto grid max-w-6xl gap-3 lg:grid-cols-[minmax(0,1fr)_220px_360px_150px] lg:items-center">
-            <div className="flex min-w-0 items-center gap-3">
-              {currentTrack.artwork ? (
-                <img src={currentTrack.artwork} alt={currentTrack.title} className="h-12 w-12 shrink-0 object-cover" />
-              ) : (
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center bg-primary text-white">
-                  <Volume2 size={20} />
-                </div>
-              )}
-              <div className="min-w-0">
-                {mode === 'lounge_live' && (
-                  <p
-                    className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-[#FFB800]"
-                    style={{ fontFamily: 'var(--font-heading)' }}
-                  >
-                    DJ Lounge Live
-                  </p>
-                )}
-                <p className="truncate text-sm font-semibold text-white">{currentTrack.title}</p>
-                <p className="truncate text-xs text-[#888888]">
-                  {error || (playbackBlocked ? 'Tap play to start lounge music.' : currentTrack.artist || currentTrack.meta || 'BlendBeats')}
-                </p>
-                {typeof currentTrack.countValue === 'number' && (
-                  <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-[#777777]">
-                    {new Intl.NumberFormat('en', { notation: currentTrack.countValue >= 10000 ? 'compact' : 'standard' }).format(currentTrack.countValue)}{' '}
-                    {currentTrack.countLabel || 'plays'}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <PlayerVisualizer isPlaying={isPlaying} hasError={Boolean(error)} />
-
-            <div className="grid gap-2">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={togglePlay}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center bg-primary text-white transition-colors hover:bg-primary/90"
-                  aria-label={isPlaying ? 'Pause current track' : 'Play current track'}
-                >
-                  {isPlaying ? <Pause size={17} /> : <Play size={17} fill="currentColor" />}
-                </button>
-                <div className="h-2 flex-1 bg-[#1f1f1f]">
-                  <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
-                </div>
-                <span className="w-20 text-right text-xs text-[#888888]">
-                  {formatTime(currentTime)} / {formatTime(displayDuration)}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2">
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={volume}
-                onChange={(event) => setVolume(Number(event.target.value))}
-                aria-label="Player volume"
-                className="w-20 accent-primary"
-              />
-              <button
-                type="button"
-                onClick={stop}
-                className="inline-flex h-10 w-10 items-center justify-center border border-[#333333] text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
-                aria-label="Stop playback"
-              >
-                <CircleStop size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={stop}
-                className="inline-flex h-10 w-10 items-center justify-center border border-[#333333] text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
-                aria-label="Close player"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
+      {PLAYER_ENGINE === 'fwduvp' ? (
+        <FWDUVPPlayerHost
+          ref={fwduvpPlayerRef}
+          currentTrack={currentTrack}
+          mode={mode}
+          playbackRequest={fwduvpPlaybackRequest}
+          queue={fwduvpQueue}
+          queueIndex={fwduvpQueueIndex}
+          volume={volume}
+          onDurationChange={handleDurationChange}
+          onError={handleError}
+          onPause={handlePause}
+          onPlay={handlePlay}
+          onPlaybackBlocked={handlePlaybackBlocked}
+          onStop={resetPlayerState}
+          onTimeUpdate={handleTimeUpdate}
+          onTrackChange={handleFWDUVPTrackChange}
+        />
+      ) : (
+        <LegacyAudioPlayerHost
+          ref={legacyPlayerRef}
+          currentTrack={currentTrack}
+          mode={mode}
+          volume={volume}
+          isPlaying={isPlaying}
+          error={error}
+          playbackBlocked={playbackBlocked}
+          onDurationChange={handleDurationChange}
+          onEnded={playNextQueuedTrack}
+          onError={handleError}
+          onPause={handlePause}
+          onPlaybackBlocked={handlePlaybackBlocked}
+          onPlay={handlePlay}
+          onStop={resetPlayerState}
+          onTimeUpdate={handleTimeUpdate}
+          onTogglePlay={togglePlay}
+          onVolumeChange={(nextVolume) => setVolume(clampVolume(nextVolume))}
+        />
       )}
     </PlayerContext.Provider>
   );
