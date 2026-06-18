@@ -894,7 +894,7 @@ export default function DjLoungePage() {
             </div>
 
             <aside className="grid gap-5 self-start">
-              <GroupAAndBDisplay />
+              <GroupAAndBDisplay compact />
 
               <section className="border border-[#2a2a2a] bg-[#111111] p-5">
                 <div className="mb-4 flex items-center gap-2">
@@ -927,7 +927,7 @@ export default function DjLoungePage() {
                 </div>
               </section>
 
-              <GroupEAndFDisplay />
+              <GroupEAndFDisplay compact />
             </aside>
           </div>
         </section>

@@ -6,9 +6,10 @@ import { getDisplayAdvertisement, trackAdvertisementEvent, type UniversalAdverti
 type UniversalAdCardProps = {
   placement: string;
   title?: string;
+  compact?: boolean;
 };
 
-export default function UniversalAdCard({ placement, title = 'Featured Ad' }: UniversalAdCardProps) {
+export default function UniversalAdCard({ placement, title = 'Featured Ad', compact = false }: UniversalAdCardProps) {
   const [ad, setAd] = useState<UniversalAdvertisement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const containerRef = useRef<HTMLElement | null>(null);
@@ -72,10 +73,10 @@ export default function UniversalAdCard({ placement, title = 'Featured Ad' }: Un
   }
 
   return (
-    <section ref={containerRef} className="border border-[#2a2a2a] bg-[#111111] p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <Megaphone size={18} className="text-primary" />
-        <h2 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+    <section ref={containerRef} className={`border border-[#2a2a2a] bg-[#111111] ${compact ? 'p-4' : 'p-5'}`}>
+      <div className={`${compact ? 'mb-3' : 'mb-4'} flex items-center gap-2`}>
+        <Megaphone size={compact ? 16 : 18} className="text-primary" />
+        <h2 className={`${compact ? 'text-xl' : 'text-2xl'} uppercase text-white`} style={{ fontFamily: 'var(--font-heading)' }}>
           {title}
         </h2>
       </div>
@@ -85,26 +86,26 @@ export default function UniversalAdCard({ placement, title = 'Featured Ad' }: Un
         onClick={() => trackAdvertisementEvent(ad, placement, 'click')}
         className="group block border border-[#282828] bg-[#090909] transition-colors hover:border-primary"
       >
-        <div className="aspect-square overflow-hidden bg-[#050505]">
+        <div className={`${compact ? 'h-32' : 'aspect-square'} overflow-hidden bg-[#050505]`}>
           {ad.image_url ? (
             <img src={ad.image_url} alt={ad.title || title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-primary text-4xl font-black uppercase text-white">
+            <div className={`${compact ? 'text-2xl' : 'text-4xl'} flex h-full w-full items-center justify-center bg-primary font-black uppercase text-white`}>
               {(ad.title || 'Ad').slice(0, 1)}
             </div>
           )}
         </div>
-        <div className="p-4">
+        <div className={compact ? 'p-3' : 'p-4'}>
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">
             Group {ad.campaign.group} / Slot {ad.campaign.slot}
           </p>
-          <h3 className="mt-2 text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+          <h3 className={`${compact ? 'text-xl' : 'text-2xl'} mt-2 uppercase text-white`} style={{ fontFamily: 'var(--font-heading)' }}>
             {ad.title}
           </h3>
           {ad.subtitle && <p className="mt-1 text-sm text-[#cccccc]">{ad.subtitle}</p>}
-          {ad.description && <p className="mt-3 line-clamp-3 text-sm leading-6 text-[#888888]">{ad.description}</p>}
+          {ad.description && <p className={`${compact ? 'line-clamp-2' : 'line-clamp-3'} mt-3 text-sm leading-6 text-[#888888]`}>{ad.description}</p>}
           <span
-            className="mt-4 inline-flex h-10 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white"
+            className={`${compact ? 'h-9' : 'h-10'} mt-4 inline-flex items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white`}
             style={{ fontFamily: 'var(--font-heading)' }}
           >
             View Ad

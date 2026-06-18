@@ -1,5 +1,9 @@
 import UniversalAdCard from '@/components/advertising/UniversalAdCard';
 
-export default function GroupAAndBDisplay() {
-  return <UniversalAdCard placement="group-a-and-b-display" title="Premium Spotlight" />;
+type GroupDisplayProps = {
+  compact?: boolean;
+};
+
+export default function GroupAAndBDisplay({ compact = false }: GroupDisplayProps) {
+  return <UniversalAdCard placement="group-a-and-b-display" title="Premium Spotlight" compact={compact} />;
 }
