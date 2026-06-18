@@ -115,4 +115,8 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    'dj_lounge_reports' => [
+        'to' => env('DJ_LOUNGE_REPORT_EMAIL', 'richievc@gmail.com'),
+    ],
+
 ];

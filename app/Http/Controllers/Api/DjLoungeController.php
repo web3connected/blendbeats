@@ -2,19 +2,23 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\User;
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Notifications\DjLoungePostReportedNotification;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class DjLoungeController extends Controller
 {
     private const POST_MODEL_TYPE = 'App\\Models\\DjLoungePost';
+
     private const COMMENT_MODEL_TYPE = 'App\\Models\\DjLoungeComment';
 
     public function index(Request $request): JsonResponse
@@ -207,7 +211,7 @@ class DjLoungeController extends Controller
             'details' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        DB::table('dj_lounge_reports')->insert([
+        $reportId = DB::table('dj_lounge_reports')->insertGetId([
             'reporter_user_id' => $user->id,
             'reportable_type' => self::POST_MODEL_TYPE,
             'reportable_id' => $post->id,
@@ -217,6 +221,8 @@ class DjLoungeController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        $this->sendReportNotification((int) $reportId, $post, $user, $attributes);
 
         return response()->json(['reported' => true], Response::HTTP_CREATED);
     }
@@ -442,7 +448,7 @@ class DjLoungeController extends Controller
 
     private function authorAvatarUrl(object $author): string
     {
-        $user = new User();
+        $user = new User;
         $user->forceFill([
             'name' => $author->author_name ?? 'BlendBeats DJ',
             'email' => $author->author_email ?? '',
@@ -452,6 +458,32 @@ class DjLoungeController extends Controller
         ]);
 
         return $user->getAvatarUrl(128);
+    }
+
+    /**
+     * @param  array{reason?: string, details?: string|null}  $attributes
+     */
+    private function sendReportNotification(int $reportId, object $post, User $reporter, array $attributes): void
+    {
+        $recipient = trim((string) config('mail.dj_lounge_reports.to', 'richievc@gmail.com'));
+
+        if ($recipient === '') {
+            return;
+        }
+
+        try {
+            Notification::route('mail', $recipient)->notify(new DjLoungePostReportedNotification(
+                reportId: $reportId,
+                postId: (int) $post->id,
+                postAuthorUserId: (int) $post->user_id,
+                reporter: $reporter,
+                reason: $attributes['reason'] ?? 'other',
+                details: $attributes['details'] ?? null,
+                postBody: (string) $post->body,
+            ));
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 
     private function authenticatedUserId(Request $request): int

@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Notifications\DjLoungePostReportedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class DjLoungeApiTest extends TestCase
@@ -106,6 +108,8 @@ class DjLoungeApiTest extends TestCase
 
     public function test_non_owner_can_report_but_not_edit_a_post(): void
     {
+        Notification::fake();
+
         $owner = User::factory()->create(['name' => 'DJ Owner']);
         $viewer = User::factory()->create(['name' => 'DJ Viewer']);
 
@@ -136,5 +140,16 @@ class DjLoungeApiTest extends TestCase
             'reason' => 'spam',
             'status' => 'open',
         ]);
+
+        Notification::assertSentOnDemand(
+            DjLoungePostReportedNotification::class,
+            function (DjLoungePostReportedNotification $notification, array $channels, object $notifiable) use ($postId, $viewer): bool {
+                return in_array('mail', $channels, true)
+                    && ($notifiable->routes['mail'] ?? null) === 'richievc@gmail.com'
+                    && $notification->postId === (int) $postId
+                    && $notification->reporter->is($viewer)
+                    && $notification->reason === 'spam';
+            },
+        );
     }
 }
