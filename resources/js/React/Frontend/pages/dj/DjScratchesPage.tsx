@@ -156,7 +156,7 @@ function UploadModal({
       const duration = await getVideoDuration(file);
 
       if (isOverScratchDurationLimit(duration)) {
-        setLocalError(`This video is ${formatDuration(duration)}. DJ Scratch videos must be 5:00 or less.`);
+        setLocalError(`This video is ${formatDuration(duration)}. Scratch routine videos must be 5:00 or less.`);
         input.value = '';
         return;
       }
@@ -177,7 +177,7 @@ function UploadModal({
     setLocalError('');
 
     if (!videoFile || !durationSeconds) {
-      setLocalError('Choose a scratch video first.');
+      setLocalError('Choose a scratch routine video first.');
       return;
     }
 
@@ -201,7 +201,7 @@ function UploadModal({
         validationMessage ||
           (uploadError instanceof MediaManagerApiError
             ? uploadError.message
-            : 'Unable to upload scratch video right now.'),
+            : 'Unable to upload scratch routine video right now.'),
       );
     } finally {
       setIsSubmitting(false);
@@ -216,9 +216,9 @@ function UploadModal({
       >
         <div className="mb-5 flex items-start justify-between gap-4 border-b border-[#252525] pb-4">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">DJ Scratches</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Scratch Routines</p>
             <h2 className="mt-2 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-              Upload Scratch
+              Upload Routine
             </h2>
           </div>
           <button
@@ -233,7 +233,7 @@ function UploadModal({
 
         <div className="grid gap-4">
           <label className="grid gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Scratch Video</span>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Scratch Routine Video</span>
             <input
               type="file"
               accept="video/*"
@@ -247,6 +247,9 @@ function UploadModal({
                 : videoFile
                   ? `${videoFile.name} | ${formatDuration(durationSeconds)}`
                   : 'Video only | 5:00 max'}
+            </span>
+            <span className="text-xs text-[#666666]">
+              Monthly limit: Free 3, Plus 50, Pro 150, Elite unlimited.
             </span>
           </label>
 
@@ -336,7 +339,7 @@ function UploadModal({
             style={{ fontFamily: 'var(--font-heading)' }}
           >
             <Upload size={15} />
-            {isSubmitting ? 'Uploading' : 'Upload Scratch'}
+            {isSubmitting ? 'Uploading' : 'Upload Routine'}
           </button>
         </div>
       </form>
@@ -375,7 +378,7 @@ export default function DjScratchesPage() {
         return response.scratches[0]?.id ?? null;
       });
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unable to load DJ Scratches.');
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load Scratch Routines.');
     } finally {
       setIsLoading(false);
     }
@@ -404,7 +407,7 @@ export default function DjScratchesPage() {
       style={{ fontFamily: 'var(--font-heading)' }}
     >
       <Upload size={16} />
-      Upload Scratch
+      Upload Routine
     </button>
   ) : user ? (
     <Link
@@ -429,8 +432,8 @@ export default function DjScratchesPage() {
   return (
     <>
       <Helmet>
-        <title>DJ Scratches | The Blend Battlegrounds</title>
-        <meta name="description" content="Watch short DJ scratch showcase videos from BlendBeats DJs." />
+        <title>Scratch Routines | The Blend Battlegrounds</title>
+        <meta name="description" content="Watch short DJ scratch routine videos from BlendBeats DJs." />
       </Helmet>
 
       <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a] px-4 py-6 text-white lg:px-8">
@@ -444,7 +447,7 @@ export default function DjScratchesPage() {
                 DJ Hub
               </p>
               <h1 className="mt-2 text-4xl uppercase leading-none text-white sm:text-5xl" style={{ fontFamily: 'var(--font-heading)' }}>
-                DJ Scratches
+                Scratch Routines
               </h1>
             </div>
 
@@ -580,7 +583,7 @@ export default function DjScratchesPage() {
                       No Videos Yet
                     </h2>
                     <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#888888]">
-                      No public DJ Scratch uploads are available yet.
+                      No public Scratch Routine uploads are available yet.
                     </p>
                     <div className="mt-6 flex justify-center">{!isAuthLoading && uploadAction}</div>
                   </div>

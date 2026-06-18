@@ -45,13 +45,13 @@ import {
 import MediaSetupSection from './comps/MediaSetupSection';
 
 const statusFilters = ['All', 'Published', 'Drafts', 'Unlisted', 'Private', 'Archived'];
-const mediaFilters = ['All', 'Mixes', 'Tracks', 'Videos', 'Scratches', 'Battle Entries'];
+const mediaFilters = ['All', 'Mixes', 'Tracks', 'Videos', 'Scratch Routines', 'Battle Entries'];
 const genreOptions = ['Hip-Hop', 'House', 'Drum & Bass', 'Techno', 'Scratch Sets', 'Open Format', 'R&B', 'Afrobeats'];
 const kindOptions = [
   { value: 'mix', label: 'Mix' },
   { value: 'track', label: 'Track' },
   { value: 'video', label: 'Video' },
-  { value: 'scratch', label: 'Scratch' },
+  { value: 'scratch', label: 'Scratch Routine' },
   { value: 'battle_entry', label: 'Battle Entry' },
   { value: 'image', label: 'Image' },
 ];
@@ -151,7 +151,7 @@ function matchesMediaFilter(file: MediaFileRecord, filter: string) {
   if (filter === 'Mixes') return kind === 'mix';
   if (filter === 'Tracks') return kind === 'track';
   if (filter === 'Videos') return kind === 'video' || file.is_video;
-  if (filter === 'Scratches') return kind === 'scratch';
+  if (filter === 'Scratch Routines') return kind === 'scratch';
   if (filter === 'Battle Entries') return kind === 'battle_entry';
 
   return true;
@@ -402,13 +402,13 @@ export default function DjPortfolioPage() {
 
     if (uploadForm.mediaKind === 'scratch') {
       if (!file.type.startsWith('video/')) {
-        setError('DJ Scratches must be uploaded as video files.');
+        setError('Scratch routines must be uploaded as video files.');
         setIsUploading(false);
         return;
       }
 
       if (!uploadDurationSeconds || isOverScratchDurationLimit(uploadDurationSeconds)) {
-        setError('DJ Scratches must be 5 minutes or less.');
+        setError('Scratch routines must be 5 minutes or less.');
         setIsUploading(false);
         return;
       }
@@ -1058,6 +1058,11 @@ export default function DjPortfolioPage() {
                       </option>
                     ))}
                   </select>
+                  {uploadForm.mediaKind === 'scratch' && (
+                    <span className="text-xs text-[#666666]">
+                      Monthly limit: Free 3, Plus 50, Pro 150, Elite unlimited.
+                    </span>
+                  )}
                 </label>
 
                 <label className="grid gap-2">

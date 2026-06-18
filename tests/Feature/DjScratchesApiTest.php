@@ -138,4 +138,73 @@ class DjScratchesApiTest extends TestCase
             ->assertJsonPath('file.portfolio_kind', 'scratch')
             ->assertJsonPath('file.duration_seconds', 300.4);
     }
+
+    public function test_free_tier_can_upload_three_scratch_videos_per_month(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['name' => 'DJ Free Limit', 'media_storage_tier' => 'free']);
+
+        $this->createMonthlyScratchUploads($user, 3);
+
+        $this->actingAs($user)
+            ->postJson('/api/media/files', [
+                'file' => UploadedFile::fake()->create('fourth-scratch.mp4', 1024, 'video/mp4'),
+                'disk' => 'public',
+                'collection' => 'dj_media',
+                'title' => 'Fourth Scratch',
+                'visibility' => 'public',
+                'media_kind' => 'scratch',
+                'duration_seconds' => 120,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('media_kind')
+            ->assertJsonPath('errors.media_kind.0', 'Free includes 3 Scratch routine video uploads per month.');
+    }
+
+    public function test_plus_tier_can_upload_past_the_free_monthly_scratch_limit(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['name' => 'DJ Plus Limit', 'media_storage_tier' => 'dj_plus']);
+
+        $this->createMonthlyScratchUploads($user, 3);
+
+        $this->actingAs($user)
+            ->postJson('/api/media/files', [
+                'file' => UploadedFile::fake()->create('plus-scratch.mp4', 1024, 'video/mp4'),
+                'disk' => 'public',
+                'collection' => 'dj_media',
+                'title' => 'Plus Scratch',
+                'visibility' => 'public',
+                'media_kind' => 'scratch',
+                'duration_seconds' => 120,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('file.portfolio_kind', 'scratch');
+    }
+
+    private function createMonthlyScratchUploads(User $user, int $count): void
+    {
+        for ($index = 1; $index <= $count; $index++) {
+            MediaFile::query()->create([
+                'user_id' => $user->id,
+                'name' => "scratch-{$index}.mp4",
+                'original_name' => "scratch-{$index}.mp4",
+                'disk' => 'public',
+                'path' => "media/portfolios/{$user->id}/scratch-{$index}.mp4",
+                'mime_type' => 'video/mp4',
+                'size' => 2048,
+                'collection' => 'dj_media',
+                'metadata' => [
+                    'portfolio' => [
+                        'title' => "Scratch {$index}",
+                        'visibility' => 'public',
+                        'media_kind' => 'scratch',
+                        'duration_seconds' => 120,
+                    ],
+                ],
+                'created_at' => now()->startOfMonth()->addDays($index),
+                'updated_at' => now()->startOfMonth()->addDays($index),
+            ]);
+        }
+    }
 }

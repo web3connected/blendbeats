@@ -41,7 +41,7 @@ async function parseJson<T>(response: Response): Promise<T> {
   const body = await response.json();
 
   if (!response.ok) {
-    throw new Error(body?.message || 'Unable to load DJ Scratches.');
+    throw new Error(body?.message || 'Unable to load Scratch Routines.');
   }
 
   return body as T;

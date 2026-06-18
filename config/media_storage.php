@@ -12,4 +12,11 @@ return [
         'growth' => 'dj_plus',
         'premium' => 'dj_pro',
     ],
+
+    'scratch_video_monthly_limits' => [
+        'free' => 3,
+        'dj_plus' => 50,
+        'dj_pro' => 150,
+        'dj_elite' => null,
+    ],
 ];

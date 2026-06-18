@@ -7,6 +7,7 @@ use App\Models\MediaFile;
 use App\Notifications\PortfolioAudioUploadedNotification;
 use App\Services\MediaManagerService;
 use App\Services\MediaStorageQuotaService;
+use App\Services\MembershipTierService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -41,6 +42,7 @@ class MediaManagerController extends Controller
         Request $request,
         MediaManagerService $mediaManager,
         MediaStorageQuotaService $quotaService,
+        MembershipTierService $membershipTiers,
     ): JsonResponse {
         $attributes = $request->validate([
             'file' => ['required', 'file', 'max:51200'],
@@ -56,6 +58,7 @@ class MediaManagerController extends Controller
         ]);
 
         $this->validateScratchVideoPayload($attributes);
+        $this->assertScratchVideoMonthlyLimit($request, $membershipTiers, $attributes);
 
         $file = $mediaManager->uploadFileToMediaManager(
             $attributes['file'],
@@ -191,7 +194,7 @@ class MediaManagerController extends Controller
 
         if (! str_starts_with($mimeType, 'video/')) {
             throw ValidationException::withMessages([
-                'file' => ['DJ Scratches must be uploaded as video files.'],
+                'file' => ['Scratch routines must be uploaded as video files.'],
             ]);
         }
 
@@ -202,14 +205,56 @@ class MediaManagerController extends Controller
 
         if (! is_numeric($duration) || (float) $duration <= 0) {
             throw ValidationException::withMessages([
-                'duration_seconds' => ['DJ Scratches need a readable video duration.'],
+                'duration_seconds' => ['Scratch routines need a readable video duration.'],
             ]);
         }
 
         if (floor((float) $duration) > 300) {
             throw ValidationException::withMessages([
-                'duration_seconds' => ['DJ Scratches must be 5 minutes or less.'],
+                'duration_seconds' => ['Scratch routines must be 5 minutes or less.'],
             ]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function assertScratchVideoMonthlyLimit(
+        Request $request,
+        MembershipTierService $membershipTiers,
+        array $attributes,
+    ): void {
+        if (($attributes['media_kind'] ?? null) !== 'scratch') {
+            return;
+        }
+
+        $user = $request->user();
+        $limit = $membershipTiers->scratchVideoMonthlyLimitFor($user);
+
+        if ($limit === null) {
+            return;
+        }
+
+        $monthStart = now()->startOfMonth();
+        $monthEnd = $monthStart->copy()->addMonth();
+        $uploadedThisMonth = MediaFile::withTrashed()
+            ->where('user_id', $user->id)
+            ->where('collection', MediaManagerService::COLLECTION_DJ_MEDIA)
+            ->where('mime_type', 'like', 'video/%')
+            ->where('created_at', '>=', $monthStart)
+            ->where('created_at', '<', $monthEnd)
+            ->get()
+            ->filter(fn (MediaFile $file): bool => ($file->metadata['portfolio']['media_kind'] ?? null) === 'scratch')
+            ->count();
+
+        if ($uploadedThisMonth < $limit) {
+            return;
+        }
+
+        $tierName = config('billing.subscription.tiers.'.$membershipTiers->tierFor($user).'.name', 'Your tier');
+
+        throw ValidationException::withMessages([
+            'media_kind' => ["{$tierName} includes {$limit} Scratch routine video uploads per month."],
+        ]);
     }
 }

@@ -35,4 +35,12 @@ class MembershipTierService
     {
         return (int) ($this->configFor($user)['storage_bytes'] ?? 0);
     }
+
+    public function scratchVideoMonthlyLimitFor(?User $user): ?int
+    {
+        $tier = $this->tierFor($user);
+        $limit = config("media_storage.scratch_video_monthly_limits.{$tier}");
+
+        return $limit === null ? null : (int) $limit;
+    }
 }

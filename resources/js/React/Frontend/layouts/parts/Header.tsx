@@ -25,7 +25,7 @@ export default function Header() {
   const djProfileHref = user?.dj_profile ? '/dj/edit' : '/dj/start';
   const djNavItems = [
     { href: '/djs', label: 'DJ HUB', description: 'Browse public DJ profiles.', icon: Users },
-    { href: '/djs/scratches', label: 'DJ SCRATCHES', description: 'Watch short DJ skill videos.', icon: Clapperboard },
+    { href: '/djs/scratches', label: 'SCRATCH ROUTINES', description: 'Watch short DJ skill videos.', icon: Clapperboard },
     { href: '/dj-lounge', label: 'DJ LOUNGE', description: 'Post and connect with the community.', icon: Headphones },
     { href: '/dj/portfolio', label: 'DJ PORTFOLIO', description: 'Manage mixes, tracks, and media.', icon: Music2 },
     { href: djProfileHref, label: djProfileLabel, description: 'Build and update your DJ presence.', icon: Radio },
