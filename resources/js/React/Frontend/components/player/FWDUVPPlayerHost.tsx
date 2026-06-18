@@ -166,6 +166,7 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
           setLoadError(null);
 
           const player = new window.FWDUVPlayer({
+            instanceName: idPrefix.current,
             parentId,
             playlistsId,
             mainFolderPath: FWDUVP_CONTENT_PATH,
