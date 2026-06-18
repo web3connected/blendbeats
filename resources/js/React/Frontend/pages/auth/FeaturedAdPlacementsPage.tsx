@@ -64,6 +64,7 @@ export default function FeaturedAdPlacementsPage() {
   const [placementsError, setPlacementsError] = useState('');
   const [selectedOptionBySlot, setSelectedOptionBySlot] = useState<Record<number, number>>({});
   const [selectedStartDateBySlot, setSelectedStartDateBySlot] = useState<Record<number, string>>({});
+  const [selectedCreditBySlot, setSelectedCreditBySlot] = useState<Record<number, number>>({});
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [campaignSetupSlotId, setCampaignSetupSlotId] = useState<number | null>(null);
   const [checkoutSlot, setCheckoutSlot] = useState<number | null>(null);
@@ -151,7 +152,7 @@ export default function FeaturedAdPlacementsPage() {
       });
   }, [user, searchParams, setSearchParams]);
 
-  const handleCheckout = (slot: FeaturedCampaignSlot) => {
+  const handleCheckout = (slot: FeaturedCampaignSlot, adCreditId = 0) => {
     const selectedOptionId = selectedOptionBySlot[slot.id] || slot.options[0]?.id;
     const selectedStartDate = selectedStartDateBySlot[slot.id] || dateInputValue();
 
@@ -163,8 +164,15 @@ export default function FeaturedAdPlacementsPage() {
     setCheckoutSlot(slot.id);
     setPlacementsError('');
 
-    startFeaturedAdCheckout(slot.id, selectedOptionId, selectedStartDate)
+    startFeaturedAdCheckout(slot.id, selectedOptionId, selectedStartDate, adCreditId || undefined)
       .then((response) => {
+        if (adCreditId && response.campaign.payment_provider === 'ad_credit') {
+          setCaptureMessage('Ad credit applied. Your featured placement is now active.');
+          setCampaignSetupSlotId(null);
+          loadPlacements();
+          return;
+        }
+
         const checkoutUrl = response.checkout_url || response.campaign.approval_url;
         if (checkoutUrl) {
           window.location.href = checkoutUrl;
@@ -251,21 +259,34 @@ export default function FeaturedAdPlacementsPage() {
   const campaignSetupCampaign = campaignSetupPlacement?.campaign ?? null;
   const campaignSetupOptionId = campaignSetupSlot ? selectedOptionBySlot[campaignSetupSlot.id] || campaignSetupSlot.options[0]?.id || 0 : 0;
   const campaignSetupOption = campaignSetupSlot?.options.find((option) => option.id === campaignSetupOptionId) || campaignSetupSlot?.options[0] || null;
+  const campaignSetupEligibleCredits = campaignSetupOption
+    ? (placements?.ad_credits?.credits ?? []).filter((credit) =>
+        credit.remaining_quantity > 0 && credit.duration_days >= campaignSetupOption.duration_days
+      )
+    : [];
+  const campaignSetupSelectedCreditId = campaignSetupSlot
+    && campaignSetupEligibleCredits.some((credit) => credit.id === (selectedCreditBySlot[campaignSetupSlot.id] || 0))
+    ? selectedCreditBySlot[campaignSetupSlot.id]
+    : 0;
+  const campaignSetupSelectedCredit = campaignSetupEligibleCredits.find((credit) => credit.id === campaignSetupSelectedCreditId) ?? null;
+  const isUsingCampaignSetupCredit = Boolean(campaignSetupSelectedCredit);
   const campaignSetupActiveCampaign = campaignSetupSlot?.active_campaign ?? null;
   const campaignSetupStartDate = campaignSetupSlot ? selectedStartDateBySlot[campaignSetupSlot.id] || dateInputValue() : dateInputValue();
   const campaignSetupEndDate = addDaysToDateInput(campaignSetupStartDate, campaignSetupOption?.duration_days ?? 1);
+  const campaignSetupTotalDueLabel = isUsingCampaignSetupCredit ? '$0.00' : (campaignSetupOption?.price_label ?? '$0.00');
+  const hasCampaignSetupPaymentPath = isUsingCampaignSetupCredit || Boolean(placements?.payment_provider?.credentials_ready);
   const canResumePayment = Boolean(
     campaignSetupActiveCampaign?.is_mine
       && campaignSetupActiveCampaign.status === 'pending_payment'
   );
   const canPayCampaignSetup = Boolean(
-    canResumePayment
+    campaignSetupOption
+      && hasCampaignSetupPaymentPath
+      && (canResumePayment
       || (
         campaignSetupSlot?.is_unlocked
         && campaignSetupSlot.is_available
-        && campaignSetupOption
-        && placements?.payment_provider?.credentials_ready
-      ),
+      )),
   );
 
   const openCampaignSetup = (slot: FeaturedCampaignSlot) => {
@@ -285,9 +306,19 @@ export default function FeaturedAdPlacementsPage() {
 
   const handleCampaignSetupPayment = (slot: FeaturedCampaignSlot) => {
     const activeCampaign = slot.active_campaign;
+    const selectedOptionId = selectedOptionBySlot[slot.id] || slot.options[0]?.id;
+    const selectedOption = slot.options.find((option) => option.id === selectedOptionId) || slot.options[0];
+    const selectedCreditId = selectedCreditBySlot[slot.id] || 0;
+    const adCreditId = selectedOption
+      && (placements?.ad_credits?.credits ?? []).some((credit) =>
+        credit.id === selectedCreditId
+          && credit.remaining_quantity > 0
+          && credit.duration_days >= selectedOption.duration_days
+      )
+      ? selectedCreditId
+      : 0;
 
     if (activeCampaign?.is_mine && activeCampaign.status === 'pending_payment') {
-      const selectedOptionId = selectedOptionBySlot[slot.id] || slot.options[0]?.id;
       const selectedStartDate = selectedStartDateBySlot[slot.id] || dateInputValue();
 
       if (!selectedOptionId) {
@@ -298,8 +329,15 @@ export default function FeaturedAdPlacementsPage() {
       setCheckoutSlot(slot.id);
       setPlacementsError('');
 
-      restartFeaturedAdCheckout(activeCampaign.id, selectedOptionId, selectedStartDate)
+      restartFeaturedAdCheckout(activeCampaign.id, selectedOptionId, selectedStartDate, adCreditId || undefined)
         .then((response) => {
+          if (adCreditId && response.campaign.payment_provider === 'ad_credit') {
+            setCaptureMessage('Ad credit applied. Your featured placement is now active.');
+            setCampaignSetupSlotId(null);
+            loadPlacements();
+            return;
+          }
+
           const checkoutUrl = response.checkout_url || response.campaign.approval_url;
           if (checkoutUrl) {
             window.location.href = checkoutUrl;
@@ -316,7 +354,7 @@ export default function FeaturedAdPlacementsPage() {
       return;
     }
 
-    handleCheckout(slot);
+    handleCheckout(slot, adCreditId);
   };
 
   return (
@@ -800,7 +838,7 @@ export default function FeaturedAdPlacementsPage() {
 
               {campaignSetupActiveCampaign?.is_mine && campaignSetupActiveCampaign.status === 'pending_payment' && (
                 <div className="border border-[#FFB800]/40 bg-[#151106] p-4 text-sm leading-6 text-[#dddddd]">
-                  This campaign is already started and waiting for payment. You can still adjust the campaign length below before continuing to PayPal.
+                  This campaign is already started and waiting for payment. You can still adjust the campaign length below before completing checkout.
                 </div>
               )}
 
@@ -822,6 +860,46 @@ export default function FeaturedAdPlacementsPage() {
                     </option>
                   ))}
                 </select>
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Payment Method</span>
+                <select
+                  value={campaignSetupSelectedCreditId}
+                  onChange={(event) =>
+                    setSelectedCreditBySlot((current) => ({
+                      ...current,
+                      [campaignSetupSlot.id]: Number(event.target.value),
+                    }))
+                  }
+                  className="h-12 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
+                >
+                  <option value={0}>
+                    {placements?.payment_provider?.display_name ?? 'PayPal'} - pay {campaignSetupOption?.price_label ?? '$0.00'}
+                  </option>
+                  {campaignSetupEligibleCredits.map((credit) => (
+                    <option key={credit.id} value={credit.id}>
+                      {credit.label} - {credit.remaining_quantity} available
+                    </option>
+                  ))}
+                </select>
+                {isUsingCampaignSetupCredit ? (
+                  <span className="text-xs leading-5 text-[#FFB800]">
+                    {campaignSetupSelectedCredit?.label} will cover this ad request. No PayPal checkout is needed.
+                  </span>
+                ) : adCreditCount > 0 && campaignSetupEligibleCredits.length === 0 ? (
+                  <span className="text-xs leading-5 text-[#888888]">
+                    Your available credits do not cover this campaign length. Choose a shorter duration or pay with PayPal.
+                  </span>
+                ) : adCreditCount === 0 ? (
+                  <span className="text-xs leading-5 text-[#888888]">
+                    No ad credits are available. This request will use PayPal checkout.
+                  </span>
+                ) : (
+                  <span className="text-xs leading-5 text-[#888888]">
+                    Choose one of your ad credits here to pay for this request.
+                  </span>
+                )}
               </label>
 
               <label className="grid gap-2">
@@ -871,7 +949,7 @@ export default function FeaturedAdPlacementsPage() {
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Total Due</p>
                   <p className="mt-2 text-3xl text-[#FFB800]" style={{ fontFamily: 'var(--font-heading)' }}>
-                    {campaignSetupOption?.price_label ?? '$0.00'}
+                    {campaignSetupTotalDueLabel}
                   </p>
                 </div>
               </div>
@@ -880,12 +958,12 @@ export default function FeaturedAdPlacementsPage() {
                 <p className="text-sm leading-6 text-[#999999]">{campaignSetupOption.description}</p>
               )}
 
-              {!placements?.payment_provider?.credentials_ready && (
+              {!isUsingCampaignSetupCredit && !placements?.payment_provider?.credentials_ready && (
                 <div className="border border-primary bg-[#160808] p-3 text-sm leading-6 text-[#dddddd]">
                   Payment provider is not ready yet. Configure payment methods before checkout.
                 </div>
               )}
-              {placements?.payment_provider?.provider === 'paypal' && placements.payment_provider.mode === 'sandbox' && (
+              {!isUsingCampaignSetupCredit && placements?.payment_provider?.provider === 'paypal' && placements.payment_provider.mode === 'sandbox' && (
                 <div className="border border-[#2a2a2a] bg-[#080808] p-3 text-sm leading-6 text-[#aaaaaa]">
                   PayPal is in sandbox mode. Use a PayPal sandbox buyer account at checkout; a real PayPal account will not stay logged in there.
                 </div>
@@ -908,7 +986,11 @@ export default function FeaturedAdPlacementsPage() {
                   style={{ fontFamily: 'var(--font-heading)' }}
                 >
                   {checkoutSlot === campaignSetupSlot.id ? <Loader2 className="animate-spin" size={15} /> : <CreditCard size={15} />}
-                  {canResumePayment ? `Update & Pay ${campaignSetupOption?.price_label ?? ''}` : `Pay ${campaignSetupOption?.price_label ?? ''}`}
+                  {isUsingCampaignSetupCredit
+                    ? 'Apply Credit'
+                    : canResumePayment
+                      ? `Update & Pay ${campaignSetupOption?.price_label ?? ''}`
+                      : `Pay ${campaignSetupOption?.price_label ?? ''}`}
                 </button>
               </div>
             </div>

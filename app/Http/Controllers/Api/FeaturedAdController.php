@@ -155,6 +155,7 @@ class FeaturedAdController extends Controller
                 Rule::exists('featured_slot_campaign_options', 'id')->where(fn ($query) => $query->where('is_active', true)),
             ],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
+            'ad_credit_id' => ['nullable', 'integer', Rule::exists('user_ad_credits', 'id')],
         ]);
 
         $user = $request->user();
@@ -180,6 +181,22 @@ class FeaturedAdController extends Controller
         $amountCents = $dailyPrice * $option->duration_days;
         $startDate = Carbon::parse($validated['start_date'])->startOfDay();
         $endDate = $startDate->copy()->addDays((int) $option->duration_days);
+        $adCreditId = isset($validated['ad_credit_id']) ? (int) $validated['ad_credit_id'] : null;
+
+        if ($adCreditId) {
+            return $this->checkoutWithAdCredit(
+                $user,
+                $profile,
+                $campaignSlot,
+                $option,
+                $groupNumber,
+                $groupSlotNumber,
+                $amountCents,
+                $startDate,
+                $adCreditId,
+            );
+        }
+
         $provider = $this->primaryPaymentProvider();
 
         abort_unless($provider, 422, 'No active payment provider is configured.');
@@ -277,6 +294,7 @@ class FeaturedAdController extends Controller
                 Rule::exists('featured_slot_campaign_options', 'id')->where(fn ($query) => $query->where('is_active', true)),
             ],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
+            'ad_credit_id' => ['nullable', 'integer', Rule::exists('user_ad_credits', 'id')],
         ]);
 
         $campaignSlot = $campaign->campaignSlot?->loadMissing('campaign.slotGroup');
@@ -286,18 +304,33 @@ class FeaturedAdController extends Controller
         abort_unless($campaignSlot && $marketplaceCampaign && $slotGroup, 422, 'This campaign slot is no longer available.');
         abort_unless($this->campaignSlotHasOption($campaignSlot, (int) $validated['campaign_option_id']), 422, 'That campaign option is not available for this slot.');
 
-        $provider = $this->primaryPaymentProvider();
-
-        abort_unless($provider, 422, 'No active payment provider is configured.');
-        abort_unless($provider->provider === 'paypal', 422, "{$provider->display_name} promotion checkout is not connected yet.");
-        abort_unless($provider->hasEffectiveValueFor('client_id') && $provider->hasEffectiveSecret(), 422, 'PayPal credentials are not ready.');
-
         $option = FeaturedSlotCampaignOption::query()->findOrFail($validated['campaign_option_id']);
         $groupNumber = (int) $slotGroup->sort_order;
         $groupSlotNumber = (int) $campaignSlot->group_slot_number;
         $amountCents = $this->placementPricing->dailyPriceCents($groupNumber, $groupSlotNumber) * $option->duration_days;
         $startDate = Carbon::parse($validated['start_date'])->startOfDay();
         $endDate = $startDate->copy()->addDays((int) $option->duration_days);
+        $adCreditId = isset($validated['ad_credit_id']) ? (int) $validated['ad_credit_id'] : null;
+
+        if ($adCreditId) {
+            return $this->restartCheckoutWithAdCredit(
+                $request->user(),
+                $campaign,
+                $campaignSlot,
+                $option,
+                $groupNumber,
+                $groupSlotNumber,
+                $amountCents,
+                $startDate,
+                $adCreditId,
+            );
+        }
+
+        $provider = $this->primaryPaymentProvider();
+
+        abort_unless($provider, 422, 'No active payment provider is configured.');
+        abort_unless($provider->provider === 'paypal', 422, "{$provider->display_name} promotion checkout is not connected yet.");
+        abort_unless($provider->hasEffectiveValueFor('client_id') && $provider->hasEffectiveSecret(), 422, 'PayPal credentials are not ready.');
 
         $campaign->forceFill([
             'featured_slot_campaign_option_id' => $option->id,
@@ -327,6 +360,144 @@ class FeaturedAdController extends Controller
             'campaign' => $this->campaignPayload($campaign->refresh(), $campaign->dj_profile_id),
             'checkout_url' => $approvalUrl,
         ]);
+    }
+
+    private function checkoutWithAdCredit(
+        User $user,
+        $profile,
+        FeaturedCampaignSlot $campaignSlot,
+        FeaturedSlotCampaignOption $option,
+        int $groupNumber,
+        int $groupSlotNumber,
+        int $retailAmountCents,
+        Carbon $requestedStartDate,
+        int $adCreditId,
+    ): JsonResponse {
+        $campaign = DB::transaction(function () use ($user, $profile, $campaignSlot, $option, $groupNumber, $groupSlotNumber, $retailAmountCents, $requestedStartDate, $adCreditId): DjFeaturedStatus {
+            $credit = $this->redeemAdCredit($user, $option, $adCreditId);
+            $startDate = $this->approvedCampaignStartDate($requestedStartDate);
+            $endDate = $startDate->copy()->addDays((int) $option->duration_days);
+
+            return DjFeaturedStatus::query()->create([
+                'dj_profile_id' => $profile->id,
+                'slot_number' => $this->placementPricing->templateSlotNumber($groupNumber, $groupSlotNumber),
+                'featured_slot_campaign_option_id' => $option->id,
+                'featured_campaign_slot_id' => $campaignSlot->id,
+                'featured_type' => 'paid_placement',
+                'rotation_weight' => $this->placementPricing->rotationWeight($groupNumber, $groupSlotNumber),
+                'amount_cents' => 0,
+                'currency' => 'USD',
+                'payment_provider' => 'ad_credit',
+                'payment_status' => 'paid',
+                'payment_reference' => $credit->code,
+                'status' => 'active',
+                'claimed_at' => now(),
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'payment_metadata' => $this->adCreditPaymentMetadata($credit, $option, $retailAmountCents),
+            ]);
+        });
+
+        $this->adNotifications->notifyActivated($campaign);
+
+        return response()->json([
+            'campaign' => $this->campaignPayload($campaign->refresh(), $profile->id),
+            'checkout_url' => null,
+        ], 201);
+    }
+
+    private function restartCheckoutWithAdCredit(
+        User $user,
+        DjFeaturedStatus $campaign,
+        FeaturedCampaignSlot $campaignSlot,
+        FeaturedSlotCampaignOption $option,
+        int $groupNumber,
+        int $groupSlotNumber,
+        int $retailAmountCents,
+        Carbon $requestedStartDate,
+        int $adCreditId,
+    ): JsonResponse {
+        $campaign = DB::transaction(function () use ($user, $campaign, $campaignSlot, $option, $groupNumber, $groupSlotNumber, $retailAmountCents, $requestedStartDate, $adCreditId): DjFeaturedStatus {
+            $credit = $this->redeemAdCredit($user, $option, $adCreditId);
+            $startDate = $this->approvedCampaignStartDate($requestedStartDate);
+            $endDate = $startDate->copy()->addDays((int) $option->duration_days);
+            $lockedCampaign = DjFeaturedStatus::query()
+                ->whereKey($campaign->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $lockedCampaign->forceFill([
+                'featured_slot_campaign_option_id' => $option->id,
+                'featured_campaign_slot_id' => $campaignSlot->id,
+                'rotation_weight' => $this->placementPricing->rotationWeight($groupNumber, $groupSlotNumber),
+                'amount_cents' => 0,
+                'currency' => 'USD',
+                'payment_provider' => 'ad_credit',
+                'payment_status' => 'paid',
+                'payment_reference' => $credit->code,
+                'status' => 'active',
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'payment_metadata' => $this->adCreditPaymentMetadata($credit, $option, $retailAmountCents),
+            ])->save();
+
+            return $lockedCampaign;
+        });
+
+        $this->adNotifications->notifyActivated($campaign);
+
+        return response()->json([
+            'campaign' => $this->campaignPayload($campaign->refresh(), $campaign->dj_profile_id),
+            'checkout_url' => null,
+        ]);
+    }
+
+    private function redeemAdCredit(User $user, FeaturedSlotCampaignOption $option, int $adCreditId): UserAdCredit
+    {
+        $credit = UserAdCredit::query()
+            ->whereKey($adCreditId)
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where('credit_type', 'featured_ad_day')
+            ->where('remaining_quantity', '>', 0)
+            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->lockForUpdate()
+            ->first();
+
+        abort_unless($credit, 422, 'That ad credit is no longer available.');
+        abort_unless((int) $credit->duration_days >= (int) $option->duration_days, 422, 'That ad credit does not cover this campaign length.');
+        abort_unless($credit->discount_type === 'percent' && (int) $credit->discount_value >= 100, 422, 'That ad credit cannot fully pay for this campaign.');
+
+        $remainingQuantity = max(0, (int) $credit->remaining_quantity - 1);
+        $credit->forceFill([
+            'remaining_quantity' => $remainingQuantity,
+            'status' => $remainingQuantity > 0 ? 'active' : 'redeemed',
+            'redeemed_at' => $remainingQuantity > 0 ? $credit->redeemed_at : now(),
+        ])->save();
+
+        return $credit;
+    }
+
+    private function approvedCampaignStartDate(Carbon $requestedStartDate): Carbon
+    {
+        $startDate = $requestedStartDate->copy();
+
+        return $startDate->lt(now()) ? now() : $startDate;
+    }
+
+    private function adCreditPaymentMetadata(UserAdCredit $credit, FeaturedSlotCampaignOption $option, int $retailAmountCents): array
+    {
+        return [
+            'payment_method' => 'ad_credit',
+            'ad_credit_id' => $credit->id,
+            'ad_credit_code' => $credit->code,
+            'credit_label' => $credit->metadata['label'] ?? "{$credit->duration_days}-Day Featured Ad Credit",
+            'credit_duration_days' => $credit->duration_days,
+            'campaign_duration_days' => $option->duration_days,
+            'retail_amount_cents' => $retailAmountCents,
+            'paid_amount_cents' => 0,
+            'redeemed_at' => now()->toISOString(),
+        ];
     }
 
     private function campaignOptionsForSlot(int $templateSlotNumber, int $dailyPrice): array
