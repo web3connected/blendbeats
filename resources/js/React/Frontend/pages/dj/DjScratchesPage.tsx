@@ -6,7 +6,6 @@ import {
   Play,
   Search,
   SlidersHorizontal,
-  Sparkles,
   Upload,
   UserRound,
   Video,
@@ -429,33 +428,22 @@ export default function DjScratchesPage() {
         <meta name="description" content="Watch short DJ scratch showcase videos from BlendBeats DJs." />
       </Helmet>
 
-      <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a] text-white">
-        <section className="border-b border-[#1a1a1a] px-4 py-10 lg:px-8">
-          <div className="container mx-auto max-w-7xl">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p
-                  className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary"
-                  style={{ fontFamily: 'var(--font-heading)' }}
-                >
-                  DJ Hub
-                </p>
-                <h1
-                  className="uppercase leading-none text-white"
-                  style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(3.75rem, 9vw, 7rem)' }}
-                >
-                  DJ Scratches
-                </h1>
-                <p className="mt-5 max-w-2xl text-base leading-7 text-[#aaaaaa]">
-                  Short scratch routines, juggles, and turntablist moments from the BlendBeats DJ community.
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                {!isAuthLoading && uploadAction}
-              </div>
+      <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a] px-4 py-6 text-white lg:px-8">
+        <div className="container mx-auto max-w-7xl">
+          <div className="mb-5 flex flex-col gap-4 border-b border-[#1f1f1f] pb-5 xl:flex-row xl:items-center xl:justify-between">
+            <div className="min-w-0">
+              <p
+                className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary"
+                style={{ fontFamily: 'var(--font-heading)' }}
+              >
+                DJ Hub
+              </p>
+              <h1 className="mt-2 text-4xl uppercase leading-none text-white sm:text-5xl" style={{ fontFamily: 'var(--font-heading)' }}>
+                DJ Scratches
+              </h1>
             </div>
 
-            <div className="mt-8 grid gap-3 border border-[#2a2a2a] bg-[#111111] p-3 sm:grid-cols-[minmax(0,1fr)_220px_auto] sm:items-center">
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto] xl:w-[700px] xl:items-center">
               <div className="flex h-11 items-center gap-2 border border-[#333333] bg-[#080808] px-3">
                 <Search size={16} className="text-[#777777]" />
                 <input
@@ -464,7 +452,7 @@ export default function DjScratchesPage() {
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') submitSearch();
                   }}
-                  placeholder="Search scratches"
+                  placeholder="Search"
                   className="h-full min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#555555]"
                 />
               </div>
@@ -495,11 +483,11 @@ export default function DjScratchesPage() {
                 Search
               </button>
             </div>
-          </div>
-        </section>
 
-        <section className="px-4 py-8 lg:px-8">
-          <div className="container mx-auto grid max-w-7xl gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
+            <div className="shrink-0">{!isAuthLoading && uploadAction}</div>
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
             <div className="min-w-0">
               {error && <div className="mb-5 border border-primary/40 bg-primary/10 p-4 text-sm text-primary">{error}</div>}
 
@@ -507,7 +495,7 @@ export default function DjScratchesPage() {
                 <div className="aspect-video animate-pulse border border-[#2a2a2a] bg-[#111111]" />
               ) : activeScratch ? (
                 <>
-                  <div className="overflow-hidden border border-[#2a2a2a] bg-black">
+                  <div className="overflow-hidden bg-black">
                     <video
                       key={activeScratch.id}
                       src={activeScratch.url}
@@ -578,29 +566,32 @@ export default function DjScratchesPage() {
                   </div>
                 </>
               ) : (
-                <div className="grid place-items-center border border-[#2a2a2a] bg-[#111111] px-5 py-20 text-center">
-                  <div className="flex h-16 w-16 items-center justify-center border border-[#333333] bg-[#080808] text-primary">
-                    <Video size={28} />
+                <div className="grid aspect-video place-items-center bg-black text-center">
+                  <div className="px-5">
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-[#333333] bg-[#111111] text-primary">
+                      <Play size={34} fill="currentColor" />
+                    </div>
+                    <h2 className="mt-5 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                      No Videos Yet
+                    </h2>
+                    <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#888888]">
+                      No public DJ Scratch uploads are available yet.
+                    </p>
+                    <div className="mt-6 flex justify-center">{!isAuthLoading && uploadAction}</div>
                   </div>
-                  <h2 className="mt-5 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                    No Scratches Yet
-                  </h2>
-                  <p className="mt-3 max-w-md text-sm leading-6 text-[#888888]">
-                    Public scratch uploads will appear here once DJs publish their showcase videos.
-                  </p>
                 </div>
               )}
             </div>
 
             <aside className="grid gap-5 self-start">
-              <section className="border border-[#2a2a2a] bg-[#111111] p-5">
-                <div className="mb-4 flex items-center gap-2">
-                  <Sparkles size={18} className="text-primary" />
+              <section className="border-b border-[#242424] pb-4">
+                <div className="flex items-center justify-between gap-3">
                   <h2 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                    Now Playing
+                    Up Next
                   </h2>
+                  <span className="text-xs text-[#777777]">{stats.scratch_count} videos</span>
                 </div>
-                <div className="grid grid-cols-3 border border-[#2a2a2a] bg-[#080808]">
+                <div className="mt-4 grid grid-cols-3 border border-[#2a2a2a] bg-[#080808]">
                   {[
                     { label: 'Videos', value: stats.scratch_count },
                     { label: 'DJs', value: stats.dj_count },
@@ -621,7 +612,7 @@ export default function DjScratchesPage() {
                   Array.from({ length: 5 }).map((_, index) => (
                     <div key={index} className="h-24 animate-pulse border border-[#2a2a2a] bg-[#111111]" />
                   ))
-                ) : (
+                ) : scratches.length > 0 ? (
                   scratches.map((scratch) => (
                     <ScratchRailItem
                       key={scratch.id}
@@ -630,11 +621,16 @@ export default function DjScratchesPage() {
                       onSelect={() => setActiveScratchId(scratch.id)}
                     />
                   ))
+                ) : (
+                  <div className="grid place-items-center border border-[#2a2a2a] bg-[#111111] p-8 text-center">
+                    <Video size={24} className="text-primary" />
+                    <p className="mt-3 text-sm text-[#888888]">No videos available</p>
+                  </div>
                 )}
               </section>
             </aside>
           </div>
-        </section>
+        </div>
       </main>
 
       {isUploadModalOpen && (
