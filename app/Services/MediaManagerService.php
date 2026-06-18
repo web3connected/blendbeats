@@ -47,6 +47,15 @@ class MediaManagerService
 
     public function getFileUrl(MediaFile $file): string
     {
+        $metadata = $file->metadata ?? [];
+        $externalUrl = $metadata['portfolio']['external_url']
+            ?? $metadata['external_source']['watch_url']
+            ?? null;
+
+        if ($externalUrl) {
+            return $externalUrl;
+        }
+
         return match ($file->disk) {
             'public' => $this->publicDiskUrl($file->path),
             'local', 'media_s3', 's3' => "/api/media/files/{$file->id}/stream",
@@ -133,6 +142,43 @@ class MediaManagerService
         ]);
 
         $this->auditAction('upload', $mediaAccount->disk, $path, $owner);
+
+        return $mediaFile;
+    }
+
+    /**
+     * @param  array{video_id: string, watch_url: string, embed_url: string, thumbnail_url: string}  $youtubeVideo
+     */
+    public function createExternalYoutubeForOwner(Model $owner, array $youtubeVideo, ?string $collection = null): MediaFile
+    {
+        $this->validateDiskAccess('public', 'upload', $owner);
+
+        $mediaAccount = app(MediaSetupService::class)->activeMediaAccount($owner)
+            ?: $this->createMediaAccountForOwner($owner);
+
+        $collection ??= self::COLLECTION_DJ_MEDIA;
+        $videoId = $youtubeVideo['video_id'];
+        $path = 'external/youtube/'.$owner->getKey().'/'.$videoId.'_'.time().'_'.Str::lower(Str::random(6));
+
+        $mediaFile = MediaFile::create([
+            ...$this->ownerColumns($owner),
+            'name' => $videoId.'.youtube',
+            'original_name' => $youtubeVideo['watch_url'],
+            'disk' => $mediaAccount->disk,
+            'path' => $path,
+            'mime_type' => 'video/youtube',
+            'size' => 0,
+            'collection' => $collection,
+            'media_account_id' => $mediaAccount->id,
+            'metadata' => [
+                'external_source' => [
+                    'provider' => 'youtube',
+                    ...$youtubeVideo,
+                ],
+            ],
+        ]);
+
+        $this->auditAction('link', $mediaAccount->disk, $path, $owner);
 
         return $mediaFile;
     }
@@ -290,7 +336,9 @@ class MediaManagerService
 
     public function filePayload(MediaFile $file): array
     {
-        $portfolio = $file->metadata['portfolio'] ?? [];
+        $metadata = $file->metadata ?? [];
+        $portfolio = $metadata['portfolio'] ?? [];
+        $externalSource = $metadata['external_source'] ?? [];
 
         return [
             'id' => $file->id,
@@ -307,15 +355,20 @@ class MediaManagerService
             'is_video' => $file->isVideo(),
             'is_audio' => $file->isAudio(),
             'is_pdf' => $file->isPdf(),
-            'metadata' => $file->metadata,
+            'metadata' => $metadata,
             'portfolio_title' => $portfolio['title'] ?? null,
             'portfolio_description' => $portfolio['description'] ?? null,
             'portfolio_genre' => $portfolio['genre'] ?? null,
             'portfolio_visibility' => $portfolio['visibility'] ?? null,
             'portfolio_kind' => $portfolio['media_kind'] ?? null,
-            'duration_seconds' => $portfolio['duration_seconds'] ?? $file->metadata['duration_seconds'] ?? null,
+            'duration_seconds' => $portfolio['duration_seconds'] ?? $metadata['duration_seconds'] ?? null,
+            'source_type' => $portfolio['source_type'] ?? ($externalSource ? 'youtube' : 'upload'),
+            'external_provider' => $portfolio['external_provider'] ?? $externalSource['provider'] ?? null,
+            'external_url' => $portfolio['external_url'] ?? $externalSource['watch_url'] ?? null,
+            'embed_url' => $portfolio['embed_url'] ?? $externalSource['embed_url'] ?? null,
+            'thumbnail_url' => $portfolio['thumbnail_url'] ?? $externalSource['thumbnail_url'] ?? null,
             'portfolio_cover_image_path' => $portfolio['cover_image_path'] ?? null,
-            'portfolio_cover_image_url' => $portfolio['cover_image_url'] ?? null,
+            'portfolio_cover_image_url' => $portfolio['cover_image_url'] ?? $externalSource['thumbnail_url'] ?? null,
             'created_at' => $file->created_at,
         ];
     }

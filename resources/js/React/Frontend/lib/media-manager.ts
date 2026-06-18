@@ -16,6 +16,11 @@ export type MediaFileRecord = {
   is_audio: boolean;
   is_pdf: boolean;
   metadata?: Record<string, unknown> | null;
+  source_type?: string | null;
+  external_provider?: string | null;
+  external_url?: string | null;
+  embed_url?: string | null;
+  thumbnail_url?: string | null;
   portfolio_title?: string | null;
   portfolio_description?: string | null;
   portfolio_genre?: string | null;
@@ -77,6 +82,8 @@ export type MediaUploadDetails = {
   genre: string;
   visibility: string;
   mediaKind: string;
+  sourceType?: 'upload' | 'youtube';
+  externalUrl?: string | null;
   durationSeconds?: number | null;
   coverImage?: File | null;
 };
@@ -131,6 +138,37 @@ export async function uploadMediaFile(
     if (details.coverImage) {
       formData.append('cover_image', details.coverImage);
     }
+  }
+
+  try {
+    const response = await apiClient.post<MediaUploadResponse>('/media/files', formData);
+    return response.data;
+  } catch (error) {
+    toMediaManagerError(error);
+  }
+}
+
+export async function linkYoutubeMediaFile(
+  collection = 'dj_media',
+  details: MediaUploadDetails & { externalUrl: string },
+): Promise<MediaUploadResponse> {
+  const formData = new FormData();
+  formData.append('external_url', details.externalUrl);
+  formData.append('source_type', 'youtube');
+  formData.append('disk', 'public');
+  formData.append('collection', collection);
+  formData.append('title', details.title);
+  formData.append('description', details.description);
+  formData.append('genre', details.genre);
+  formData.append('visibility', details.visibility);
+  formData.append('media_kind', details.mediaKind);
+
+  if (typeof details.durationSeconds === 'number') {
+    formData.append('duration_seconds', String(details.durationSeconds));
+  }
+
+  if (details.coverImage) {
+    formData.append('cover_image', details.coverImage);
   }
 
   try {

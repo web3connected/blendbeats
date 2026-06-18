@@ -103,7 +103,9 @@ class DjScratchController extends Controller
 
     private function scratchPayload(MediaFile $file): array
     {
-        $portfolio = $file->metadata['portfolio'] ?? [];
+        $metadata = $file->metadata ?? [];
+        $portfolio = $metadata['portfolio'] ?? [];
+        $externalSource = $metadata['external_source'] ?? [];
         $profile = $file->user?->djProfile;
         $duration = $this->durationSeconds($file);
 
@@ -113,7 +115,12 @@ class DjScratchController extends Controller
             'description' => $portfolio['description'] ?? null,
             'genre' => $portfolio['genre'] ?? null,
             'url' => $file->url,
-            'cover_image_url' => $portfolio['cover_image_url'] ?? null,
+            'cover_image_url' => $portfolio['cover_image_url'] ?? $externalSource['thumbnail_url'] ?? null,
+            'source_type' => $portfolio['source_type'] ?? ($externalSource ? 'youtube' : 'upload'),
+            'external_provider' => $portfolio['external_provider'] ?? $externalSource['provider'] ?? null,
+            'external_url' => $portfolio['external_url'] ?? $externalSource['watch_url'] ?? null,
+            'embed_url' => $portfolio['embed_url'] ?? $externalSource['embed_url'] ?? null,
+            'thumbnail_url' => $portfolio['thumbnail_url'] ?? $externalSource['thumbnail_url'] ?? null,
             'mime_type' => $file->mime_type,
             'duration_seconds' => $duration,
             'formatted_size' => $file->formatted_size,

@@ -10,6 +10,7 @@ import {
   UserRound,
   Video,
   X,
+  Youtube,
 } from 'lucide-react';
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -21,9 +22,10 @@ import {
   type DjScratchStats,
   type DjScratchesQuery,
 } from '@/lib/dj-scratches';
-import { MediaManagerApiError, uploadMediaFile } from '@/lib/media-manager';
+import { linkYoutubeMediaFile, MediaManagerApiError, uploadMediaFile } from '@/lib/media-manager';
 
 const MAX_SCRATCH_DURATION_SECONDS = 300;
+type UploadSource = 'upload' | 'youtube';
 
 const genreOptions = ['Scratch Sets', 'Hip-Hop', 'Open Format', 'House', 'Drum & Bass', 'Techno', 'R&B', 'Afrobeats'];
 
@@ -43,6 +45,28 @@ function formatDuration(seconds: number | null | undefined) {
 
 function isOverScratchDurationLimit(seconds: number) {
   return Math.floor(seconds) > MAX_SCRATCH_DURATION_SECONDS;
+}
+
+function isYoutubeUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+
+    return host === 'youtu.be' || host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com';
+  } catch {
+    return false;
+  }
+}
+
+function durationFromParts(minutesValue: string, secondsValue: string) {
+  const minutes = Number(minutesValue);
+  const seconds = Number(secondsValue);
+
+  if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || minutes < 0 || seconds < 0 || seconds > 59) {
+    return null;
+  }
+
+  return minutes * 60 + seconds;
 }
 
 function formatDate(value: string | null) {
@@ -125,9 +149,13 @@ function UploadModal({
   onClose: () => void;
   onUploaded: () => void;
 }) {
+  const [source, setSource] = useState<UploadSource>('upload');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [durationSeconds, setDurationSeconds] = useState<number | null>(null);
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [youtubeMinutes, setYoutubeMinutes] = useState('0');
+  const [youtubeSeconds, setYoutubeSeconds] = useState('0');
   const [title, setTitle] = useState('');
   const [genre, setGenre] = useState('Scratch Sets');
   const [visibility, setVisibility] = useState('public');
@@ -135,6 +163,20 @@ function UploadModal({
   const [localError, setLocalError] = useState('');
   const [isReadingDuration, setIsReadingDuration] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSourceChange = (nextSource: UploadSource) => {
+    setSource(nextSource);
+    setLocalError('');
+
+    if (nextSource === 'upload') {
+      setYoutubeUrl('');
+      setYoutubeMinutes('0');
+      setYoutubeSeconds('0');
+    } else {
+      setVideoFile(null);
+      setDurationSeconds(null);
+    }
+  };
 
   const handleVideoChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.currentTarget;
@@ -176,22 +218,49 @@ function UploadModal({
     event.preventDefault();
     setLocalError('');
 
-    if (!videoFile || !durationSeconds) {
+    if (source === 'upload' && (!videoFile || !durationSeconds)) {
       setLocalError('Choose a scratch routine video first.');
+      return;
+    }
+
+    const youtubeDurationSeconds = durationFromParts(youtubeMinutes, youtubeSeconds);
+
+    if (source === 'youtube' && !isYoutubeUrl(youtubeUrl.trim())) {
+      setLocalError('Enter a valid YouTube video link.');
+      return;
+    }
+
+    if (source === 'youtube' && (!youtubeDurationSeconds || isOverScratchDurationLimit(youtubeDurationSeconds))) {
+      setLocalError('Scratch routine videos must be 5:00 or less.');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await uploadMediaFile(videoFile, 'dj_media', {
-        title,
-        description,
-        genre,
-        visibility,
-        mediaKind: 'scratch',
-        durationSeconds,
-        coverImage: coverFile,
-      });
+
+      if (source === 'youtube') {
+        await linkYoutubeMediaFile('dj_media', {
+          title,
+          description,
+          genre,
+          visibility,
+          mediaKind: 'scratch',
+          externalUrl: youtubeUrl.trim(),
+          durationSeconds: youtubeDurationSeconds,
+          coverImage: coverFile,
+        });
+      } else if (videoFile && durationSeconds) {
+        await uploadMediaFile(videoFile, 'dj_media', {
+          title,
+          description,
+          genre,
+          visibility,
+          mediaKind: 'scratch',
+          durationSeconds,
+          coverImage: coverFile,
+        });
+      }
+
       onUploaded();
     } catch (uploadError) {
       const validationMessage =
@@ -232,26 +301,95 @@ function UploadModal({
         </div>
 
         <div className="grid gap-4">
-          <label className="grid gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Scratch Routine Video</span>
-            <input
-              type="file"
-              accept="video/*"
-              onChange={handleVideoChange}
-              className="w-full border border-[#333333] bg-[#080808] px-4 py-3 text-sm text-[#bbbbbb] file:mr-4 file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-white"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            />
-            <span className="text-xs text-[#888888]">
-              {isReadingDuration
-                ? 'Reading duration'
-                : videoFile
-                  ? `${videoFile.name} | ${formatDuration(durationSeconds)}`
-                  : 'Video only | 5:00 max'}
-            </span>
-            <span className="text-xs text-[#666666]">
-              Monthly limit: Free 3, Plus 50, Pro 150, Elite unlimited.
-            </span>
-          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: 'upload' as const, label: 'Upload', icon: Upload },
+              { value: 'youtube' as const, label: 'YouTube', icon: Youtube },
+            ].map((option) => {
+              const Icon = option.icon;
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => handleSourceChange(option.value)}
+                  className={`inline-flex h-11 items-center justify-center gap-2 border px-4 text-xs font-bold uppercase tracking-widest transition-colors ${
+                    source === option.value
+                      ? 'border-primary bg-primary text-white'
+                      : 'border-[#333333] text-[#dddddd] hover:border-primary hover:text-primary'
+                  }`}
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                >
+                  <Icon size={15} />
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {source === 'upload' ? (
+            <label className="grid gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Scratch Routine Video</span>
+              <input
+                type="file"
+                accept="video/*"
+                onChange={handleVideoChange}
+                className="w-full border border-[#333333] bg-[#080808] px-4 py-3 text-sm text-[#bbbbbb] file:mr-4 file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-white"
+                style={{ fontFamily: 'var(--font-heading)' }}
+              />
+              <span className="text-xs text-[#888888]">
+                {isReadingDuration
+                  ? 'Reading duration'
+                  : videoFile
+                    ? `${videoFile.name} | ${formatDuration(durationSeconds)}`
+                    : 'Video only | 5:00 max'}
+              </span>
+              <span className="text-xs text-[#666666]">
+                Monthly limit: Free 3, Plus 50, Pro 150, Elite unlimited.
+              </span>
+            </label>
+          ) : (
+            <div className="grid gap-4">
+              <label className="grid gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">YouTube Video Link</span>
+                <input
+                  type="url"
+                  value={youtubeUrl}
+                  onChange={(event) => setYoutubeUrl(event.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none placeholder:text-[#555555] focus:border-primary"
+                />
+                <span className="text-xs text-[#666666]">
+                  Monthly limit: Free 3, Plus 50, Pro 150, Elite unlimited.
+                </span>
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Minutes</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="5"
+                    value={youtubeMinutes}
+                    onChange={(event) => setYoutubeMinutes(event.target.value)}
+                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
+                  />
+                </label>
+                <label className="grid gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Seconds</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    value={youtubeSeconds}
+                    onChange={(event) => setYoutubeSeconds(event.target.value)}
+                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
 
           <label className="grid gap-2">
             <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Cover Image</span>
@@ -334,7 +472,7 @@ function UploadModal({
           </button>
           <button
             type="submit"
-            disabled={isSubmitting || isReadingDuration || !videoFile}
+            disabled={isSubmitting || isReadingDuration || (source === 'upload' ? !videoFile : !youtubeUrl.trim())}
             className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
             style={{ fontFamily: 'var(--font-heading)' }}
           >
@@ -504,17 +642,28 @@ export default function DjScratchesPage() {
               ) : activeScratch ? (
                 <>
                   <div className="overflow-hidden bg-black">
-                    <video
-                      key={activeScratch.id}
-                      src={activeScratch.url}
-                      poster={activeScratch.cover_image_url ?? undefined}
-                      controls
-                      playsInline
-                      preload="metadata"
-                      className="aspect-video w-full bg-black object-contain"
-                    >
-                      <track kind="captions" />
-                    </video>
+                    {activeScratch.external_provider === 'youtube' && activeScratch.embed_url ? (
+                      <iframe
+                        key={activeScratch.id}
+                        src={activeScratch.embed_url}
+                        title={activeScratch.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        className="aspect-video w-full bg-black"
+                      />
+                    ) : (
+                      <video
+                        key={activeScratch.id}
+                        src={activeScratch.url}
+                        poster={activeScratch.cover_image_url ?? undefined}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="aspect-video w-full bg-black object-contain"
+                      >
+                        <track kind="captions" />
+                      </video>
+                    )}
                   </div>
 
                   <div className="mt-5 border-b border-[#242424] pb-5">

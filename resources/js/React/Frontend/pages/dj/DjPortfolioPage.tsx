@@ -21,6 +21,7 @@ import {
   Trash2,
   Upload,
   X,
+  Youtube,
 } from 'lucide-react';
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
@@ -39,6 +40,7 @@ import {
   MediaManagerApiError,
   type MediaFileRecord,
   type MediaStorageQuota,
+  linkYoutubeMediaFile,
   updateMediaFile,
   uploadMediaFile,
 } from '@/lib/media-manager';
@@ -76,6 +78,7 @@ const emptyPortfolioForm = {
   mediaKind: 'mix',
 };
 const MAX_SCRATCH_DURATION_SECONDS = 300;
+type UploadSource = 'upload' | 'youtube';
 
 function getVideoDuration(file: File) {
   return new Promise<number>((resolve, reject) => {
@@ -104,6 +107,32 @@ function getVideoDuration(file: File) {
 
 function isOverScratchDurationLimit(seconds: number) {
   return Math.floor(seconds) > MAX_SCRATCH_DURATION_SECONDS;
+}
+
+function canUseYoutubeSource(mediaKind: string) {
+  return mediaKind === 'video' || mediaKind === 'scratch';
+}
+
+function isYoutubeUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+
+    return host === 'youtu.be' || host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com';
+  } catch {
+    return false;
+  }
+}
+
+function durationFromParts(minutesValue: string, secondsValue: string) {
+  const minutes = Number(minutesValue);
+  const seconds = Number(secondsValue);
+
+  if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || minutes < 0 || seconds < 0 || seconds > 59) {
+    return null;
+  }
+
+  return minutes * 60 + seconds;
 }
 
 function formatBytes(size: number) {
@@ -223,9 +252,13 @@ export default function DjPortfolioPage() {
   const [deletingFileId, setDeletingFileId] = useState<number | null>(null);
   const [updatingFileId, setUpdatingFileId] = useState<number | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadSource, setUploadSource] = useState<UploadSource>('upload');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadCoverFile, setUploadCoverFile] = useState<File | null>(null);
   const [uploadDurationSeconds, setUploadDurationSeconds] = useState<number | null>(null);
+  const [uploadYoutubeUrl, setUploadYoutubeUrl] = useState('');
+  const [uploadYoutubeMinutes, setUploadYoutubeMinutes] = useState('0');
+  const [uploadYoutubeSeconds, setUploadYoutubeSeconds] = useState('0');
   const [uploadForm, setUploadForm] = useState(emptyPortfolioForm);
   const [editingFile, setEditingFile] = useState<MediaFileRecord | null>(null);
   const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
@@ -364,9 +397,13 @@ export default function DjPortfolioPage() {
 
   const closeUploadModal = () => {
     setIsUploadModalOpen(false);
+    setUploadSource('upload');
     setUploadFile(null);
     setUploadCoverFile(null);
     setUploadDurationSeconds(null);
+    setUploadYoutubeUrl('');
+    setUploadYoutubeMinutes('0');
+    setUploadYoutubeSeconds('0');
     setUploadForm(emptyPortfolioForm);
   };
 
@@ -394,39 +431,72 @@ export default function DjPortfolioPage() {
     setIsUploading(true);
     setError('');
 
-    if (!file) {
-      setError('Choose a media file before uploading.');
+    const uploadRequest = (() => {
+      if (uploadSource === 'youtube') {
+        const youtubeDurationSeconds = durationFromParts(uploadYoutubeMinutes, uploadYoutubeSeconds);
+
+        if (!canUseYoutubeSource(uploadForm.mediaKind)) {
+          setError('YouTube links can only be added as videos or Scratch routines.');
+          return null;
+        }
+
+        if (!isYoutubeUrl(uploadYoutubeUrl.trim())) {
+          setError('Enter a valid YouTube video link.');
+          return null;
+        }
+
+        if (!youtubeDurationSeconds) {
+          setError('Enter the YouTube video duration.');
+          return null;
+        }
+
+        if (uploadForm.mediaKind === 'scratch' && isOverScratchDurationLimit(youtubeDurationSeconds)) {
+          setError('Scratch routines must be 5 minutes or less.');
+          return null;
+        }
+
+        return linkYoutubeMediaFile('dj_media', {
+          ...uploadForm,
+          externalUrl: uploadYoutubeUrl.trim(),
+          durationSeconds: youtubeDurationSeconds,
+          coverImage: uploadCoverFile,
+        });
+      }
+
+      if (!file) {
+        setError('Choose a media file before uploading.');
+        return null;
+      }
+
+      if (uploadForm.mediaKind === 'scratch') {
+        if (!file.type.startsWith('video/')) {
+          setError('Scratch routines must be uploaded as video files.');
+          return null;
+        }
+
+        if (!uploadDurationSeconds || isOverScratchDurationLimit(uploadDurationSeconds)) {
+          setError('Scratch routines must be 5 minutes or less.');
+          return null;
+        }
+      }
+
+      return uploadMediaFile(file, 'dj_media', {
+        ...uploadForm,
+        durationSeconds: uploadDurationSeconds,
+        coverImage: uploadCoverFile,
+      });
+    })();
+
+    if (!uploadRequest) {
       setIsUploading(false);
       return;
     }
 
-    if (uploadForm.mediaKind === 'scratch') {
-      if (!file.type.startsWith('video/')) {
-        setError('Scratch routines must be uploaded as video files.');
-        setIsUploading(false);
-        return;
-      }
-
-      if (!uploadDurationSeconds || isOverScratchDurationLimit(uploadDurationSeconds)) {
-        setError('Scratch routines must be 5 minutes or less.');
-        setIsUploading(false);
-        return;
-      }
-    }
-
-    uploadMediaFile(file, 'dj_media', {
-      ...uploadForm,
-      durationSeconds: uploadDurationSeconds,
-      coverImage: uploadCoverFile,
-    })
+    uploadRequest
       .then((uploadResponse) => {
         setMediaFiles((currentFiles) => [uploadResponse.file, ...currentFiles]);
         setStorageQuota(uploadResponse.quota);
-        setIsUploadModalOpen(false);
-        setUploadFile(null);
-        setUploadCoverFile(null);
-        setUploadDurationSeconds(null);
-        setUploadForm(emptyPortfolioForm);
+        closeUploadModal();
       })
       .catch((uploadError) => {
         const validationMessage =
@@ -985,22 +1055,94 @@ export default function DjPortfolioPage() {
             </div>
 
             <div className="grid gap-4">
-              <label className="grid gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Media File</span>
-                <input
-                  type="file"
-                  accept="audio/*,video/*,image/*"
-                  onChange={handleUploadFileChange}
-                  className="w-full border border-[#333333] bg-[#080808] px-4 py-3 text-sm text-[#bbbbbb] file:mr-4 file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-white"
-                  style={{ fontFamily: 'var(--font-heading)' }}
-                />
-                {uploadFile && (
-                  <span className="text-xs text-[#888888]">
-                    Selected: {uploadFile.name}
-                    {uploadDurationSeconds ? ` | ${Math.floor(uploadDurationSeconds / 60)}:${Math.floor(uploadDurationSeconds % 60).toString().padStart(2, '0')}` : ''}
-                  </span>
-                )}
-              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: 'upload' as const, label: 'Upload', icon: Upload },
+                  { value: 'youtube' as const, label: 'YouTube', icon: Youtube },
+                ].map((option) => {
+                  const Icon = option.icon;
+                  const isDisabled = option.value === 'youtube' && !canUseYoutubeSource(uploadForm.mediaKind);
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        if (isDisabled) return;
+                        setUploadSource(option.value);
+                        setError('');
+                      }}
+                      disabled={isDisabled}
+                      className={`inline-flex h-11 items-center justify-center gap-2 border px-4 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                        uploadSource === option.value
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-[#333333] text-[#dddddd] hover:border-primary hover:text-primary'
+                      }`}
+                      style={{ fontFamily: 'var(--font-heading)' }}
+                    >
+                      <Icon size={15} />
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {uploadSource === 'youtube' ? (
+                <div className="grid gap-4">
+                  <label className="grid gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">YouTube Video Link</span>
+                    <input
+                      type="url"
+                      value={uploadYoutubeUrl}
+                      onChange={(event) => setUploadYoutubeUrl(event.target.value)}
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none placeholder:text-[#555555] focus:border-primary"
+                    />
+                  </label>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="grid gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Minutes</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max={uploadForm.mediaKind === 'scratch' ? '5' : undefined}
+                        value={uploadYoutubeMinutes}
+                        onChange={(event) => setUploadYoutubeMinutes(event.target.value)}
+                        className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
+                      />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Seconds</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={uploadYoutubeSeconds}
+                        onChange={(event) => setUploadYoutubeSeconds(event.target.value)}
+                        className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
+                      />
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <label className="grid gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Media File</span>
+                  <input
+                    type="file"
+                    accept="audio/*,video/*,image/*"
+                    onChange={handleUploadFileChange}
+                    className="w-full border border-[#333333] bg-[#080808] px-4 py-3 text-sm text-[#bbbbbb] file:mr-4 file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-white"
+                    style={{ fontFamily: 'var(--font-heading)' }}
+                  />
+                  {uploadFile && (
+                    <span className="text-xs text-[#888888]">
+                      Selected: {uploadFile.name}
+                      {uploadDurationSeconds ? ` | ${Math.floor(uploadDurationSeconds / 60)}:${Math.floor(uploadDurationSeconds % 60).toString().padStart(2, '0')}` : ''}
+                    </span>
+                  )}
+                </label>
+              )}
 
               <label className="grid gap-2">
                 <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Cover Image</span>
@@ -1049,7 +1191,15 @@ export default function DjPortfolioPage() {
                   <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Media Type</span>
                   <select
                     value={uploadForm.mediaKind}
-                    onChange={(event) => setUploadForm((current) => ({ ...current, mediaKind: event.target.value }))}
+                    onChange={(event) => {
+                      const mediaKind = event.target.value;
+
+                      setUploadForm((current) => ({ ...current, mediaKind }));
+
+                      if (!canUseYoutubeSource(mediaKind)) {
+                        setUploadSource('upload');
+                      }
+                    }}
                     className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
                   >
                     {kindOptions.map((option) => (
@@ -1103,7 +1253,7 @@ export default function DjPortfolioPage() {
               </button>
               <button
                 type="submit"
-                disabled={isUploading || !uploadFile}
+                disabled={isUploading || (uploadSource === 'upload' ? !uploadFile : !uploadYoutubeUrl.trim())}
                 className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
                 style={{ fontFamily: 'var(--font-heading)' }}
               >

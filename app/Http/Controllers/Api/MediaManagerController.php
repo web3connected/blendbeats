@@ -45,7 +45,9 @@ class MediaManagerController extends Controller
         MembershipTierService $membershipTiers,
     ): JsonResponse {
         $attributes = $request->validate([
-            'file' => ['required', 'file', 'max:51200'],
+            'file' => ['nullable', 'required_without:external_url', 'file', 'max:51200'],
+            'external_url' => ['nullable', 'required_without:file', 'url', 'max:2048'],
+            'source_type' => ['nullable', Rule::in(['upload', 'youtube'])],
             'disk' => ['nullable', Rule::in(['public', 'local'])],
             'collection' => ['nullable', 'string', 'max:120'],
             'title' => ['nullable', 'string', 'max:255'],
@@ -57,14 +59,23 @@ class MediaManagerController extends Controller
             'cover_image' => ['nullable', 'image', 'max:10240'],
         ]);
 
-        $this->validateScratchVideoPayload($attributes);
+        $youtubeVideo = $this->youtubeVideoFromAttributes($attributes);
+
+        $this->validateExternalVideoPayload($attributes, $youtubeVideo);
+        $this->validateScratchVideoPayload($attributes, null, $youtubeVideo !== null);
         $this->assertScratchVideoMonthlyLimit($request, $membershipTiers, $attributes);
 
-        $file = $mediaManager->uploadFileToMediaManager(
-            $attributes['file'],
-            $attributes['disk'] ?? 'public',
-            $attributes['collection'] ?? MediaManagerService::COLLECTION_DJ_MEDIA,
-        );
+        $file = $youtubeVideo
+            ? $mediaManager->createExternalYoutubeForOwner(
+                $request->user(),
+                $youtubeVideo,
+                $attributes['collection'] ?? MediaManagerService::COLLECTION_DJ_MEDIA,
+            )
+            : $mediaManager->uploadFileToMediaManager(
+                $attributes['file'],
+                $attributes['disk'] ?? 'public',
+                $attributes['collection'] ?? MediaManagerService::COLLECTION_DJ_MEDIA,
+            );
 
         $coverFile = isset($attributes['cover_image'])
             ? $mediaManager->uploadForOwner($request->user(), $attributes['cover_image'], 'public', MediaManagerService::COLLECTION_DJ_IMAGES)
@@ -85,9 +96,14 @@ class MediaManagerController extends Controller
                     'duration_seconds' => isset($attributes['duration_seconds'])
                         ? round((float) $attributes['duration_seconds'], 2)
                         : null,
+                    'source_type' => $youtubeVideo ? 'youtube' : 'upload',
+                    'external_provider' => $youtubeVideo ? 'youtube' : null,
+                    'external_url' => $youtubeVideo['watch_url'] ?? null,
+                    'embed_url' => $youtubeVideo['embed_url'] ?? null,
+                    'thumbnail_url' => $youtubeVideo['thumbnail_url'] ?? null,
                     'cover_media_file_id' => $coverFile?->id,
                     'cover_image_path' => $coverFile?->path,
-                    'cover_image_url' => $coverFile?->url,
+                    'cover_image_url' => $coverFile?->url ?? $youtubeVideo['thumbnail_url'] ?? null,
                 ],
             ],
         ])->save();
@@ -181,21 +197,23 @@ class MediaManagerController extends Controller
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function validateScratchVideoPayload(array $attributes, ?MediaFile $file = null): void
+    private function validateScratchVideoPayload(array $attributes, ?MediaFile $file = null, bool $isYoutubeLink = false): void
     {
         if (($attributes['media_kind'] ?? null) !== 'scratch') {
             return;
         }
 
-        $uploadedFile = $attributes['file'] ?? null;
-        $mimeType = $uploadedFile instanceof UploadedFile
-            ? (string) $uploadedFile->getMimeType()
-            : (string) ($file?->mime_type ?? '');
+        if (! $isYoutubeLink) {
+            $uploadedFile = $attributes['file'] ?? null;
+            $mimeType = $uploadedFile instanceof UploadedFile
+                ? (string) $uploadedFile->getMimeType()
+                : (string) ($file?->mime_type ?? '');
 
-        if (! str_starts_with($mimeType, 'video/')) {
-            throw ValidationException::withMessages([
-                'file' => ['Scratch routines must be uploaded as video files.'],
-            ]);
+            if (! str_starts_with($mimeType, 'video/')) {
+                throw ValidationException::withMessages([
+                    'file' => ['Scratch routines must be uploaded as video files.'],
+                ]);
+            }
         }
 
         $duration = $attributes['duration_seconds']
@@ -214,6 +232,90 @@ class MediaManagerController extends Controller
                 'duration_seconds' => ['Scratch routines must be 5 minutes or less.'],
             ]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @param  array{video_id: string, watch_url: string, embed_url: string, thumbnail_url: string}|null  $youtubeVideo
+     */
+    private function validateExternalVideoPayload(array $attributes, ?array $youtubeVideo): void
+    {
+        if (! isset($attributes['external_url'])) {
+            return;
+        }
+
+        if (isset($attributes['file'])) {
+            throw ValidationException::withMessages([
+                'external_url' => ['Choose either a video upload or a YouTube link.'],
+            ]);
+        }
+
+        if (! $youtubeVideo) {
+            throw ValidationException::withMessages([
+                'external_url' => ['Enter a valid YouTube video link.'],
+            ]);
+        }
+
+        if (! in_array($attributes['media_kind'] ?? null, ['video', 'scratch'], true)) {
+            throw ValidationException::withMessages([
+                'media_kind' => ['YouTube links can only be added as videos or Scratch routines.'],
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array{video_id: string, watch_url: string, embed_url: string, thumbnail_url: string}|null
+     */
+    private function youtubeVideoFromAttributes(array $attributes): ?array
+    {
+        $url = trim((string) ($attributes['external_url'] ?? ''));
+
+        if ($url === '') {
+            return null;
+        }
+
+        $videoId = $this->youtubeVideoIdFromUrl($url);
+
+        if (! $videoId) {
+            return null;
+        }
+
+        return [
+            'video_id' => $videoId,
+            'watch_url' => "https://www.youtube.com/watch?v={$videoId}",
+            'embed_url' => "https://www.youtube.com/embed/{$videoId}",
+            'thumbnail_url' => "https://img.youtube.com/vi/{$videoId}/hqdefault.jpg",
+        ];
+    }
+
+    private function youtubeVideoIdFromUrl(string $url): ?string
+    {
+        $parts = parse_url($url);
+        $host = strtolower((string) ($parts['host'] ?? ''));
+        $path = trim((string) ($parts['path'] ?? ''), '/');
+        $videoId = null;
+
+        if (str_starts_with($host, 'www.')) {
+            $host = substr($host, 4);
+        }
+
+        if ($host === 'youtu.be') {
+            $videoId = explode('/', $path)[0] ?? null;
+        } elseif (in_array($host, ['youtube.com', 'm.youtube.com', 'music.youtube.com'], true)) {
+            if ($path === 'watch') {
+                parse_str((string) ($parts['query'] ?? ''), $query);
+                $videoId = is_string($query['v'] ?? null) ? $query['v'] : null;
+            } elseif (preg_match('#^(embed|shorts|live)/([^/?]+)#', $path, $matches)) {
+                $videoId = $matches[2];
+            }
+        }
+
+        if (! is_string($videoId) || ! preg_match('/^[A-Za-z0-9_-]{11}$/', $videoId)) {
+            return null;
+        }
+
+        return $videoId;
     }
 
     /**

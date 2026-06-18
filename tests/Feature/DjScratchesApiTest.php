@@ -139,6 +139,97 @@ class DjScratchesApiTest extends TestCase
             ->assertJsonPath('file.duration_seconds', 300.4);
     }
 
+    public function test_scratch_routine_can_be_linked_from_youtube(): void
+    {
+        $user = User::factory()->create(['name' => 'DJ Link Cut']);
+
+        $this->actingAs($user)
+            ->postJson('/api/media/files', [
+                'external_url' => 'https://youtu.be/dQw4w9WgXcQ',
+                'source_type' => 'youtube',
+                'disk' => 'public',
+                'collection' => 'dj_media',
+                'title' => 'Linked Routine',
+                'visibility' => 'public',
+                'media_kind' => 'scratch',
+                'duration_seconds' => 180,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('file.portfolio_kind', 'scratch')
+            ->assertJsonPath('file.source_type', 'youtube')
+            ->assertJsonPath('file.external_provider', 'youtube')
+            ->assertJsonPath('file.external_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+            ->assertJsonPath('file.embed_url', 'https://www.youtube.com/embed/dQw4w9WgXcQ')
+            ->assertJsonPath('file.portfolio_cover_image_url', 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+
+        $this->assertDatabaseHas('media_files', [
+            'user_id' => $user->id,
+            'name' => 'dQw4w9WgXcQ.youtube',
+            'mime_type' => 'video/youtube',
+            'size' => 0,
+            'collection' => 'dj_media',
+        ]);
+    }
+
+    public function test_public_scratches_endpoint_exposes_youtube_linked_routines(): void
+    {
+        $user = User::factory()->create(['name' => 'DJ Tube Cut']);
+
+        DB::table('dj_profiles')->insert([
+            'user_id' => $user->id,
+            'dj_name' => 'DJ Tube Cut',
+            'handle' => 'dj-tube-cut',
+            'profile_headline' => 'Linked routines.',
+            'profile_status' => 'active',
+            'visibility' => 'public',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        MediaFile::query()->create([
+            'user_id' => $user->id,
+            'name' => 'dQw4w9WgXcQ.youtube',
+            'original_name' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            'disk' => 'public',
+            'path' => "external/youtube/{$user->id}/dQw4w9WgXcQ_test",
+            'mime_type' => 'video/youtube',
+            'size' => 0,
+            'collection' => 'dj_media',
+            'metadata' => [
+                'external_source' => [
+                    'provider' => 'youtube',
+                    'video_id' => 'dQw4w9WgXcQ',
+                    'watch_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                    'embed_url' => 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                    'thumbnail_url' => 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+                ],
+                'portfolio' => [
+                    'title' => 'Tube Routine',
+                    'description' => 'Routine hosted on YouTube.',
+                    'genre' => 'Scratch Sets',
+                    'visibility' => 'public',
+                    'media_kind' => 'scratch',
+                    'duration_seconds' => 180,
+                    'source_type' => 'youtube',
+                    'external_provider' => 'youtube',
+                    'external_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                    'embed_url' => 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                    'thumbnail_url' => 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+                ],
+            ],
+        ]);
+
+        $this->getJson('/api/dj-scratches')
+            ->assertOk()
+            ->assertJsonCount(1, 'scratches')
+            ->assertJsonPath('scratches.0.title', 'Tube Routine')
+            ->assertJsonPath('scratches.0.source_type', 'youtube')
+            ->assertJsonPath('scratches.0.external_provider', 'youtube')
+            ->assertJsonPath('scratches.0.url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+            ->assertJsonPath('scratches.0.embed_url', 'https://www.youtube.com/embed/dQw4w9WgXcQ')
+            ->assertJsonPath('scratches.0.cover_image_url', 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+    }
+
     public function test_free_tier_can_upload_three_scratch_videos_per_month(): void
     {
         Storage::fake('public');

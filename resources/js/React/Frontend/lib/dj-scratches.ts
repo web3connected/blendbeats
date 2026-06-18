@@ -7,6 +7,11 @@ export type DjScratch = {
   genre: string | null;
   url: string;
   cover_image_url: string | null;
+  source_type?: string | null;
+  external_provider?: string | null;
+  external_url?: string | null;
+  embed_url?: string | null;
+  thumbnail_url?: string | null;
   mime_type: string | null;
   duration_seconds: number;
   formatted_size: string;
