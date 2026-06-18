@@ -2,6 +2,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowLeft,
   CreditCard,
+  History,
   LayoutGrid,
   Loader2,
   Radio,
@@ -435,6 +436,14 @@ export default function FeaturedAdPlacementsPage() {
                     <p className="mt-3 text-sm leading-6 text-[#888888]">
                       {activeCampaignCount} active. {pendingCampaignCount} waiting for payment.
                     </p>
+                    <Link
+                      to="/account/featured-ads/analytics"
+                      className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                      style={{ fontFamily: 'var(--font-heading)' }}
+                    >
+                      <History size={15} />
+                      Previous Ads
+                    </Link>
                   </article>
                   <article className="border border-[#2a2a2a] bg-[#080808] p-5">
                     <ShieldCheck className="text-primary" size={22} />
