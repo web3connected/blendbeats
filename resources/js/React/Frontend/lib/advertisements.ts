@@ -1,7 +1,7 @@
 import apiClient from '@/lib/api-client';
 
 const DISPLAY_AD_CACHE_TTL_MS = 60 * 1000;
-const DISPLAY_AD_CACHE_PREFIX = 'blendbeats.display_ad.';
+const DISPLAY_AD_CACHE_PREFIX = 'blendbeats.display_ad.v2.';
 
 export type UniversalAdvertisement = {
   id: number;
@@ -37,7 +37,7 @@ function readCachedDisplayAdvertisement(placement: string): UniversalAdvertiseme
 
     const cached = JSON.parse(raw) as Partial<CachedDisplayAdvertisement>;
 
-    if (!cached.ad || !cached.expires_at || cached.expires_at <= Date.now()) {
+    if (!cached.ad || !cached.expires_at || cached.expires_at <= Date.now() || !isDisplayAdvertisementCurrent(cached.ad)) {
       window.localStorage.removeItem(cacheKey(placement));
       return null;
     }
@@ -49,7 +49,7 @@ function readCachedDisplayAdvertisement(placement: string): UniversalAdvertiseme
 }
 
 function writeCachedDisplayAdvertisement(placement: string, ad: UniversalAdvertisement | null) {
-  if (!ad) return;
+  if (!ad || !isDisplayAdvertisementCurrent(ad)) return;
 
   try {
     window.localStorage.setItem(
@@ -62,6 +62,17 @@ function writeCachedDisplayAdvertisement(placement: string, ad: UniversalAdverti
   } catch {
     // Local storage is a display optimization only.
   }
+}
+
+function isDisplayAdvertisementCurrent(ad: UniversalAdvertisement): boolean {
+  const now = Date.now();
+  const startsAt = ad.campaign.started_at ? Date.parse(ad.campaign.started_at) : null;
+  const endsAt = ad.campaign.ends_at ? Date.parse(ad.campaign.ends_at) : null;
+
+  if (startsAt && startsAt > now) return false;
+  if (endsAt && endsAt <= now) return false;
+
+  return true;
 }
 
 export async function getDisplayAdvertisement(placement: string): Promise<UniversalAdvertisement | null> {

@@ -76,7 +76,7 @@ class AdvertisementDisplayService
             ->latest('claimed_at')
             ->limit(self::MAX_DISCOVERY)
             ->get()
-            ->filter(fn (DjFeaturedStatus $campaign): bool => $campaign->djProfile !== null)
+            ->filter(fn (DjFeaturedStatus $campaign): bool => $campaign->djProfile !== null && $campaign->isDisplayableAt())
             ->values();
 
         $allowedGroups = $this->allowedGroupNumbersForPlacement($placement);
@@ -283,6 +283,8 @@ class AdvertisementDisplayService
         $user = $profile?->user;
         $groupNumber = $this->groupNumber($ad);
         $slotPosition = $this->slotPosition($ad);
+        $startDate = $ad->effectiveStartDate();
+        $endDate = $ad->effectiveEndDate();
 
         return [
             'id' => $ad->id,
@@ -297,8 +299,8 @@ class AdvertisementDisplayService
                 'group_number' => $groupNumber,
                 'slot' => $slotPosition,
                 'placement_score' => $this->placementScore($ad),
-                'started_at' => $ad->start_date?->toISOString(),
-                'ends_at' => $ad->end_date?->toISOString(),
+                'started_at' => $startDate?->toISOString(),
+                'ends_at' => $endDate?->toISOString(),
             ],
         ];
     }

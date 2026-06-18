@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MediaFile;
 use App\Models\User;
+use App\Services\FeaturedAdNotificationService;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Schema;
 
 class DjHubController extends Controller
 {
+    public function __construct(private readonly FeaturedAdNotificationService $adNotifications) {}
+
     public function index(Request $request): JsonResponse
     {
         $filters = $request->validate([
@@ -27,6 +30,8 @@ class DjHubController extends Controller
         if (! $this->hasDjHubTables()) {
             return response()->json($this->emptyPayload());
         }
+
+        $this->syncFeaturedAdWindows();
 
         $profiles = $this->baseProfileQuery()
             ->when($filters['search'] ?? null, function (Builder $query, string $search): void {
@@ -84,6 +89,8 @@ class DjHubController extends Controller
             abort(404);
         }
 
+        $this->syncFeaturedAdWindows();
+
         $profile = $this->baseProfileQuery()
             ->where('dj_profiles.handle', $handle)
             ->first();
@@ -102,6 +109,19 @@ class DjHubController extends Controller
             && Schema::hasTable('dj_profile_genres');
     }
 
+    private function syncFeaturedAdWindows(): void
+    {
+        if (
+            Schema::hasTable('dj_featured_status')
+            && Schema::hasTable('featured_slot_campaign_options')
+            && Schema::hasTable('featured_campaign_slots')
+            && Schema::hasTable('featured_campaigns')
+            && Schema::hasTable('featured_slot_groups')
+        ) {
+            $this->adNotifications->syncEndingNotifications();
+        }
+    }
+
     private function baseProfileQuery(): Builder
     {
         $followersSubquery = Schema::hasTable('followers')
@@ -115,6 +135,8 @@ class DjHubController extends Controller
                 ->selectRaw('count(*)')
                 ->whereColumn('dj_featured_status.dj_profile_id', 'dj_profiles.id')
                 ->where('dj_featured_status.status', 'active')
+                ->where(fn (Builder $query) => $query->whereNull('dj_featured_status.start_date')->orWhere('dj_featured_status.start_date', '<=', now()))
+                ->where(fn (Builder $query) => $query->whereNull('dj_featured_status.end_date')->orWhere('dj_featured_status.end_date', '>=', now()))
             : DB::query()->selectRaw('0');
 
         $engagementScoreSubquery = Schema::hasTable('followers')

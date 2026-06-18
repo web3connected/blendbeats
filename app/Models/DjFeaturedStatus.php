@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 class DjFeaturedStatus extends Model
 {
@@ -69,5 +70,39 @@ class DjFeaturedStatus extends Model
     public function campaignSlot(): BelongsTo
     {
         return $this->belongsTo(FeaturedCampaignSlot::class, 'featured_campaign_slot_id');
+    }
+
+    public function effectiveStartDate(): ?Carbon
+    {
+        return $this->start_date ?? $this->claimed_at ?? $this->created_at;
+    }
+
+    public function effectiveEndDate(): ?Carbon
+    {
+        if ($this->end_date) {
+            return $this->end_date;
+        }
+
+        $durationDays = (int) ($this->campaignOption?->duration_days ?? 0);
+        $startDate = $this->effectiveStartDate();
+
+        if (! $startDate || $durationDays < 1) {
+            return null;
+        }
+
+        return $startDate->copy()->addDays($durationDays);
+    }
+
+    public function isDisplayableAt(?Carbon $date = null): bool
+    {
+        $date ??= now();
+        $startDate = $this->effectiveStartDate();
+        $endDate = $this->effectiveEndDate();
+
+        if ($startDate && $startDate->gt($date)) {
+            return false;
+        }
+
+        return ! $endDate || $endDate->gt($date);
     }
 }

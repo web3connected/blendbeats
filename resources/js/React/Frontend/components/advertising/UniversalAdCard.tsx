@@ -1,7 +1,8 @@
 import { ExternalLink, Megaphone } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
-import { getDisplayAdvertisement, trackAdvertisementEvent, type UniversalAdvertisement } from '@/lib/advertisements';
+import { useDisplayAdvertisement } from '@/hooks/useDisplayAdvertisement';
+import { trackAdvertisementEvent } from '@/lib/advertisements';
 
 type UniversalAdCardProps = {
   placement: string;
@@ -10,31 +11,10 @@ type UniversalAdCardProps = {
 };
 
 export default function UniversalAdCard({ placement, title = 'Featured Ad', compact = false }: UniversalAdCardProps) {
-  const [ad, setAd] = useState<UniversalAdvertisement | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { ad, isLoading } = useDisplayAdvertisement({ placement });
   const containerRef = useRef<HTMLElement | null>(null);
   const isInViewRef = useRef(false);
   const impressionTrackedRef = useRef(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    setIsLoading(true);
-    getDisplayAdvertisement(placement)
-      .then((nextAd) => {
-        if (!cancelled) setAd(nextAd);
-      })
-      .catch(() => {
-        if (!cancelled) setAd(null);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [placement]);
 
   useEffect(() => {
     impressionTrackedRef.current = false;

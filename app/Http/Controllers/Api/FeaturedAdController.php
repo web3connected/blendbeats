@@ -521,8 +521,8 @@ class FeaturedAdController extends Controller
             'approval_url' => $isMine && $campaign->status === 'pending_payment'
                 ? $this->approvalUrlFromMetadata($campaign->payment_metadata ?? [])
                 : null,
-            'start_date' => $this->dateString($campaign->start_date),
-            'end_date' => $this->dateString($campaign->end_date),
+            'start_date' => $this->dateString($campaign->effectiveStartDate()),
+            'end_date' => $this->dateString($campaign->effectiveEndDate()),
             'dj' => $campaign->relationLoaded('djProfile') && $campaign->djProfile ? [
                 'name' => $campaign->djProfile->dj_name,
                 'handle' => $campaign->djProfile->handle,
@@ -560,10 +560,15 @@ class FeaturedAdController extends Controller
                     $templateSlotNumber = $this->placementPricing->templateSlotNumber($groupNumber, $groupSlotNumber);
                     $dailyPrice = $this->placementPricing->dailyPriceCents($groupNumber, $groupSlotNumber);
                     $options = $this->campaignOptionsForSlot($templateSlotNumber, $dailyPrice);
+                    $now = now();
                     $statuses = $slot->featuredStatuses
-                        ->filter(fn (DjFeaturedStatus $status): bool => ! $status->end_date || $status->end_date > now());
+                        ->filter(function (DjFeaturedStatus $status) use ($now): bool {
+                            $endDate = $status->effectiveEndDate();
+
+                            return ! $endDate || $endDate->gt($now);
+                        });
                     $activeStatuses = $statuses->filter(fn (DjFeaturedStatus $status): bool => $status->status === 'active'
-                        && (! $status->start_date || $status->start_date <= now()));
+                        && $status->isDisplayableAt($now));
                     $pendingStatuses = $statuses->filter(fn (DjFeaturedStatus $status): bool => $status->status === 'pending_payment');
                     $myActiveStatuses = $activeStatuses->filter(fn (DjFeaturedStatus $status): bool => $currentDjProfileId !== null
                         && (int) $status->dj_profile_id === $currentDjProfileId);

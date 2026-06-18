@@ -149,6 +149,38 @@ class FeaturedAdNotificationService
                 }
             });
 
+        DjFeaturedStatus::query()
+            ->with($this->relations())
+            ->where('status', 'active')
+            ->where('payment_status', 'paid')
+            ->whereNull('end_date')
+            ->chunkById(100, function ($campaigns) use ($now, $soon, &$endingSoonCount, &$expiredCount): void {
+                foreach ($campaigns as $campaign) {
+                    $effectiveEndDate = $campaign->effectiveEndDate();
+
+                    if (! $effectiveEndDate) {
+                        continue;
+                    }
+
+                    $campaign->forceFill([
+                        'end_date' => $effectiveEndDate,
+                        'status' => $effectiveEndDate->lte($now) ? 'expired' : $campaign->status,
+                    ])->save();
+
+                    if ($effectiveEndDate->lte($now)) {
+                        if ($this->notifyExpired($campaign)) {
+                            $expiredCount++;
+                        }
+
+                        continue;
+                    }
+
+                    if ($effectiveEndDate->lte($soon) && $this->notifyEndingSoon($campaign)) {
+                        $endingSoonCount++;
+                    }
+                }
+            });
+
         return [
             'ending_soon' => $endingSoonCount,
             'expired' => $expiredCount,
