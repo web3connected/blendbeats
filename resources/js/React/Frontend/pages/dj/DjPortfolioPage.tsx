@@ -75,7 +75,7 @@ const emptyPortfolioForm = {
   visibility: 'draft',
   mediaKind: 'mix',
 };
-const MAX_SCRATCH_DURATION_SECONDS = 180;
+const MAX_SCRATCH_DURATION_SECONDS = 300;
 
 function getVideoDuration(file: File) {
   return new Promise<number>((resolve, reject) => {
@@ -408,7 +408,7 @@ export default function DjPortfolioPage() {
       }
 
       if (!uploadDurationSeconds || isOverScratchDurationLimit(uploadDurationSeconds)) {
-        setError('DJ Scratches must be 3 minutes or less.');
+        setError('DJ Scratches must be 5 minutes or less.');
         setIsUploading(false);
         return;
       }

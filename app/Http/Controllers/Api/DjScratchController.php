@@ -63,7 +63,7 @@ class DjScratchController extends Controller
             && ($portfolio['visibility'] ?? null) === 'public'
             && ($portfolio['media_kind'] ?? null) === 'scratch'
             && $duration > 0
-            && floor($duration) <= 180
+            && floor($duration) <= 300
             && $profile
             && $profile->visibility === 'public'
             && $profile->profile_status === 'active';

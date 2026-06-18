@@ -206,9 +206,9 @@ class MediaManagerController extends Controller
             ]);
         }
 
-        if (floor((float) $duration) > 180) {
+        if (floor((float) $duration) > 300) {
             throw ValidationException::withMessages([
-                'duration_seconds' => ['DJ Scratches must be 3 minutes or less.'],
+                'duration_seconds' => ['DJ Scratches must be 5 minutes or less.'],
             ]);
         }
     }

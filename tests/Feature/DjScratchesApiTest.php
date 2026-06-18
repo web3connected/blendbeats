@@ -83,7 +83,7 @@ class DjScratchesApiTest extends TestCase
                     'title' => 'Too Long',
                     'visibility' => 'public',
                     'media_kind' => 'scratch',
-                    'duration_seconds' => 181,
+                    'duration_seconds' => 301,
                 ],
             ],
         ]);
@@ -100,7 +100,7 @@ class DjScratchesApiTest extends TestCase
             ->assertJsonMissing(['title' => 'Too Long']);
     }
 
-    public function test_scratch_video_uploads_must_be_three_minutes_or_less(): void
+    public function test_scratch_video_uploads_must_be_five_minutes_or_less(): void
     {
         Storage::fake('public');
         $user = User::factory()->create(['name' => 'DJ Long Cut']);
@@ -113,29 +113,29 @@ class DjScratchesApiTest extends TestCase
                 'title' => 'Long Scratch',
                 'visibility' => 'public',
                 'media_kind' => 'scratch',
-                'duration_seconds' => 181,
+                'duration_seconds' => 301,
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('duration_seconds');
     }
 
-    public function test_scratch_video_upload_allows_fractional_three_minute_metadata(): void
+    public function test_scratch_video_upload_allows_fractional_five_minute_metadata(): void
     {
         Storage::fake('public');
         $user = User::factory()->create(['name' => 'DJ Exact Cut']);
 
         $this->actingAs($user)
             ->postJson('/api/media/files', [
-                'file' => UploadedFile::fake()->create('three-minute-scratch.mp4', 1024, 'video/mp4'),
+                'file' => UploadedFile::fake()->create('five-minute-scratch.mp4', 1024, 'video/mp4'),
                 'disk' => 'public',
                 'collection' => 'dj_media',
-                'title' => 'Three Minute Scratch',
+                'title' => 'Five Minute Scratch',
                 'visibility' => 'public',
                 'media_kind' => 'scratch',
-                'duration_seconds' => 180.4,
+                'duration_seconds' => 300.4,
             ])
             ->assertCreated()
             ->assertJsonPath('file.portfolio_kind', 'scratch')
-            ->assertJsonPath('file.duration_seconds', 180.4);
+            ->assertJsonPath('file.duration_seconds', 300.4);
     }
 }

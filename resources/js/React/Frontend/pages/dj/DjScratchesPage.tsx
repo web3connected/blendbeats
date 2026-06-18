@@ -23,7 +23,7 @@ import {
 } from '@/lib/dj-scratches';
 import { MediaManagerApiError, uploadMediaFile } from '@/lib/media-manager';
 
-const MAX_SCRATCH_DURATION_SECONDS = 180;
+const MAX_SCRATCH_DURATION_SECONDS = 300;
 
 const genreOptions = ['Scratch Sets', 'Hip-Hop', 'Open Format', 'House', 'Drum & Bass', 'Techno', 'R&B', 'Afrobeats'];
 
@@ -156,7 +156,7 @@ function UploadModal({
       const duration = await getVideoDuration(file);
 
       if (isOverScratchDurationLimit(duration)) {
-        setLocalError(`This video is ${formatDuration(duration)}. DJ Scratch videos must be 3:00 or less.`);
+        setLocalError(`This video is ${formatDuration(duration)}. DJ Scratch videos must be 5:00 or less.`);
         input.value = '';
         return;
       }
@@ -246,7 +246,7 @@ function UploadModal({
                 ? 'Reading duration'
                 : videoFile
                   ? `${videoFile.name} | ${formatDuration(durationSeconds)}`
-                  : 'Video only | 3:00 max'}
+                  : 'Video only | 5:00 max'}
             </span>
           </label>
 
