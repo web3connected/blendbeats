@@ -59,6 +59,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const queueRef = useRef<PlayerTrack[]>([]);
   const queueIndexRef = useRef(0);
   const currentTimeRef = useRef(0);
+  const isPlayingRef = useRef(false);
   const modeRef = useRef<PlayerMode>('standard');
   const playlistVersionRef = useRef<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState<PlayerTrack | null>(null);
@@ -99,6 +100,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     currentTimeRef.current = currentTime;
   }, [currentTime]);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -211,8 +216,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (playableTracks.length === 0) return;
 
     const foundIndex = playableTracks.findIndex((track) => String(track.id) === String(currentTrackId ?? playableTracks[0].id));
-    const nextIndex = foundIndex >= 0 ? foundIndex : 0;
-    const nextTrack = playableTracks[nextIndex] ?? playableTracks[0];
+    let nextIndex = foundIndex >= 0 ? foundIndex : 0;
+    let nextPositionSeconds = Math.max(0, currentPositionSeconds);
+    let nextTrack = playableTracks[nextIndex] ?? playableTracks[0];
+
+    if (
+      nextMode === 'lounge_live'
+      && playableTracks.length > 0
+      && typeof nextTrack.duration === 'number'
+      && nextTrack.duration > 0
+      && nextPositionSeconds >= Math.max(0, nextTrack.duration - 2)
+    ) {
+      nextIndex = (nextIndex + 1) % playableTracks.length;
+      nextTrack = playableTracks[nextIndex] ?? playableTracks[0];
+      nextPositionSeconds = 0;
+    }
+
     const nextEngine = getPlayerEngine(nextMode);
     const isSameLiveState = nextMode === modeRef.current
       && nextPlaylistVersion
@@ -232,34 +251,38 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
 
     if (isSameLiveState) {
-      const drift = Math.abs(currentTimeRef.current - currentPositionSeconds);
+      const drift = Math.abs(currentTimeRef.current - nextPositionSeconds);
 
       if (drift > 8) {
         if (nextEngine === 'fwduvp') {
-          fwduvpPlayerRef.current?.seekToSeconds(currentPositionSeconds);
+          fwduvpPlayerRef.current?.seekToSeconds(nextPositionSeconds);
         } else {
-          legacyPlayerRef.current?.seekToSeconds(currentPositionSeconds);
+          legacyPlayerRef.current?.seekToSeconds(nextPositionSeconds);
         }
 
-        setCurrentTime(Math.max(0, currentPositionSeconds));
+        setCurrentTime(nextPositionSeconds);
+      }
+
+      if (nextEngine === 'fwduvp' && autoplay && !isPlayingRef.current) {
+        playQueuedTrack(nextTrack, nextPositionSeconds, true, nextEngine);
       }
 
       return;
     }
 
     setPlaybackBlocked(false);
-    playQueuedTrack(nextTrack, currentPositionSeconds, autoplay, nextEngine);
+    playQueuedTrack(nextTrack, nextPositionSeconds, autoplay, nextEngine);
   }, [playQueuedTrack]);
 
   const playNextQueuedTrack = useCallback(() => {
     const currentQueue = queueRef.current;
 
-    if (currentQueue.length <= 1) {
+    if (currentQueue.length === 0) {
       setIsPlaying(false);
       return;
     }
 
-    const nextIndex = (queueIndexRef.current + 1) % currentQueue.length;
+    const nextIndex = currentQueue.length === 1 ? 0 : (queueIndexRef.current + 1) % currentQueue.length;
     const nextTrack = currentQueue[nextIndex];
 
     setQueueIndex(nextIndex);
@@ -334,6 +357,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           queueIndex={fwduvpQueueIndex}
           volume={volume}
           onDurationChange={handleDurationChange}
+          onEnded={playNextQueuedTrack}
           onError={handleError}
           onPause={handlePause}
           onPlay={handlePlay}

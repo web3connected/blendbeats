@@ -36,6 +36,7 @@ type FWDUVPPlayerHostProps = {
   queueIndex: number;
   volume: number;
   onDurationChange: (duration: number) => void;
+  onEnded: () => void;
   onError: (message: string) => void;
   onPause: () => void;
   onPlay: () => void;
@@ -92,6 +93,7 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
     queueIndex,
     volume,
     onDurationChange,
+    onEnded,
     onError,
     onPause,
     onPlay,
@@ -418,7 +420,7 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
             [window.FWDUVPlayer.PAUSE, onPause],
             [window.FWDUVPlayer.STOP, onStop],
             [window.FWDUVPlayer.ERROR, () => onError('The new player could not load this track.')],
-            [window.FWDUVPlayer.PLAY_COMPLETE, onPause],
+            [window.FWDUVPlayer.PLAY_COMPLETE, onEnded],
             [window.FWDUVPlayer.UPDATE_TIME, (event) => {
               const nextTime = parseFWDUVPTime(event.currentTime);
               const nextDuration = parseFWDUVPTime(event.totalTime);
@@ -465,6 +467,7 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
       };
     }, [
       onDurationChange,
+      onEnded,
       onError,
       onPause,
       onPlay,
@@ -518,7 +521,7 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
           onPause={() => {
             if (nativeFallbackActiveRef.current) onPause();
           }}
-          onEnded={onPause}
+          onEnded={onEnded}
         >
           <track kind="captions" />
         </audio>
