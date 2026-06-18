@@ -1,5 +1,7 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
+  Check,
+  Copy,
   Heart,
   MessageCircle,
   MoreHorizontal,
@@ -15,6 +17,14 @@ import {
 } from 'lucide-react';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  FacebookIcon,
+  FacebookShareButton,
+  WhatsappIcon,
+  WhatsappShareButton,
+  XIcon,
+  XShareButton,
+} from 'react-share';
 
 import GroupAAndBDisplay from '@/components/advertising/GroupAAndBDisplay';
 import GroupEAndFDisplay from '@/components/advertising/GroupEAndFDisplay';
@@ -184,8 +194,14 @@ function PostCard({
 }) {
   const [isThreadOpen, setIsThreadOpen] = useState(post.replies.length > 0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const [didCopyShareUrl, setDidCopyShareUrl] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editBody, setEditBody] = useState(post.body);
+  const shareUrl =
+    typeof window !== 'undefined' ? `${window.location.origin}/dj-lounge#post-${post.id}` : `/dj-lounge#post-${post.id}`;
+  const shareTitle = `${post.authorName} on DJLounge`;
+  const shareText = post.body.slice(0, 160);
 
   useEffect(() => {
     setEditBody(post.body);
@@ -201,31 +217,21 @@ function PostCard({
     setIsMenuOpen(false);
   };
 
-  const handleShare = async () => {
-    const url = `${window.location.origin}/dj-lounge#post-${post.id}`;
-    const shareData = {
-      title: `${post.authorName} on DJLounge`,
-      text: post.body.slice(0, 160),
-      url,
-    };
-
+  const copyShareUrl = async () => {
     try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-        return;
-      }
-
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
+        await navigator.clipboard.writeText(shareUrl);
+        setDidCopyShareUrl(true);
+        window.setTimeout(() => setDidCopyShareUrl(false), 1600);
         return;
       }
-    } catch (shareError) {
-      if (shareError instanceof DOMException && shareError.name === 'AbortError') {
-        return;
-      }
+    } catch {
+      // Fall back to the manual copy prompt below.
     }
 
-    window.prompt('Copy post link', url);
+    window.prompt('Copy post link', shareUrl);
+    setDidCopyShareUrl(true);
+    window.setTimeout(() => setDidCopyShareUrl(false), 1600);
   };
 
   return (
@@ -259,7 +265,10 @@ function PostCard({
             <div className="relative shrink-0">
               <button
                 type="button"
-                onClick={() => setIsMenuOpen((current) => !current)}
+                onClick={() => {
+                  setIsShareMenuOpen(false);
+                  setIsMenuOpen((current) => !current);
+                }}
                 className="inline-flex h-9 w-9 items-center justify-center text-[#888888] transition-colors hover:text-white"
                 aria-label="Post actions"
               >
@@ -397,14 +406,64 @@ function PostCard({
               <Heart size={17} className={post.liked ? 'fill-primary' : ''} />
               {post.likes}
             </button>
-            <button
-              type="button"
-              onClick={() => void handleShare()}
-              className="inline-flex items-center gap-2 text-sm transition-colors hover:text-white"
-              aria-label="Share post"
-            >
-              <Share2 size={17} />
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setIsShareMenuOpen((current) => !current);
+                }}
+                className="inline-flex items-center gap-2 text-sm transition-colors hover:text-white"
+                aria-label="Share post"
+                aria-expanded={isShareMenuOpen}
+              >
+                <Share2 size={17} />
+              </button>
+              {isShareMenuOpen && (
+                <div className="absolute left-0 top-7 z-20 w-48 border border-[#303030] bg-[#0a0a0a] p-1 shadow-2xl shadow-black/50">
+                  <FacebookShareButton
+                    url={shareUrl}
+                    hashtag="#BlendBeats"
+                    onClick={() => setIsShareMenuOpen(false)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#dddddd] hover:bg-[#161616] hover:text-white"
+                    aria-label="Share on Facebook"
+                  >
+                    <FacebookIcon size={18} round />
+                    Facebook
+                  </FacebookShareButton>
+                  <XShareButton
+                    url={shareUrl}
+                    title={shareTitle}
+                    hashtags={['BlendBeats', 'DJLounge']}
+                    onClick={() => setIsShareMenuOpen(false)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#dddddd] hover:bg-[#161616] hover:text-white"
+                    aria-label="Share on X"
+                  >
+                    <XIcon size={18} round />
+                    X
+                  </XShareButton>
+                  <WhatsappShareButton
+                    url={shareUrl}
+                    title={shareText}
+                    separator=" "
+                    onClick={() => setIsShareMenuOpen(false)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#dddddd] hover:bg-[#161616] hover:text-white"
+                    aria-label="Share on WhatsApp"
+                  >
+                    <WhatsappIcon size={18} round />
+                    WhatsApp
+                  </WhatsappShareButton>
+                  <button
+                    type="button"
+                    onClick={() => void copyShareUrl()}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#dddddd] hover:bg-[#161616] hover:text-white"
+                  >
+                    {didCopyShareUrl ? <Check size={16} className="text-primary" /> : <Copy size={16} />}
+                    {didCopyShareUrl ? 'Copied' : 'Copy link'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {isThreadOpen && (
