@@ -5,7 +5,12 @@ import {
   type FWDUVPPlaybackRequest,
   type FWDUVPPlayerHostHandle,
 } from './FWDUVPPlayerHost';
-import { LegacyAudioPlayerHost, type LegacyAudioPlayerHandle, resolvePlayableSource } from './LegacyAudioPlayerHost';
+import {
+  LegacyAudioPlayerHost,
+  type LegacyAudioPlayerHandle,
+  type LegacyPlaybackRequest,
+  resolvePlayableSource,
+} from './LegacyAudioPlayerHost';
 import type { PlayerMode, PlayerQueueOptions, PlayerTrack } from './player-types';
 
 export type { PlayerMode, PlayerQueueOptions, PlayerTrack } from './player-types';
@@ -25,7 +30,13 @@ type PlayerContextValue = {
 
 type PlayerEngine = 'legacy' | 'fwduvp';
 
-const PLAYER_ENGINE: PlayerEngine = import.meta.env.VITE_PLAYER_ENGINE === 'fwduvp' ? 'fwduvp' : 'legacy';
+const DEFAULT_PLAYER_ENGINE: PlayerEngine = import.meta.env.VITE_PLAYER_ENGINE === 'fwduvp' ? 'fwduvp' : 'legacy';
+
+function getPlayerEngine(mode: PlayerMode): PlayerEngine {
+  if (mode === 'lounge_live') return 'fwduvp';
+
+  return DEFAULT_PLAYER_ENGINE;
+}
 
 const PlayerContext = createContext<PlayerContextValue | undefined>(undefined);
 
@@ -65,6 +76,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     autoplay: false,
     revision: 0,
     startAtSeconds: 0,
+  });
+  const [legacyPlaybackRequest, setLegacyPlaybackRequest] = useState<LegacyPlaybackRequest>({
+    autoplay: false,
+    revision: 0,
+    startAtSeconds: 0,
+    track: null,
   });
 
   useEffect(() => {
@@ -131,7 +148,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setDuration(0);
   }, []);
 
-  const playQueuedTrack = useCallback((track: PlayerTrack, startAtSeconds = 0, autoplay = true) => {
+  const playQueuedTrack = useCallback((track: PlayerTrack, startAtSeconds = 0, autoplay = true, engine: PlayerEngine = getPlayerEngine(modeRef.current)) => {
     const playableTrack = normalizeTrack(track);
     const safeStartAtSeconds = Math.max(0, startAtSeconds);
 
@@ -141,7 +158,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setCurrentTime(safeStartAtSeconds);
     setDuration(playableTrack.duration ?? 0);
 
-    if (PLAYER_ENGINE === 'fwduvp') {
+    if (engine === 'fwduvp') {
       setFwduvpPlaybackRequest((currentRequest) => ({
         autoplay,
         revision: currentRequest.revision + 1,
@@ -150,16 +167,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    legacyPlayerRef.current?.loadTrack(playableTrack, safeStartAtSeconds, autoplay);
+    setLegacyPlaybackRequest((currentRequest) => ({
+      autoplay,
+      revision: currentRequest.revision + 1,
+      startAtSeconds: safeStartAtSeconds,
+      track: playableTrack,
+    }));
   }, []);
 
   const playTrack = useCallback((track: PlayerTrack) => {
+    const nextMode: PlayerMode = 'standard';
+
     setQueue([]);
     setQueueIndex(0);
-    setMode('standard');
+    setMode(nextMode);
     setPlaylistVersion(null);
     setPlaybackBlocked(false);
-    playQueuedTrack(track, 0, true);
+    playQueuedTrack(track, 0, true, getPlayerEngine(nextMode));
   }, [playQueuedTrack]);
 
   const updateCurrentTrack = useCallback((patch: Partial<PlayerTrack>) => {
@@ -189,6 +213,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const foundIndex = playableTracks.findIndex((track) => String(track.id) === String(currentTrackId ?? playableTracks[0].id));
     const nextIndex = foundIndex >= 0 ? foundIndex : 0;
     const nextTrack = playableTracks[nextIndex] ?? playableTracks[0];
+    const nextEngine = getPlayerEngine(nextMode);
     const isSameLiveState = nextMode === modeRef.current
       && nextPlaylistVersion
       && nextPlaylistVersion === playlistVersionRef.current
@@ -210,7 +235,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const drift = Math.abs(currentTimeRef.current - currentPositionSeconds);
 
       if (drift > 8) {
-        if (PLAYER_ENGINE === 'fwduvp') {
+        if (nextEngine === 'fwduvp') {
           fwduvpPlayerRef.current?.seekToSeconds(currentPositionSeconds);
         } else {
           legacyPlayerRef.current?.seekToSeconds(currentPositionSeconds);
@@ -223,7 +248,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
 
     setPlaybackBlocked(false);
-    playQueuedTrack(nextTrack, currentPositionSeconds, autoplay);
+    playQueuedTrack(nextTrack, currentPositionSeconds, autoplay, nextEngine);
   }, [playQueuedTrack]);
 
   const playNextQueuedTrack = useCallback(() => {
@@ -238,13 +263,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const nextTrack = currentQueue[nextIndex];
 
     setQueueIndex(nextIndex);
-    playQueuedTrack(nextTrack, 0, true);
+    playQueuedTrack(nextTrack, 0, true, getPlayerEngine(modeRef.current));
   }, [playQueuedTrack]);
 
   const togglePlay = useCallback(() => {
     if (!currentTrackRef.current) return;
 
-    if (PLAYER_ENGINE === 'fwduvp') {
+    if (getPlayerEngine(modeRef.current) === 'fwduvp') {
       if (isPlaying) {
         fwduvpPlayerRef.current?.pause();
         setIsPlaying(false);
@@ -265,7 +290,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [isPlaying]);
 
   const stop = useCallback(() => {
-    if (PLAYER_ENGINE === 'fwduvp') {
+    if (getPlayerEngine(modeRef.current) === 'fwduvp') {
       fwduvpPlayerRef.current?.stop();
     } else {
       legacyPlayerRef.current?.stop();
@@ -288,12 +313,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const fwduvpQueue = useMemo(() => (queue.length > 0 ? queue : currentTrack ? [currentTrack] : []), [currentTrack, queue]);
   const fwduvpQueueIndex = queue.length > 0 ? queueIndex : 0;
+  const activePlayerEngine = getPlayerEngine(mode);
 
   return (
     <PlayerContext.Provider value={value}>
       {children}
 
-      {PLAYER_ENGINE === 'fwduvp' ? (
+      {activePlayerEngine === 'fwduvp' ? (
         <FWDUVPPlayerHost
           ref={fwduvpPlayerRef}
           currentTrack={currentTrack}
@@ -316,6 +342,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           ref={legacyPlayerRef}
           currentTrack={currentTrack}
           mode={mode}
+          playbackRequest={legacyPlaybackRequest}
           volume={volume}
           isPlaying={isPlaying}
           error={error}

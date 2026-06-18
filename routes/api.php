@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\DjFollowController;
 use App\Http\Controllers\Api\DjHubController;
 use App\Http\Controllers\Api\DjLoungeController;
 use App\Http\Controllers\Api\DjProfileController;
+use App\Http\Controllers\Api\DjScratchController;
 use App\Http\Controllers\Api\FeaturedAdController;
 use App\Http\Controllers\Api\LoungeLiveStateController;
 use App\Http\Controllers\Api\MediaManagerController;
@@ -104,6 +105,7 @@ Route::prefix('dj-hub')
         });
     });
 Route::get('lounge/live-state', [LoungeLiveStateController::class, 'show'])->name('api.lounge.live-state');
+Route::get('dj-scratches', [DjScratchController::class, 'index'])->name('api.dj-scratches.index');
 
 Route::prefix('news')
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])

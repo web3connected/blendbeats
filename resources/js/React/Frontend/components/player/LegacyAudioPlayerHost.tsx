@@ -11,9 +11,17 @@ export type LegacyAudioPlayerHandle = {
   stop: () => void;
 };
 
+export type LegacyPlaybackRequest = {
+  autoplay: boolean;
+  revision: number;
+  startAtSeconds: number;
+  track: PlayerTrack | null;
+};
+
 type LegacyAudioPlayerHostProps = {
   currentTrack: PlayerTrack | null;
   mode: PlayerMode;
+  playbackRequest: LegacyPlaybackRequest;
   volume: number;
   isPlaying: boolean;
   error: string | null;
@@ -101,6 +109,7 @@ export const LegacyAudioPlayerHost = forwardRef<LegacyAudioPlayerHandle, LegacyA
   function LegacyAudioPlayerHost({
     currentTrack,
     mode,
+    playbackRequest,
     volume,
     isPlaying,
     error,
@@ -119,6 +128,15 @@ export const LegacyAudioPlayerHost = forwardRef<LegacyAudioPlayerHandle, LegacyA
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const [duration, setDuration] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
+
+    useEffect(() => () => {
+      const audio = audioRef.current;
+      if (!audio) return;
+
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+    }, []);
 
     useEffect(() => {
       const audio = audioRef.current;
@@ -156,39 +174,55 @@ export const LegacyAudioPlayerHost = forwardRef<LegacyAudioPlayerHandle, LegacyA
       onStop();
     }, [onStop]);
 
+    const loadAudioTrack = useCallback((track: PlayerTrack, startAtSeconds: number, autoplay: boolean) => {
+      const audio = audioRef.current;
+      if (!audio) return;
+
+      const safeStartAtSeconds = Math.max(0, startAtSeconds);
+      const playableTrack = {
+        ...track,
+        src: resolvePlayableSource(track.src),
+      };
+      const isSameTrack = audio.currentSrc === playableTrack.src || audio.src === playableTrack.src;
+
+      if (!isSameTrack) {
+        audio.src = playableTrack.src;
+        audio.load();
+        setDuration(0);
+        onDurationChange(0);
+      }
+
+      if (!isSameTrack || Math.abs(audio.currentTime - safeStartAtSeconds) > 8) {
+        try {
+          audio.currentTime = safeStartAtSeconds;
+        } catch {
+          audio.addEventListener('loadedmetadata', () => {
+            audio.currentTime = safeStartAtSeconds;
+          }, { once: true });
+        }
+
+        setCurrentTime(safeStartAtSeconds);
+        onTimeUpdate(safeStartAtSeconds);
+      }
+
+      startAudio(autoplay);
+    }, [onDurationChange, onTimeUpdate, startAudio]);
+
+    useEffect(() => {
+      if (!playbackRequest.track || playbackRequest.revision === 0) return;
+
+      loadAudioTrack(playbackRequest.track, playbackRequest.startAtSeconds, playbackRequest.autoplay);
+    }, [
+      loadAudioTrack,
+      playbackRequest.autoplay,
+      playbackRequest.revision,
+      playbackRequest.startAtSeconds,
+      playbackRequest.track,
+    ]);
+
     useImperativeHandle(ref, () => ({
       loadTrack(track, startAtSeconds, autoplay) {
-        const audio = audioRef.current;
-        if (!audio) return;
-
-        const safeStartAtSeconds = Math.max(0, startAtSeconds);
-        const playableTrack = {
-          ...track,
-          src: resolvePlayableSource(track.src),
-        };
-        const isSameTrack = audio.currentSrc === playableTrack.src || audio.src === playableTrack.src;
-
-        if (!isSameTrack) {
-          audio.src = playableTrack.src;
-          audio.load();
-          setDuration(0);
-          onDurationChange(0);
-        }
-
-        if (!isSameTrack || Math.abs(audio.currentTime - safeStartAtSeconds) > 8) {
-          try {
-            audio.currentTime = safeStartAtSeconds;
-          } catch {
-            audio.addEventListener('loadedmetadata', () => {
-              audio.currentTime = safeStartAtSeconds;
-            }, { once: true });
-          }
-
-          setCurrentTime(safeStartAtSeconds);
-          onTimeUpdate(safeStartAtSeconds);
-        }
-
-        startAudio(autoplay);
+        loadAudioTrack(track, startAtSeconds, autoplay);
       },
       pause() {
         audioRef.current?.pause();
@@ -209,7 +243,7 @@ export const LegacyAudioPlayerHost = forwardRef<LegacyAudioPlayerHandle, LegacyA
       stop() {
         stopPlayback();
       },
-    }), [onDurationChange, onPause, onPlay, onTimeUpdate, startAudio, stopPlayback]);
+    }), [loadAudioTrack, onPause, startAudio, stopPlayback]);
 
     const displayDuration = duration || currentTrack?.duration || 0;
     const progress = displayDuration > 0 ? (currentTime / displayDuration) * 100 : 0;

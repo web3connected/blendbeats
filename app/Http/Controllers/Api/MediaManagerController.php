@@ -9,8 +9,10 @@ use App\Services\MediaManagerService;
 use App\Services\MediaStorageQuotaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class MediaManagerController extends Controller
 {
@@ -48,9 +50,12 @@ class MediaManagerController extends Controller
             'description' => ['nullable', 'string', 'max:2000'],
             'genre' => ['nullable', 'string', 'max:120'],
             'visibility' => ['nullable', Rule::in(['public', 'unlisted', 'private', 'draft'])],
-            'media_kind' => ['nullable', Rule::in(['mix', 'track', 'video', 'battle_entry', 'image'])],
+            'media_kind' => ['nullable', Rule::in(['mix', 'track', 'video', 'scratch', 'battle_entry', 'image'])],
+            'duration_seconds' => ['nullable', 'numeric', 'min:0', 'max:86400'],
             'cover_image' => ['nullable', 'image', 'max:10240'],
         ]);
+
+        $this->validateScratchVideoPayload($attributes);
 
         $file = $mediaManager->uploadFileToMediaManager(
             $attributes['file'],
@@ -65,12 +70,18 @@ class MediaManagerController extends Controller
         $file->forceFill([
             'metadata' => [
                 ...($file->metadata ?? []),
+                'duration_seconds' => isset($attributes['duration_seconds'])
+                    ? round((float) $attributes['duration_seconds'], 2)
+                    : null,
                 'portfolio' => [
                     'title' => $attributes['title'] ?? null,
                     'description' => $attributes['description'] ?? null,
                     'genre' => $attributes['genre'] ?? null,
                     'visibility' => $attributes['visibility'] ?? 'draft',
                     'media_kind' => $attributes['media_kind'] ?? null,
+                    'duration_seconds' => isset($attributes['duration_seconds'])
+                        ? round((float) $attributes['duration_seconds'], 2)
+                        : null,
                     'cover_media_file_id' => $coverFile?->id,
                     'cover_image_path' => $coverFile?->path,
                     'cover_image_url' => $coverFile?->url,
@@ -120,9 +131,12 @@ class MediaManagerController extends Controller
             'description' => ['nullable', 'string', 'max:2000'],
             'genre' => ['nullable', 'string', 'max:120'],
             'visibility' => ['nullable', Rule::in(['public', 'unlisted', 'private', 'draft'])],
-            'media_kind' => ['nullable', Rule::in(['mix', 'track', 'video', 'battle_entry', 'image'])],
+            'media_kind' => ['nullable', Rule::in(['mix', 'track', 'video', 'scratch', 'battle_entry', 'image'])],
+            'duration_seconds' => ['nullable', 'numeric', 'min:0', 'max:86400'],
             'cover_image' => ['nullable', 'image', 'max:10240'],
         ]);
+
+        $this->validateScratchVideoPayload($attributes, $file);
 
         $portfolio = collect($attributes)
             ->except('cover_image')
@@ -159,5 +173,43 @@ class MediaManagerController extends Controller
             'deleted' => true,
             'quota' => $quotaService->quotaForOwner($request->user()),
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function validateScratchVideoPayload(array $attributes, ?MediaFile $file = null): void
+    {
+        if (($attributes['media_kind'] ?? null) !== 'scratch') {
+            return;
+        }
+
+        $uploadedFile = $attributes['file'] ?? null;
+        $mimeType = $uploadedFile instanceof UploadedFile
+            ? (string) $uploadedFile->getMimeType()
+            : (string) ($file?->mime_type ?? '');
+
+        if (! str_starts_with($mimeType, 'video/')) {
+            throw ValidationException::withMessages([
+                'file' => ['DJ Scratches must be uploaded as video files.'],
+            ]);
+        }
+
+        $duration = $attributes['duration_seconds']
+            ?? $file?->metadata['portfolio']['duration_seconds']
+            ?? $file?->metadata['duration_seconds']
+            ?? null;
+
+        if (! is_numeric($duration) || (float) $duration <= 0) {
+            throw ValidationException::withMessages([
+                'duration_seconds' => ['DJ Scratches need a readable video duration.'],
+            ]);
+        }
+
+        if ((float) $duration > 180) {
+            throw ValidationException::withMessages([
+                'duration_seconds' => ['DJ Scratches must be 3 minutes or less.'],
+            ]);
+        }
     }
 }

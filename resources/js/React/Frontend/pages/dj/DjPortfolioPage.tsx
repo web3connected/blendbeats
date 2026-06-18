@@ -45,12 +45,13 @@ import {
 import MediaSetupSection from './comps/MediaSetupSection';
 
 const statusFilters = ['All', 'Published', 'Drafts', 'Unlisted', 'Private', 'Archived'];
-const mediaFilters = ['All', 'Mixes', 'Tracks', 'Videos', 'Battle Entries'];
+const mediaFilters = ['All', 'Mixes', 'Tracks', 'Videos', 'Scratches', 'Battle Entries'];
 const genreOptions = ['Hip-Hop', 'House', 'Drum & Bass', 'Techno', 'Scratch Sets', 'Open Format', 'R&B', 'Afrobeats'];
 const kindOptions = [
   { value: 'mix', label: 'Mix' },
   { value: 'track', label: 'Track' },
   { value: 'video', label: 'Video' },
+  { value: 'scratch', label: 'Scratch' },
   { value: 'battle_entry', label: 'Battle Entry' },
   { value: 'image', label: 'Image' },
 ];
@@ -74,6 +75,32 @@ const emptyPortfolioForm = {
   visibility: 'draft',
   mediaKind: 'mix',
 };
+const MAX_SCRATCH_DURATION_SECONDS = 180;
+
+function getVideoDuration(file: File) {
+  return new Promise<number>((resolve, reject) => {
+    const video = document.createElement('video');
+    const objectUrl = URL.createObjectURL(file);
+
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(objectUrl);
+      const duration = video.duration;
+
+      if (!Number.isFinite(duration) || duration <= 0) {
+        reject(new Error('Video duration could not be read.'));
+        return;
+      }
+
+      resolve(duration);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Video duration could not be read.'));
+    };
+    video.src = objectUrl;
+  });
+}
 
 function formatBytes(size: number) {
   if (size === 0) return '0 B';
@@ -120,6 +147,7 @@ function matchesMediaFilter(file: MediaFileRecord, filter: string) {
   if (filter === 'Mixes') return kind === 'mix';
   if (filter === 'Tracks') return kind === 'track';
   if (filter === 'Videos') return kind === 'video' || file.is_video;
+  if (filter === 'Scratches') return kind === 'scratch';
   if (filter === 'Battle Entries') return kind === 'battle_entry';
 
   return true;
@@ -193,6 +221,7 @@ export default function DjPortfolioPage() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadCoverFile, setUploadCoverFile] = useState<File | null>(null);
+  const [uploadDurationSeconds, setUploadDurationSeconds] = useState<number | null>(null);
   const [uploadForm, setUploadForm] = useState(emptyPortfolioForm);
   const [editingFile, setEditingFile] = useState<MediaFileRecord | null>(null);
   const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
@@ -309,21 +338,31 @@ export default function DjPortfolioPage() {
       .finally(() => setIsActivatingSetup(false));
   };
 
-  const handleUploadFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleUploadFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
     if (!file) return;
     setUploadFile(file);
+    setUploadDurationSeconds(null);
     setUploadForm((currentForm) => ({
       ...currentForm,
       title: currentForm.title || file.name.replace(/\.[^/.]+$/, ''),
     }));
+
+    if (file.type.startsWith('video/')) {
+      try {
+        setUploadDurationSeconds(await getVideoDuration(file));
+      } catch {
+        setUploadDurationSeconds(null);
+      }
+    }
   };
 
   const closeUploadModal = () => {
     setIsUploadModalOpen(false);
     setUploadFile(null);
     setUploadCoverFile(null);
+    setUploadDurationSeconds(null);
     setUploadForm(emptyPortfolioForm);
   };
 
@@ -357,13 +396,32 @@ export default function DjPortfolioPage() {
       return;
     }
 
-    uploadMediaFile(file, 'dj_media', { ...uploadForm, coverImage: uploadCoverFile })
+    if (uploadForm.mediaKind === 'scratch') {
+      if (!file.type.startsWith('video/')) {
+        setError('DJ Scratches must be uploaded as video files.');
+        setIsUploading(false);
+        return;
+      }
+
+      if (!uploadDurationSeconds || uploadDurationSeconds > MAX_SCRATCH_DURATION_SECONDS) {
+        setError('DJ Scratches must be 3 minutes or less.');
+        setIsUploading(false);
+        return;
+      }
+    }
+
+    uploadMediaFile(file, 'dj_media', {
+      ...uploadForm,
+      durationSeconds: uploadDurationSeconds,
+      coverImage: uploadCoverFile,
+    })
       .then((uploadResponse) => {
         setMediaFiles((currentFiles) => [uploadResponse.file, ...currentFiles]);
         setStorageQuota(uploadResponse.quota);
         setIsUploadModalOpen(false);
         setUploadFile(null);
         setUploadCoverFile(null);
+        setUploadDurationSeconds(null);
         setUploadForm(emptyPortfolioForm);
       })
       .catch((uploadError) => {
@@ -935,6 +993,7 @@ export default function DjPortfolioPage() {
                 {uploadFile && (
                   <span className="text-xs text-[#888888]">
                     Selected: {uploadFile.name}
+                    {uploadDurationSeconds ? ` | ${Math.floor(uploadDurationSeconds / 60)}:${Math.floor(uploadDurationSeconds % 60).toString().padStart(2, '0')}` : ''}
                   </span>
                 )}
               </label>

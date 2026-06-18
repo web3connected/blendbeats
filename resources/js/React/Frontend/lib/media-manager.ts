@@ -21,6 +21,7 @@ export type MediaFileRecord = {
   portfolio_genre?: string | null;
   portfolio_visibility?: string | null;
   portfolio_kind?: string | null;
+  duration_seconds?: number | null;
   portfolio_cover_image_path?: string | null;
   portfolio_cover_image_url?: string | null;
   created_at: string;
@@ -76,6 +77,7 @@ export type MediaUploadDetails = {
   genre: string;
   visibility: string;
   mediaKind: string;
+  durationSeconds?: number | null;
   coverImage?: File | null;
 };
 
@@ -123,6 +125,9 @@ export async function uploadMediaFile(
     formData.append('genre', details.genre);
     formData.append('visibility', details.visibility);
     formData.append('media_kind', details.mediaKind);
+    if (typeof details.durationSeconds === 'number') {
+      formData.append('duration_seconds', String(details.durationSeconds));
+    }
     if (details.coverImage) {
       formData.append('cover_image', details.coverImage);
     }
@@ -158,6 +163,9 @@ export async function updateMediaFile(
       if (details.genre !== undefined) formData.append('genre', details.genre);
       if (details.visibility !== undefined) formData.append('visibility', details.visibility);
       if (details.mediaKind !== undefined) formData.append('media_kind', details.mediaKind);
+      if (details.durationSeconds !== undefined && details.durationSeconds !== null) {
+        formData.append('duration_seconds', String(details.durationSeconds));
+      }
       formData.append('cover_image', details.coverImage);
 
       const response = await apiClient.post<MediaUpdateResponse>(`/media/files/${fileId}`, formData);
@@ -170,6 +178,7 @@ export async function updateMediaFile(
       genre: details.genre,
       visibility: details.visibility,
       media_kind: details.mediaKind,
+      duration_seconds: details.durationSeconds,
     });
 
     return response.data;

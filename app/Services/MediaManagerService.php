@@ -313,6 +313,7 @@ class MediaManagerService
             'portfolio_genre' => $portfolio['genre'] ?? null,
             'portfolio_visibility' => $portfolio['visibility'] ?? null,
             'portfolio_kind' => $portfolio['media_kind'] ?? null,
+            'duration_seconds' => $portfolio['duration_seconds'] ?? $file->metadata['duration_seconds'] ?? null,
             'portfolio_cover_image_path' => $portfolio['cover_image_path'] ?? null,
             'portfolio_cover_image_url' => $portfolio['cover_image_url'] ?? null,
             'created_at' => $file->created_at,
