@@ -5,7 +5,7 @@ import type { PlayerMode, PlayerTrack } from './player-types';
 import { FWDUVP_CONTENT_PATH, loadFWDUVPlayer } from './fwduvp-loader';
 import { toFWDUVPTrackSources } from './fwduvp-playlist';
 import type { FWDUVPEvent, FWDUVPInstance } from './fwduvp-types';
-import { PlayerVisualizer } from './LegacyAudioPlayerHost';
+import { PlayerVisualizer, resolvePlayableSource } from './LegacyAudioPlayerHost';
 
 const FALLBACK_ARTWORK = '/media/site/images/pages/home/live-battles/dj-hub.jpg';
 
@@ -105,6 +105,8 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
     const idPrefix = useRef(`bb-fwduvp-${Math.random().toString(36).slice(2)}`);
     const instancePrefix = useRef(`bbFwduvp${Math.random().toString(36).slice(2)}`);
     const activeInstanceNameRef = useRef<string | null>(null);
+    const nativeAudioRef = useRef<HTMLAudioElement | null>(null);
+    const nativeFallbackActiveRef = useRef(false);
     const playerRef = useRef<FWDUVPInstance | null>(null);
     const listenerCleanupRef = useRef<(() => void) | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -116,9 +118,73 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
     const playerHeight = mode === 'lounge_live' ? 118 : 156;
     const showQueueControls = queue.length > 1 && mode !== 'lounge_live';
 
+    const stopNativeFallback = useCallback((clearSource = false) => {
+      const audio = nativeAudioRef.current;
+      if (!audio) return;
+
+      nativeFallbackActiveRef.current = false;
+      audio.pause();
+
+      if (clearSource) {
+        audio.removeAttribute('src');
+        audio.load();
+      }
+    }, []);
+
+    const startNativeFallback = useCallback((startAtSeconds = 0) => {
+      const audio = nativeAudioRef.current;
+      if (!audio || !currentTrack) return Promise.resolve(false);
+
+      const playableSource = resolvePlayableSource(currentTrack.src);
+      const nextSource = new URL(playableSource, window.location.origin).href;
+
+      if (audio.src !== nextSource) {
+        audio.src = playableSource;
+        audio.load();
+      }
+
+      audio.volume = Math.min(1, Math.max(0, volume));
+
+      const applyStartTime = () => {
+        if (startAtSeconds <= 0 || !Number.isFinite(startAtSeconds)) return;
+
+        try {
+          audio.currentTime = Math.max(0, startAtSeconds);
+        } catch {
+          // Some streams only allow seeking after metadata is ready.
+        }
+      };
+
+      if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) {
+        applyStartTime();
+      } else {
+        audio.addEventListener('loadedmetadata', applyStartTime, { once: true });
+      }
+
+      nativeFallbackActiveRef.current = true;
+
+      return audio.play()
+        .then(() => true)
+        .catch(() => {
+          audio.muted = true;
+
+          return audio.play()
+            .then(() => {
+              audio.muted = false;
+              audio.volume = Math.min(1, Math.max(0, volume));
+              return true;
+            })
+            .catch(() => {
+              nativeFallbackActiveRef.current = false;
+              return false;
+            });
+        });
+    }, [currentTrack, volume]);
+
     const cleanupPlayer = () => {
       listenerCleanupRef.current?.();
       listenerCleanupRef.current = null;
+      stopNativeFallback(true);
 
       const player = playerRef.current;
       if (player) {
@@ -157,15 +223,28 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
         player.scrub(Math.min(1, safeSeconds / totalSeconds));
         onTimeUpdate(safeSeconds);
       }
+
+      const nativeAudio = nativeAudioRef.current;
+      if (nativeAudio && nativeFallbackActiveRef.current) {
+        try {
+          nativeAudio.currentTime = safeSeconds;
+        } catch {
+          // Native fallback may not be seekable until metadata is loaded.
+        }
+      }
     }, [onTimeUpdate]);
 
     useImperativeHandle(ref, () => ({
       pause() {
+        stopNativeFallback();
         playerRef.current?.pause();
         onPause();
       },
       play() {
         playerRef.current?.play();
+        if (mode === 'lounge_live') {
+          void startNativeFallback(currentTime);
+        }
       },
       seekToSeconds(seconds) {
         seekPlayerToSeconds(seconds);
@@ -174,13 +253,17 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
         playerRef.current?.setVolume?.(Math.min(1, Math.max(0, nextVolume)));
       },
       stop() {
+        stopNativeFallback(true);
         playerRef.current?.stop();
         onStop();
       },
-    }), [onPause, onStop, seekPlayerToSeconds]);
+    }), [currentTime, mode, onPause, onStop, seekPlayerToSeconds, startNativeFallback, stopNativeFallback]);
 
     useEffect(() => {
       playerRef.current?.setVolume?.(Math.min(1, Math.max(0, volume)));
+      if (nativeAudioRef.current) {
+        nativeAudioRef.current.volume = Math.min(1, Math.max(0, volume));
+      }
     }, [volume]);
 
     useEffect(() => {
@@ -262,8 +345,6 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
 
           const autoplayTimers: number[] = [];
           let autoplayStarted = false;
-          let playlistReady = false;
-          let initialVideoRequested = false;
 
           const clearAutoplayTimers = () => {
             autoplayTimers.forEach((timer) => window.clearTimeout(timer));
@@ -280,21 +361,36 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
             if (cancelled || autoplayStarted || !playbackRequest.autoplay) return;
 
             try {
-              if (playlistReady && !initialVideoRequested) {
-                initialVideoRequested = true;
-                player.playVideo?.(safeQueueIndex);
-              }
-
+              player.playVideo?.(safeQueueIndex);
               player.play();
             } catch {
               onPlaybackBlocked();
             }
           };
 
+          const attemptNativeAutoplayFallback = () => {
+            if (cancelled || autoplayStarted || !playbackRequest.autoplay || mode !== 'lounge_live') return;
+
+            void startNativeFallback(playbackRequest.startAtSeconds).then((started) => {
+              if (cancelled || autoplayStarted || !started) return;
+
+              autoplayStarted = true;
+              clearAutoplayTimers();
+              onPlay();
+            });
+          };
+
           const queueAutoplayAttempt = (delay: number) => {
             if (!playbackRequest.autoplay) return;
 
             const timer = window.setTimeout(attemptAutoplay, delay);
+            autoplayTimers.push(timer);
+          };
+
+          const queueNativeAutoplayFallback = (delay: number) => {
+            if (!playbackRequest.autoplay || mode !== 'lounge_live') return;
+
+            const timer = window.setTimeout(attemptNativeAutoplayFallback, delay);
             autoplayTimers.push(timer);
           };
 
@@ -305,7 +401,6 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
               queueAutoplayAttempt(300);
             }],
             [window.FWDUVPlayer.LOAD_PLAYLIST_COMPLETE, () => {
-              playlistReady = true;
               syncStartPosition();
               queueAutoplayAttempt(0);
               queueAutoplayAttempt(300);
@@ -317,6 +412,7 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
             [window.FWDUVPlayer.PLAY, () => {
               autoplayStarted = true;
               clearAutoplayTimers();
+              stopNativeFallback(true);
               onPlay();
             }],
             [window.FWDUVPlayer.PAUSE, onPause],
@@ -354,6 +450,8 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
           queueAutoplayAttempt(0);
           queueAutoplayAttempt(500);
           queueAutoplayAttempt(1200);
+          queueNativeAutoplayFallback(1600);
+          queueNativeAutoplayFallback(3200);
         })
         .catch((loadErrorValue) => {
           const message = loadErrorValue instanceof Error ? loadErrorValue.message : 'Unable to load the new player.';
@@ -374,6 +472,7 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
       onStop,
       onTimeUpdate,
       onTrackChange,
+      mode,
       parentId,
       playbackRequest.autoplay,
       playbackRequest.revision,
@@ -384,8 +483,8 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
       queue.length,
       safeQueueIndex,
       showQueueControls,
+      stopNativeFallback,
       trackSources,
-      volume,
     ]);
 
     if (!currentTrack) return null;
@@ -406,6 +505,23 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
             }
           `}
         </style>
+
+        <audio
+          ref={nativeAudioRef}
+          preload="auto"
+          onLoadedMetadata={(event) => {
+            const loadedDuration = event.currentTarget.duration;
+            onDurationChange(Number.isFinite(loadedDuration) ? loadedDuration : currentTrack.duration ?? 0);
+          }}
+          onTimeUpdate={(event) => onTimeUpdate(event.currentTarget.currentTime)}
+          onPlay={onPlay}
+          onPause={() => {
+            if (nativeFallbackActiveRef.current) onPause();
+          }}
+          onEnded={onPause}
+        >
+          <track kind="captions" />
+        </audio>
 
         <div className="container mx-auto grid max-w-6xl gap-3 lg:grid-cols-[minmax(0,1fr)_220px_360px_150px] lg:items-center">
           <div className="flex min-w-0 items-center gap-3">

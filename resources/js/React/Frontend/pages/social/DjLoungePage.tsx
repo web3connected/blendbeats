@@ -6,7 +6,6 @@ import {
   MessageCircle,
   MoreHorizontal,
   Pencil,
-  PlayCircle,
   Radio,
   Flag,
   Send,
@@ -516,9 +515,6 @@ export default function DjLoungePage() {
   const [loungeMusicStatus, setLoungeMusicStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
   const {
     loadQueue,
-    mode: playerMode,
-    playbackBlocked,
-    togglePlay,
   } = usePlayer();
 
   useEffect(() => {
@@ -781,17 +777,6 @@ export default function DjLoungePage() {
                 ))}
               </div>
             </div>
-            {playerMode === 'lounge_live' && playbackBlocked && (
-              <button
-                type="button"
-                onClick={togglePlay}
-                className="mt-6 inline-flex h-11 items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
-                style={{ fontFamily: 'var(--font-heading)' }}
-              >
-                <PlayCircle size={16} />
-                Start Lounge Music
-              </button>
-            )}
             {loungeMusicStatus === 'empty' && (
               <p className="mt-4 max-w-xl border border-[#2a2a2a] bg-[#111111] p-3 text-sm text-[#999999]">
                 DJ Lounge Live is waiting on approved public tracks.
