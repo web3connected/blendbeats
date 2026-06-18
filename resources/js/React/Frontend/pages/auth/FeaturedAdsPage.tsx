@@ -281,12 +281,12 @@ export default function FeaturedAdsPage() {
                         key={step}
                         type="button"
                         onClick={() => setCurrentStep(index)}
-                        className={`border px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest ${
+                        className={`border px-3 py-3 text-left text-[11px] font-bold uppercase tracking-[0.16em] transition-colors sm:text-xs ${
                           index === currentStep
                             ? 'border-primary bg-primary text-white'
                             : index < currentStep
-                              ? 'border-[#FFB800] bg-[#151106] text-[#FFB800]'
-                              : 'border-[#2a2a2a] bg-[#080808] text-[#777777]'
+                              ? 'border-[#FFB800] bg-[#1b1607] text-[#FFE08A] hover:border-[#ffd15c] hover:text-white'
+                              : 'border-[#444444] bg-[#141414] text-[#dddddd] hover:border-[#666666] hover:text-white'
                         }`}
                         style={{ fontFamily: 'var(--font-heading)' }}
                       >
