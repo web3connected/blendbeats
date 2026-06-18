@@ -69,7 +69,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [playbackBlocked, setPlaybackBlocked] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [, setDuration] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(0.85);
   const [fwduvpPlaybackRequest, setFwduvpPlaybackRequest] = useState<FWDUVPPlaybackRequest>({
@@ -323,7 +323,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         <FWDUVPPlayerHost
           ref={fwduvpPlayerRef}
           currentTrack={currentTrack}
+          currentTime={currentTime}
+          duration={duration}
+          error={error}
+          isPlaying={isPlaying}
           mode={mode}
+          playbackBlocked={playbackBlocked}
           playbackRequest={fwduvpPlaybackRequest}
           queue={fwduvpQueue}
           queueIndex={fwduvpQueueIndex}
@@ -336,6 +341,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           onStop={resetPlayerState}
           onTimeUpdate={handleTimeUpdate}
           onTrackChange={handleFWDUVPTrackChange}
+          onTogglePlay={togglePlay}
+          onVolumeChange={(nextVolume) => setVolume(clampVolume(nextVolume))}
         />
       ) : (
         <LegacyAudioPlayerHost

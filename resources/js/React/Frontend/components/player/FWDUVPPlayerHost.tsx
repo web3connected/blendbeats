@@ -1,9 +1,11 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { CircleStop, Pause, Play, Volume2, X } from 'lucide-react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 
 import type { PlayerMode, PlayerTrack } from './player-types';
 import { FWDUVP_CONTENT_PATH, loadFWDUVPlayer } from './fwduvp-loader';
 import { toFWDUVPTrackSources } from './fwduvp-playlist';
 import type { FWDUVPEvent, FWDUVPInstance } from './fwduvp-types';
+import { PlayerVisualizer } from './LegacyAudioPlayerHost';
 
 const FALLBACK_ARTWORK = '/media/site/images/pages/home/live-battles/dj-hub.jpg';
 
@@ -23,7 +25,12 @@ export type FWDUVPPlayerHostHandle = {
 
 type FWDUVPPlayerHostProps = {
   currentTrack: PlayerTrack | null;
+  currentTime: number;
+  duration: number;
+  error: string | null;
+  isPlaying: boolean;
   mode: PlayerMode;
+  playbackBlocked: boolean;
   playbackRequest: FWDUVPPlaybackRequest;
   queue: PlayerTrack[];
   queueIndex: number;
@@ -36,11 +43,9 @@ type FWDUVPPlayerHostProps = {
   onStop: () => void;
   onTimeUpdate: (time: number) => void;
   onTrackChange: (track: PlayerTrack, index: number) => void;
+  onTogglePlay: () => void;
+  onVolumeChange: (volume: number) => void;
 };
-
-function toElementId(value: string | number) {
-  return String(value).replace(/[^a-zA-Z0-9_-]/g, '-');
-}
 
 function secondsToFWDUVPTime(seconds: number) {
   const safeSeconds = Math.max(0, Math.floor(seconds));
@@ -64,10 +69,24 @@ function parseFWDUVPTime(value: unknown) {
   return Number(value) || 0;
 }
 
+function formatTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
 export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerHostProps>(
   function FWDUVPPlayerHost({
     currentTrack,
+    currentTime,
+    duration,
+    error,
+    isPlaying,
     mode,
+    playbackBlocked,
     playbackRequest,
     queue,
     queueIndex,
@@ -80,8 +99,12 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
     onStop,
     onTimeUpdate,
     onTrackChange,
+    onTogglePlay,
+    onVolumeChange,
   }, ref) {
     const idPrefix = useRef(`bb-fwduvp-${Math.random().toString(36).slice(2)}`);
+    const instancePrefix = useRef(`bbFwduvp${Math.random().toString(36).slice(2)}`);
+    const activeInstanceNameRef = useRef<string | null>(null);
     const playerRef = useRef<FWDUVPInstance | null>(null);
     const listenerCleanupRef = useRef<(() => void) | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -108,10 +131,33 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
       }
 
       playerRef.current = null;
+      if (activeInstanceNameRef.current && typeof window !== 'undefined') {
+        delete (window as unknown as Record<string, unknown>)[activeInstanceNameRef.current];
+      }
+      activeInstanceNameRef.current = null;
 
       const parent = document.getElementById(parentId);
       if (parent) parent.innerHTML = '';
     };
+
+    const seekPlayerToSeconds = useCallback((seconds: number) => {
+      const player = playerRef.current;
+      if (!player) return;
+
+      const safeSeconds = Math.max(0, seconds);
+
+      if (player.scrubbAtTime) {
+        player.scrubbAtTime(secondsToFWDUVPTime(safeSeconds));
+        onTimeUpdate(safeSeconds);
+        return;
+      }
+
+      const totalSeconds = parseFWDUVPTime(player.getTotalTime?.('text'));
+      if (player.scrub && totalSeconds > 0) {
+        player.scrub(Math.min(1, safeSeconds / totalSeconds));
+        onTimeUpdate(safeSeconds);
+      }
+    }, [onTimeUpdate]);
 
     useImperativeHandle(ref, () => ({
       pause() {
@@ -122,22 +168,7 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
         playerRef.current?.play();
       },
       seekToSeconds(seconds) {
-        const player = playerRef.current;
-        if (!player) return;
-
-        const safeSeconds = Math.max(0, seconds);
-
-        if (player.scrubbAtTime) {
-          player.scrubbAtTime(secondsToFWDUVPTime(safeSeconds));
-          onTimeUpdate(safeSeconds);
-          return;
-        }
-
-        const totalSeconds = parseFWDUVPTime(player.getTotalTime?.('text'));
-        if (player.scrub && totalSeconds > 0) {
-          player.scrub(Math.min(1, safeSeconds / totalSeconds));
-          onTimeUpdate(safeSeconds);
-        }
+        seekPlayerToSeconds(seconds);
       },
       setVolume(nextVolume) {
         playerRef.current?.setVolume?.(Math.min(1, Math.max(0, nextVolume)));
@@ -146,7 +177,7 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
         playerRef.current?.stop();
         onStop();
       },
-    }), [onPause, onStop, onTimeUpdate]);
+    }), [onPause, onStop, seekPlayerToSeconds]);
 
     useEffect(() => {
       playerRef.current?.setVolume?.(Math.min(1, Math.max(0, volume)));
@@ -167,8 +198,11 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
           cleanupPlayer();
           setLoadError(null);
 
+          const instanceName = `${instancePrefix.current}_${Date.now()}_${playbackRequest.revision}`;
+          activeInstanceNameRef.current = instanceName;
+
           const player = new window.FWDUVPlayer({
-            instanceName: idPrefix.current,
+            instanceName,
             parentId,
             playlistsId,
             mainFolderPath: FWDUVP_CONTENT_PATH,
@@ -307,25 +341,133 @@ export const FWDUVPPlayerHost = forwardRef<FWDUVPPlayerHostHandle, FWDUVPPlayerH
 
     if (!currentTrack) return null;
 
+    const displayDuration = duration || currentTrack.duration || 0;
+    const safeDuration = Math.max(1, displayDuration);
+    const safeCurrentTime = Math.max(0, Math.min(currentTime, safeDuration));
+    const statusText = loadError || error || (playbackBlocked ? 'Tap play to start lounge music.' : currentTrack.artist || currentTrack.meta || 'BlendBeats');
+
     return (
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#2a2a2a] bg-[#050505]/96 px-3 py-3 text-white shadow-2xl shadow-black/60 backdrop-blur lg:px-8">
-        <div className="mx-auto max-w-5xl">
-          {mode === 'lounge_live' && (
-            <p
-              className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#FFB800]"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
-              DJ Lounge Live
-            </p>
-          )}
-          {loadError ? (
-            <div className="border border-[#303030] bg-[#080808] p-4 text-sm text-[#dddddd]">
-              {loadError}
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#2a2a2a] bg-[#080808]/95 px-4 py-3 text-white shadow-2xl shadow-black/60 backdrop-blur lg:px-8">
+        <style>
+          {`
+            @keyframes blendbeats-player-bar {
+              0% { transform: scaleY(0.35); }
+              45% { transform: scaleY(1); }
+              100% { transform: scaleY(0.55); }
+            }
+          `}
+        </style>
+
+        <div className="container mx-auto grid max-w-6xl gap-3 lg:grid-cols-[minmax(0,1fr)_220px_360px_150px] lg:items-center">
+          <div className="flex min-w-0 items-center gap-3">
+            {currentTrack.artwork ? (
+              <img src={currentTrack.artwork} alt={currentTrack.title} className="h-12 w-12 shrink-0 object-cover" />
+            ) : (
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center bg-primary text-white">
+                <Volume2 size={20} />
+              </div>
+            )}
+            <div className="min-w-0">
+              {mode === 'lounge_live' && (
+                <p
+                  className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-[#FFB800]"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                >
+                  DJ Lounge Live
+                </p>
+              )}
+              <p className="truncate text-sm font-semibold text-white">{currentTrack.title}</p>
+              <p className="truncate text-xs text-[#888888]">{statusText}</p>
+              {typeof currentTrack.countValue === 'number' && (
+                <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-[#777777]">
+                  {new Intl.NumberFormat('en', { notation: currentTrack.countValue >= 10000 ? 'compact' : 'standard' }).format(currentTrack.countValue)}{' '}
+                  {currentTrack.countLabel || 'plays'}
+                </p>
+              )}
             </div>
-          ) : (
-            <div id={parentId} className="w-full overflow-hidden" style={{ height: playerHeight }} />
-          )}
+          </div>
+
+          <PlayerVisualizer isPlaying={isPlaying} hasError={Boolean(loadError || error)} />
+
+          <div className="grid gap-2">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onTogglePlay}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center bg-primary text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label={isPlaying ? 'Pause current track' : 'Play current track'}
+                disabled={Boolean(loadError)}
+              >
+                {isPlaying ? <Pause size={17} /> : <Play size={17} fill="currentColor" />}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max={safeDuration}
+                step="1"
+                value={safeCurrentTime}
+                onChange={(event) => seekPlayerToSeconds(Number(event.currentTarget.value))}
+                disabled={displayDuration <= 0 || Boolean(loadError)}
+                aria-label="Player progress"
+                className="h-2 flex-1 accent-primary disabled:opacity-50"
+              />
+              <span className="w-20 text-right text-xs text-[#888888]">
+                {formatTime(currentTime)} / {formatTime(displayDuration)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2">
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={volume}
+              onChange={(event) => onVolumeChange(Number(event.currentTarget.value))}
+              aria-label="Player volume"
+              className="w-20 accent-primary"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                playerRef.current?.stop();
+                onStop();
+              }}
+              className="inline-flex h-10 w-10 items-center justify-center border border-[#333333] text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+              aria-label="Stop playback"
+            >
+              <CircleStop size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                playerRef.current?.stop();
+                onStop();
+              }}
+              className="inline-flex h-10 w-10 items-center justify-center border border-[#333333] text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+              aria-label="Close player"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
+
+        {!loadError && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-0 overflow-hidden opacity-0"
+            style={{ left: -10000, width: 980, height: playerHeight }}
+          >
+            <div id={parentId} className="w-full overflow-hidden" style={{ height: playerHeight }} />
+          </div>
+        )}
+
+        {loadError && (
+          <p className="container mx-auto mt-2 max-w-6xl text-xs text-primary">
+            {loadError}
+          </p>
+        )}
 
         <ul id={playlistsId} style={{ display: 'none' }}>
           <li
