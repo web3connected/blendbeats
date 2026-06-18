@@ -133,7 +133,8 @@ function UploadModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleVideoChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null;
+    const input = event.currentTarget;
+    const file = input.files?.[0] ?? null;
     setLocalError('');
     setVideoFile(null);
     setDurationSeconds(null);
@@ -142,7 +143,7 @@ function UploadModal({
 
     if (!file.type.startsWith('video/')) {
       setLocalError('Choose a video file.');
-      event.currentTarget.value = '';
+      input.value = '';
       return;
     }
 
@@ -152,7 +153,7 @@ function UploadModal({
 
       if (duration > MAX_SCRATCH_DURATION_SECONDS) {
         setLocalError('DJ Scratch videos must be 3:00 or less.');
-        event.currentTarget.value = '';
+        input.value = '';
         return;
       }
 
@@ -161,7 +162,7 @@ function UploadModal({
       setTitle((currentTitle) => currentTitle || file.name.replace(/\.[^/.]+$/, ''));
     } catch (durationError) {
       setLocalError(durationError instanceof Error ? durationError.message : 'Video duration could not be read.');
-      event.currentTarget.value = '';
+      input.value = '';
     } finally {
       setIsReadingDuration(false);
     }
