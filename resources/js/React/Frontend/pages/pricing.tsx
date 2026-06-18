@@ -8,13 +8,11 @@ import HeaderTitle from '@/layouts/HeaderTitle';
 import { BillingApiError, getBillingPlans, type BillingPlan, type PaymentProfile } from '@/lib/billing';
 
 const promotionGroups = [
-  ['A', 'Premium site visibility with limited inventory.'],
-  ['B', 'High visibility across multiple site locations.'],
-  ['C', 'Major community placement access.'],
-  ['D', 'Community visibility for growing DJs.'],
   ['E', 'Entry-level promotion inventory.'],
   ['F', 'Basic promotional access for Free Tier users.'],
 ];
+
+const activePricingPlanKeys = ['free', 'dj_plus'];
 
 const futureFeatures: Array<[LucideIcon, string, string]> = [
   [TrendingUp, 'Analytics Suite', 'Profile views, mix plays, follower growth, and promotion performance.'],
@@ -102,7 +100,8 @@ export default function PricingPage() {
   const activeProviderLabel = paymentProfile?.active_providers.length
     ? paymentProfile.active_providers.map((provider) => provider.display_name).join(', ')
     : 'None active';
-  const currentPlan = plans.find((plan) => plan.is_current) ?? plans.find((plan) => plan.key === currentTier);
+  const visiblePlans = plans.filter((plan) => activePricingPlanKeys.includes(plan.key));
+  const currentPlan = visiblePlans.find((plan) => plan.is_current) ?? visiblePlans.find((plan) => plan.key === currentTier);
   const currentPlanStyle = currentPlan ? (tierStyles[currentPlan.key] ?? tierStyles.free) : tierStyles.free;
   const heroStats = currentPlan
     ? [
@@ -112,9 +111,9 @@ export default function PricingPage() {
         [currentPlan.advertising_groups_label, 'Promotion access'],
       ]
     : [
-        ['Free', 'Core participation'],
-        ['A-F', 'Promotion groups'],
-        ['1/7', 'Campaign options'],
+        ['Free + Plus', 'Active tiers'],
+        ['$0-$9.99', 'Monthly range'],
+        ['E-F', 'Promotion groups'],
         [providerName, `${providerMode} checkout`],
       ];
 
@@ -139,7 +138,7 @@ export default function PricingPage() {
                 Grow Free. Upgrade When Ready.
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-7 text-[#c9c9c9] md:text-lg">
-                Every DJ can join, upload mixes, build a profile, use the Lounge, and grow a following for free. Paid tiers add storage, analytics, AI assistance, booking tools, and stronger promotion access.
+                Every DJ can join, upload mixes, build a profile, use the Lounge, and grow a following for free. Plus adds more storage, enhanced analytics, promotion planning tools, and stronger entry-level promotion access.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
@@ -225,7 +224,7 @@ export default function PricingPage() {
                 </h2>
               </div>
               <p className="max-w-xl text-sm leading-6 text-[#aaa]">
-                Paid tiers use the active payment profile configured by the admin team. Current active provider: {activeProviderLabel}.
+                Free and Plus are the active membership options right now. Current active provider: {activeProviderLabel}.
               </p>
             </div>
 
@@ -238,8 +237,8 @@ export default function PricingPage() {
             {error && <div className="border border-primary/30 bg-primary/10 p-4 text-sm text-primary">{error}</div>}
 
             {!isLoading && !error && (
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-                {plans.map((plan) => {
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                {visiblePlans.map((plan) => {
                   const style = tierStyles[plan.key] ?? tierStyles.free;
 
                   return (
@@ -308,7 +307,7 @@ export default function PricingPage() {
                 Advertising Groups
               </h2>
               <p className="mt-4 text-sm leading-6 text-[#aaa]">
-                Featured promotion is optional. DJs can claim 1-day or 7-day campaigns, with stronger groups unlocked by higher memberships.
+                Featured promotion is optional. Free and Plus currently focus on the basic and entry-level groups.
               </p>
             </div>
 
