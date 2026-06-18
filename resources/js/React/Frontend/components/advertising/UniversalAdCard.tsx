@@ -86,11 +86,15 @@ export default function UniversalAdCard({ placement, title = 'Featured Ad', comp
         onClick={() => trackAdvertisementEvent(ad, placement, 'click')}
         className="group block border border-[#282828] bg-[#090909] transition-colors hover:border-primary"
       >
-        <div className={`${compact ? 'h-32' : 'aspect-square'} overflow-hidden bg-[#050505]`}>
+        <div className={`${compact ? 'flex h-28 items-center justify-center' : 'aspect-square'} overflow-hidden bg-[#050505]`}>
           {ad.image_url ? (
-            <img src={ad.image_url} alt={ad.title || title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+            <img
+              src={ad.image_url}
+              alt={ad.title || title}
+              className={`${compact ? 'h-20 w-20 rounded-full border-2 border-[#f2f2f2]' : 'h-full w-full'} bg-[#090909] object-cover transition-transform duration-300 group-hover:scale-105`}
+            />
           ) : (
-            <div className={`${compact ? 'text-2xl' : 'text-4xl'} flex h-full w-full items-center justify-center bg-primary font-black uppercase text-white`}>
+            <div className={`${compact ? 'h-20 w-20 rounded-full text-2xl' : 'h-full w-full text-4xl'} flex items-center justify-center bg-primary font-black uppercase text-white`}>
               {(ad.title || 'Ad').slice(0, 1)}
             </div>
           )}
