@@ -118,4 +118,24 @@ class DjScratchesApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('duration_seconds');
     }
+
+    public function test_scratch_video_upload_allows_fractional_three_minute_metadata(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['name' => 'DJ Exact Cut']);
+
+        $this->actingAs($user)
+            ->postJson('/api/media/files', [
+                'file' => UploadedFile::fake()->create('three-minute-scratch.mp4', 1024, 'video/mp4'),
+                'disk' => 'public',
+                'collection' => 'dj_media',
+                'title' => 'Three Minute Scratch',
+                'visibility' => 'public',
+                'media_kind' => 'scratch',
+                'duration_seconds' => 180.4,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('file.portfolio_kind', 'scratch')
+            ->assertJsonPath('file.duration_seconds', 180.4);
+    }
 }

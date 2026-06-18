@@ -41,6 +41,10 @@ function formatDuration(seconds: number | null | undefined) {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
+function isOverScratchDurationLimit(seconds: number) {
+  return Math.floor(seconds) > MAX_SCRATCH_DURATION_SECONDS;
+}
+
 function formatDate(value: string | null) {
   if (!value) return 'Recently';
 
@@ -151,8 +155,8 @@ function UploadModal({
       setIsReadingDuration(true);
       const duration = await getVideoDuration(file);
 
-      if (duration > MAX_SCRATCH_DURATION_SECONDS) {
-        setLocalError('DJ Scratch videos must be 3:00 or less.');
+      if (isOverScratchDurationLimit(duration)) {
+        setLocalError(`This video is ${formatDuration(duration)}. DJ Scratch videos must be 3:00 or less.`);
         input.value = '';
         return;
       }

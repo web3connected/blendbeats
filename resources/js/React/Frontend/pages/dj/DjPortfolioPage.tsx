@@ -102,6 +102,10 @@ function getVideoDuration(file: File) {
   });
 }
 
+function isOverScratchDurationLimit(seconds: number) {
+  return Math.floor(seconds) > MAX_SCRATCH_DURATION_SECONDS;
+}
+
 function formatBytes(size: number) {
   if (size === 0) return '0 B';
 
@@ -403,7 +407,7 @@ export default function DjPortfolioPage() {
         return;
       }
 
-      if (!uploadDurationSeconds || uploadDurationSeconds > MAX_SCRATCH_DURATION_SECONDS) {
+      if (!uploadDurationSeconds || isOverScratchDurationLimit(uploadDurationSeconds)) {
         setError('DJ Scratches must be 3 minutes or less.');
         setIsUploading(false);
         return;
