@@ -203,17 +203,19 @@ class MediaManagerController extends Controller
             return;
         }
 
-        if (! $isYoutubeLink) {
-            $uploadedFile = $attributes['file'] ?? null;
-            $mimeType = $uploadedFile instanceof UploadedFile
-                ? (string) $uploadedFile->getMimeType()
-                : (string) ($file?->mime_type ?? '');
+        if ($isYoutubeLink) {
+            return;
+        }
 
-            if (! str_starts_with($mimeType, 'video/')) {
-                throw ValidationException::withMessages([
-                    'file' => ['Scratch routines must be uploaded as video files.'],
-                ]);
-            }
+        $uploadedFile = $attributes['file'] ?? null;
+        $mimeType = $uploadedFile instanceof UploadedFile
+            ? (string) $uploadedFile->getMimeType()
+            : (string) ($file?->mime_type ?? '');
+
+        if (! str_starts_with($mimeType, 'video/')) {
+            throw ValidationException::withMessages([
+                'file' => ['Scratch routines must be uploaded as video files.'],
+            ]);
         }
 
         $duration = $attributes['duration_seconds']
@@ -330,6 +332,10 @@ class MediaManagerController extends Controller
             return;
         }
 
+        if (isset($attributes['external_url'])) {
+            return;
+        }
+
         $user = $request->user();
         $limit = $membershipTiers->scratchVideoMonthlyLimitFor($user);
 
@@ -346,7 +352,13 @@ class MediaManagerController extends Controller
             ->where('created_at', '>=', $monthStart)
             ->where('created_at', '<', $monthEnd)
             ->get()
-            ->filter(fn (MediaFile $file): bool => ($file->metadata['portfolio']['media_kind'] ?? null) === 'scratch')
+            ->filter(function (MediaFile $file): bool {
+                $metadata = $file->metadata ?? [];
+                $portfolio = $metadata['portfolio'] ?? [];
+
+                return ($portfolio['media_kind'] ?? null) === 'scratch'
+                    && ($portfolio['source_type'] ?? $metadata['external_source']['provider'] ?? 'upload') !== 'youtube';
+            })
             ->count();
 
         if ($uploadedThisMonth < $limit) {

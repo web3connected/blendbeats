@@ -55,15 +55,16 @@ class DjScratchController extends Controller
 
     private function isPublicScratch(MediaFile $file): bool
     {
-        $portfolio = $file->metadata['portfolio'] ?? [];
+        $metadata = $file->metadata ?? [];
+        $portfolio = $metadata['portfolio'] ?? [];
         $duration = $this->durationSeconds($file);
+        $isYoutubeLink = ($portfolio['source_type'] ?? $metadata['external_source']['provider'] ?? null) === 'youtube';
         $profile = $file->user?->djProfile;
 
         return $file->isVideo()
             && ($portfolio['visibility'] ?? null) === 'public'
             && ($portfolio['media_kind'] ?? null) === 'scratch'
-            && $duration > 0
-            && floor($duration) <= 300
+            && ($isYoutubeLink || ($duration > 0 && floor($duration) <= 300))
             && $profile
             && $profile->visibility === 'public'
             && $profile->profile_status === 'active';

@@ -152,10 +152,10 @@ class DjScratchesApiTest extends TestCase
                 'title' => 'Linked Routine',
                 'visibility' => 'public',
                 'media_kind' => 'scratch',
-                'duration_seconds' => 180,
             ])
             ->assertCreated()
             ->assertJsonPath('file.portfolio_kind', 'scratch')
+            ->assertJsonPath('file.duration_seconds', null)
             ->assertJsonPath('file.source_type', 'youtube')
             ->assertJsonPath('file.external_provider', 'youtube')
             ->assertJsonPath('file.external_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
@@ -169,6 +169,27 @@ class DjScratchesApiTest extends TestCase
             'size' => 0,
             'collection' => 'dj_media',
         ]);
+    }
+
+    public function test_youtube_scratch_routines_do_not_use_monthly_upload_limit(): void
+    {
+        $user = User::factory()->create(['name' => 'DJ Free Tube', 'media_storage_tier' => 'free']);
+
+        $this->createMonthlyScratchUploads($user, 3);
+
+        $this->actingAs($user)
+            ->postJson('/api/media/files', [
+                'external_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                'source_type' => 'youtube',
+                'disk' => 'public',
+                'collection' => 'dj_media',
+                'title' => 'Unlimited Linked Routine',
+                'visibility' => 'public',
+                'media_kind' => 'scratch',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('file.portfolio_kind', 'scratch')
+            ->assertJsonPath('file.source_type', 'youtube');
     }
 
     public function test_public_scratches_endpoint_exposes_youtube_linked_routines(): void
@@ -209,7 +230,6 @@ class DjScratchesApiTest extends TestCase
                     'genre' => 'Scratch Sets',
                     'visibility' => 'public',
                     'media_kind' => 'scratch',
-                    'duration_seconds' => 180,
                     'source_type' => 'youtube',
                     'external_provider' => 'youtube',
                     'external_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',

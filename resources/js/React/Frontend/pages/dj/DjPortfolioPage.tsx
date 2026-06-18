@@ -124,17 +124,6 @@ function isYoutubeUrl(value: string) {
   }
 }
 
-function durationFromParts(minutesValue: string, secondsValue: string) {
-  const minutes = Number(minutesValue);
-  const seconds = Number(secondsValue);
-
-  if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || minutes < 0 || seconds < 0 || seconds > 59) {
-    return null;
-  }
-
-  return minutes * 60 + seconds;
-}
-
 function formatBytes(size: number) {
   if (size === 0) return '0 B';
 
@@ -257,8 +246,6 @@ export default function DjPortfolioPage() {
   const [uploadCoverFile, setUploadCoverFile] = useState<File | null>(null);
   const [uploadDurationSeconds, setUploadDurationSeconds] = useState<number | null>(null);
   const [uploadYoutubeUrl, setUploadYoutubeUrl] = useState('');
-  const [uploadYoutubeMinutes, setUploadYoutubeMinutes] = useState('0');
-  const [uploadYoutubeSeconds, setUploadYoutubeSeconds] = useState('0');
   const [uploadForm, setUploadForm] = useState(emptyPortfolioForm);
   const [editingFile, setEditingFile] = useState<MediaFileRecord | null>(null);
   const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
@@ -402,8 +389,6 @@ export default function DjPortfolioPage() {
     setUploadCoverFile(null);
     setUploadDurationSeconds(null);
     setUploadYoutubeUrl('');
-    setUploadYoutubeMinutes('0');
-    setUploadYoutubeSeconds('0');
     setUploadForm(emptyPortfolioForm);
   };
 
@@ -433,8 +418,6 @@ export default function DjPortfolioPage() {
 
     const uploadRequest = (() => {
       if (uploadSource === 'youtube') {
-        const youtubeDurationSeconds = durationFromParts(uploadYoutubeMinutes, uploadYoutubeSeconds);
-
         if (!canUseYoutubeSource(uploadForm.mediaKind)) {
           setError('YouTube links can only be added as videos or Scratch routines.');
           return null;
@@ -445,20 +428,9 @@ export default function DjPortfolioPage() {
           return null;
         }
 
-        if (!youtubeDurationSeconds) {
-          setError('Enter the YouTube video duration.');
-          return null;
-        }
-
-        if (uploadForm.mediaKind === 'scratch' && isOverScratchDurationLimit(youtubeDurationSeconds)) {
-          setError('Scratch routines must be 5 minutes or less.');
-          return null;
-        }
-
         return linkYoutubeMediaFile('dj_media', {
           ...uploadForm,
           externalUrl: uploadYoutubeUrl.trim(),
-          durationSeconds: youtubeDurationSeconds,
           coverImage: uploadCoverFile,
         });
       }
@@ -1098,32 +1070,10 @@ export default function DjPortfolioPage() {
                       placeholder="https://www.youtube.com/watch?v=..."
                       className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none placeholder:text-[#555555] focus:border-primary"
                     />
+                    <span className="text-xs text-[#666666]">
+                      YouTube links do not count against monthly upload limits.
+                    </span>
                   </label>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="grid gap-2">
-                      <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Minutes</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max={uploadForm.mediaKind === 'scratch' ? '5' : undefined}
-                        value={uploadYoutubeMinutes}
-                        onChange={(event) => setUploadYoutubeMinutes(event.target.value)}
-                        className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
-                      />
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Seconds</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="59"
-                        value={uploadYoutubeSeconds}
-                        onChange={(event) => setUploadYoutubeSeconds(event.target.value)}
-                        className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
-                      />
-                    </label>
-                  </div>
                 </div>
               ) : (
                 <label className="grid gap-2">

@@ -58,17 +58,6 @@ function isYoutubeUrl(value: string) {
   }
 }
 
-function durationFromParts(minutesValue: string, secondsValue: string) {
-  const minutes = Number(minutesValue);
-  const seconds = Number(secondsValue);
-
-  if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || minutes < 0 || seconds < 0 || seconds > 59) {
-    return null;
-  }
-
-  return minutes * 60 + seconds;
-}
-
 function formatDate(value: string | null) {
   if (!value) return 'Recently';
 
@@ -130,7 +119,9 @@ function ScratchRailItem({
           </video>
         )}
         <span className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 text-[10px] font-bold text-white">
-          {formatDuration(scratch.duration_seconds)}
+          {scratch.external_provider === 'youtube' && !scratch.duration_seconds
+            ? 'YouTube'
+            : formatDuration(scratch.duration_seconds)}
         </span>
       </div>
       <div className="min-w-0">
@@ -154,8 +145,6 @@ function UploadModal({
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [durationSeconds, setDurationSeconds] = useState<number | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [youtubeMinutes, setYoutubeMinutes] = useState('0');
-  const [youtubeSeconds, setYoutubeSeconds] = useState('0');
   const [title, setTitle] = useState('');
   const [genre, setGenre] = useState('Scratch Sets');
   const [visibility, setVisibility] = useState('public');
@@ -170,8 +159,6 @@ function UploadModal({
 
     if (nextSource === 'upload') {
       setYoutubeUrl('');
-      setYoutubeMinutes('0');
-      setYoutubeSeconds('0');
     } else {
       setVideoFile(null);
       setDurationSeconds(null);
@@ -223,15 +210,8 @@ function UploadModal({
       return;
     }
 
-    const youtubeDurationSeconds = durationFromParts(youtubeMinutes, youtubeSeconds);
-
     if (source === 'youtube' && !isYoutubeUrl(youtubeUrl.trim())) {
       setLocalError('Enter a valid YouTube video link.');
-      return;
-    }
-
-    if (source === 'youtube' && (!youtubeDurationSeconds || isOverScratchDurationLimit(youtubeDurationSeconds))) {
-      setLocalError('Scratch routine videos must be 5:00 or less.');
       return;
     }
 
@@ -246,7 +226,6 @@ function UploadModal({
           visibility,
           mediaKind: 'scratch',
           externalUrl: youtubeUrl.trim(),
-          durationSeconds: youtubeDurationSeconds,
           coverImage: coverFile,
         });
       } else if (videoFile && durationSeconds) {
@@ -360,34 +339,10 @@ function UploadModal({
                   className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none placeholder:text-[#555555] focus:border-primary"
                 />
                 <span className="text-xs text-[#666666]">
-                  Monthly limit: Free 3, Plus 50, Pro 150, Elite unlimited.
+                  YouTube links do not count against monthly upload limits.
                 </span>
               </label>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="grid gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Minutes</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="5"
-                    value={youtubeMinutes}
-                    onChange={(event) => setYoutubeMinutes(event.target.value)}
-                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
-                  />
-                </label>
-                <label className="grid gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Seconds</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="59"
-                    value={youtubeSeconds}
-                    onChange={(event) => setYoutubeSeconds(event.target.value)}
-                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
-                  />
-                </label>
-              </div>
             </div>
           )}
 
@@ -675,7 +630,9 @@ export default function DjScratchesPage() {
                         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[#888888]">
                           <span className="inline-flex items-center gap-2">
                             <Clock3 size={15} className="text-primary" />
-                            {formatDuration(activeScratch.duration_seconds)}
+                            {activeScratch.external_provider === 'youtube' && !activeScratch.duration_seconds
+                              ? 'YouTube'
+                              : formatDuration(activeScratch.duration_seconds)}
                           </span>
                           {activeScratch.genre && (
                             <span className="inline-flex items-center gap-2">
