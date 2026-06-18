@@ -45,6 +45,16 @@ function formatDateLabel(value: string) {
   }).format(new Date(year, month - 1, day));
 }
 
+function formatNullableDateLabel(value: string | null) {
+  if (!value) return 'No expiration';
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(value));
+}
+
 export default function FeaturedAdPlacementsPage() {
   const { user, isLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -207,6 +217,8 @@ export default function FeaturedAdPlacementsPage() {
   }
   const activeCampaignCount = activeCampaignIds.size;
   const pendingCampaignCount = pendingCampaignIds.size;
+  const adCreditCount = placements?.ad_credits?.total_remaining ?? 0;
+  const primaryAdCredit = placements?.ad_credits?.credits[0] ?? null;
   const nextAvailableSlot = placements
     ? placements.campaigns
         .flatMap((campaign) => campaign.slots)
@@ -381,7 +393,7 @@ export default function FeaturedAdPlacementsPage() {
 
             {!isPlacementsLoading && placements && (
               <div className="grid gap-6">
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <article className="border border-[#2a2a2a] bg-[#080808] p-5">
                     <LayoutGrid className="text-primary" size={22} />
                     <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -398,6 +410,22 @@ export default function FeaturedAdPlacementsPage() {
                       <CreditCard size={15} />
                       Create New Ad
                     </button>
+                  </article>
+                  <article className="border border-[#2a2a2a] bg-[#080808] p-5">
+                    <CreditCard className="text-[#FFB800]" size={22} />
+                    <h3 className="mt-5 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                      Ad Credits
+                    </h3>
+                    <p className="mt-3 text-sm leading-6 text-[#888888]">
+                      {adCreditCount > 0
+                        ? `${adCreditCount} available. ${primaryAdCredit?.label ?? 'Featured ad credit'}`
+                        : 'No available ad credits.'}
+                    </p>
+                    {primaryAdCredit && (
+                      <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-[#777777]">
+                        Expires {formatNullableDateLabel(primaryAdCredit.expires_at)}
+                      </p>
+                    )}
                   </article>
                   <article className="border border-[#2a2a2a] bg-[#080808] p-5">
                     <Radio className="text-[#FFB800]" size={22} />

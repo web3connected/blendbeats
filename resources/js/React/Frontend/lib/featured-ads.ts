@@ -35,6 +35,16 @@ export type FeaturedAdCampaign = {
   } | null;
 };
 
+export type FeaturedAdCredit = {
+  id: number;
+  label: string;
+  description: string;
+  duration_days: number;
+  quantity: number;
+  remaining_quantity: number;
+  expires_at: string | null;
+};
+
 export type FeaturedAdAnalyticsCampaign = FeaturedAdCampaign & {
   group_number: number;
   slot_position: number;
@@ -100,6 +110,10 @@ export type FeaturedAdsPlacementsResponse = {
   };
   campaigns: FeaturedMarketplaceCampaign[];
   my_campaigns: FeaturedAdCampaign[];
+  ad_credits: {
+    total_remaining: number;
+    credits: FeaturedAdCredit[];
+  };
   payment_provider: {
     provider: string;
     display_name: string;

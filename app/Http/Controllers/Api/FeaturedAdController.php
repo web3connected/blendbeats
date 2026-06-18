@@ -9,6 +9,8 @@ use App\Models\FeaturedCampaignSlot;
 use App\Models\DjFeaturedStatus;
 use App\Models\FeaturedSlotCampaignOption;
 use App\Models\PaymentProvider;
+use App\Models\User;
+use App\Models\UserAdCredit;
 use App\Services\FeaturedAdNotificationService;
 use App\Services\FeaturedPlacementPricingService;
 use App\Services\MembershipTierService;
@@ -33,6 +35,7 @@ class FeaturedAdController extends Controller
         $user = $request->user();
         $profile = $user->djProfile;
         $availableGroups = $this->membershipTiers->advertisingGroupsFor($user);
+        $this->adNotifications->syncEndingNotifications();
 
         $campaigns = FeaturedCampaign::query()
             ->with([
@@ -67,6 +70,7 @@ class FeaturedAdController extends Controller
                     ->map(fn (DjFeaturedStatus $campaign): array => $this->campaignPayload($campaign, $profile->id))
                     ->values()
                 : [],
+            'ad_credits' => $this->adCreditsPayload($user),
             'payment_provider' => $this->primaryPaymentProviderPayload(),
         ]);
     }
@@ -74,6 +78,7 @@ class FeaturedAdController extends Controller
     public function analytics(Request $request): JsonResponse
     {
         $profile = $request->user()->djProfile;
+        $this->adNotifications->syncEndingNotifications();
 
         if (! $profile) {
             return response()->json([
@@ -392,6 +397,35 @@ class FeaturedAdController extends Controller
         ] : null;
     }
 
+    private function adCreditsPayload(User $user): array
+    {
+        $credits = UserAdCredit::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where('credit_type', 'featured_ad_day')
+            ->where('remaining_quantity', '>', 0)
+            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->orderByRaw('expires_at is null')
+            ->orderBy('expires_at')
+            ->orderBy('id')
+            ->get();
+
+        return [
+            'total_remaining' => (int) $credits->sum('remaining_quantity'),
+            'credits' => $credits
+                ->map(fn (UserAdCredit $credit): array => [
+                    'id' => $credit->id,
+                    'label' => $credit->metadata['label'] ?? "{$credit->duration_days}-Day Featured Ad Credit",
+                    'description' => $credit->metadata['description'] ?? 'Free featured ad campaign credit.',
+                    'duration_days' => $credit->duration_days,
+                    'quantity' => $credit->quantity,
+                    'remaining_quantity' => $credit->remaining_quantity,
+                    'expires_at' => $this->dateString($credit->expires_at),
+                ])
+                ->values(),
+        ];
+    }
+
     private function createPaypalOrder(PaymentProvider $provider, DjFeaturedStatus $campaign, FeaturedSlotCampaignOption $option): array
     {
         $accessToken = $this->paypalAccessToken($provider);
@@ -527,8 +561,9 @@ class FeaturedAdController extends Controller
                     $dailyPrice = $this->placementPricing->dailyPriceCents($groupNumber, $groupSlotNumber);
                     $options = $this->campaignOptionsForSlot($templateSlotNumber, $dailyPrice);
                     $statuses = $slot->featuredStatuses
-                        ->filter(fn (DjFeaturedStatus $status): bool => ! $status->end_date || $status->end_date >= now());
-                    $activeStatuses = $statuses->filter(fn (DjFeaturedStatus $status): bool => $status->status === 'active');
+                        ->filter(fn (DjFeaturedStatus $status): bool => ! $status->end_date || $status->end_date > now());
+                    $activeStatuses = $statuses->filter(fn (DjFeaturedStatus $status): bool => $status->status === 'active'
+                        && (! $status->start_date || $status->start_date <= now()));
                     $pendingStatuses = $statuses->filter(fn (DjFeaturedStatus $status): bool => $status->status === 'pending_payment');
                     $myActiveStatuses = $activeStatuses->filter(fn (DjFeaturedStatus $status): bool => $currentDjProfileId !== null
                         && (int) $status->dj_profile_id === $currentDjProfileId);
