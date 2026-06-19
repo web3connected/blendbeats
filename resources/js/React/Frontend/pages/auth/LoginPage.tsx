@@ -7,6 +7,8 @@ import AuthCard from '@/components/auth/AuthCard';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { ApiAuthError } from '@/lib/auth';
 
+const loginBackground = new URL('../../public/assets/images/login-bg.jpg', import.meta.url).href;
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -48,6 +50,10 @@ export default function LoginPage() {
         footerPrompt="New to the Battlegrounds?"
         footerAction="Create an account"
         footerHref="/register"
+        backgroundImage={loginBackground}
+        backgroundImageClassName="opacity-100"
+        backgroundOverlayClassName="from-[#0a0a0a]/55 via-[#0a0a0a]/20 to-transparent"
+        backgroundBottomOverlayClassName="from-[#0a0a0a]/25 via-transparent to-transparent"
       >
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
