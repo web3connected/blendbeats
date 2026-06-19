@@ -26,6 +26,20 @@ class AuthFrontendApiTest extends TestCase
         $this->getJson('/api/auth/me')
             ->assertOk()
             ->assertJsonPath('user.email', 'session@example.com');
+
+        $user = User::query()->where('email', 'session@example.com')->firstOrFail();
+
+        $this->assertDatabaseHas('user_ad_credits', [
+            'user_id' => $user->id,
+            'credit_type' => 'featured_ad_day',
+            'source' => 'registration_bonus',
+            'duration_days' => 1,
+            'quantity' => 1,
+            'remaining_quantity' => 1,
+            'discount_type' => 'percent',
+            'discount_value' => 100,
+            'status' => 'active',
+        ]);
     }
 
     public function test_frontend_user_can_login_and_logout(): void

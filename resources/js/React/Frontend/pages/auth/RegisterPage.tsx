@@ -1,5 +1,5 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { UserPlus } from 'lucide-react';
+import { Gift, UserPlus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -50,12 +50,22 @@ export default function RegisterPage() {
       <AuthCard
         eyebrow="Claim your spot"
         title="Register"
-        subtitle="Create your profile, join battles, rate mixes, and start building your name in the Blend community."
+        subtitle="Create your profile, join battles, rate mixes, and start building your name in the Blend community. Every new account gets one free 1-day featured ad."
         footerPrompt="Already have an account?"
         footerAction="Log in"
         footerHref="/login"
       >
         <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="flex items-start gap-3 border border-primary/35 bg-primary/10 px-4 py-3 text-sm text-[#f2f2f2]">
+            <Gift size={18} className="mt-0.5 shrink-0 text-primary" />
+            <div>
+              <p className="font-semibold text-white">Signup bonus: free 1-day featured ad</p>
+              <p className="mt-1 text-xs leading-5 text-[#bbbbbb]">
+                Your credit is added automatically after registration.
+              </p>
+            </div>
+          </div>
+
           <div>
             <label htmlFor="name" className="text-xs font-bold uppercase tracking-widest text-[#bbbbbb]">
               Display name
