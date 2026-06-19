@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\NewsController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\Auth\UserAuthController;
+use App\Http\Controllers\Api\UserPlaylistController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -197,6 +198,16 @@ Route::prefix('dj-lounge')->name('api.dj-lounge.')->group(function (): void {
 
 Route::get('mixes', [MixController::class, 'index'])->name('api.mixes.index');
 Route::post('mixes/{mix:slug}/play', [MixController::class, 'play'])->name('api.mixes.play');
+
+Route::prefix('user-playlist')
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.user-playlist.')
+    ->group(function (): void {
+        Route::get('/', [UserPlaylistController::class, 'index'])->name('index');
+        Route::post('mixes/{mix}', [UserPlaylistController::class, 'store'])->name('mixes.store');
+        Route::delete('mixes/{mix}', [UserPlaylistController::class, 'destroy'])->name('mixes.destroy');
+    });
+
 Route::prefix('commerce')
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
     ->name('api.commerce.')

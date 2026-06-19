@@ -80,4 +80,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserAdCredit::class);
     }
+
+    public function playlistItems(): HasMany
+    {
+        return $this->hasMany(UserPlaylistItem::class);
+    }
 }

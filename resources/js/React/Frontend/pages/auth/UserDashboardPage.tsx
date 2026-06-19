@@ -23,6 +23,13 @@ const dashboardActions = [
     accent: 'text-primary',
   },
   {
+    title: 'My Playlist',
+    description: 'Save favorite mixes and play them as your personal BlendBeats queue.',
+    href: '/mixes',
+    icon: ListMusic,
+    accent: 'text-[#FFB800]',
+  },
+  {
     title: 'Start DJ Career',
     description: 'Create your DJ profile, claim a handle, and unlock creator tools.',
     href: '/dj/start',

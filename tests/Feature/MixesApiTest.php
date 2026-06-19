@@ -79,6 +79,70 @@ class MixesApiTest extends TestCase
         ]);
     }
 
+    public function test_authenticated_users_can_save_list_and_remove_their_playlist_mixes(): void
+    {
+        $owner = User::factory()->create(['name' => 'DJ Owner']);
+        $listener = User::factory()->create();
+
+        $mix = Mix::query()->create([
+            'user_id' => $owner->id,
+            'title' => 'Saved Favorite',
+            'genre' => 'House',
+            'audio_file' => 'media/mixes/saved-favorite.mp3',
+            'cover_image' => 'media/mixes/saved-favorite.jpg',
+            'duration' => 180,
+            'is_public' => true,
+            'published_at' => now(),
+        ]);
+
+        $this->actingAs($listener)
+            ->getJson('/api/user-playlist')
+            ->assertOk()
+            ->assertJsonCount(0, 'playlist');
+
+        $this->actingAs($listener)
+            ->postJson("/api/user-playlist/mixes/{$mix->id}")
+            ->assertCreated()
+            ->assertJsonPath('item.mix.id', $mix->id)
+            ->assertJsonPath('item.mix.audio_url', '/storage/media/mixes/saved-favorite.mp3');
+
+        $this->assertDatabaseHas('user_playlist_items', [
+            'user_id' => $listener->id,
+            'mix_id' => $mix->id,
+            'position' => 1,
+        ]);
+
+        $this->actingAs($listener)
+            ->getJson('/api/user-playlist')
+            ->assertOk()
+            ->assertJsonCount(1, 'playlist')
+            ->assertJsonPath('playlist.0.mix.title', 'Saved Favorite');
+
+        $this->actingAs($listener)
+            ->deleteJson("/api/user-playlist/mixes/{$mix->id}")
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertDatabaseMissing('user_playlist_items', [
+            'user_id' => $listener->id,
+            'mix_id' => $mix->id,
+        ]);
+    }
+
+    public function test_private_mixes_cannot_be_saved_to_user_playlist(): void
+    {
+        $mix = Mix::query()->create([
+            'user_id' => User::factory()->create()->id,
+            'title' => 'Private Favorite',
+            'audio_file' => 'media/mixes/private.mp3',
+            'is_public' => false,
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->postJson("/api/user-playlist/mixes/{$mix->id}")
+            ->assertNotFound();
+    }
+
     public function test_public_portfolio_audio_uploads_are_exposed_as_public_mixes(): void
     {
         $user = User::factory()->create(['name' => 'DJ Portfolio']);

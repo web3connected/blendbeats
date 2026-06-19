@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, Disc3, Eye, Headphones, Play, Radio, Star } from 'lucide-react';
+import { CalendarDays, Disc3, Eye, Headphones, Heart, ListMusic, Play, Radio, Star } from 'lucide-react';
 
 import HeaderTitle from '@/layouts/HeaderTitle';
 import MixesFeaturedDjAdSpaces from '@/components/advertising/MixesFeaturedDjAdSpaces';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { usePlayer } from '@/components/player/PlayerProvider';
+import { type PlayerTrack, usePlayer } from '@/components/player/PlayerProvider';
 import { useCounter } from '@/hooks/useCounter';
 import { getMixesIndex, type MixesIndexResponse, type PublicMix } from '@/lib/mixes';
 import { getRatingSummary, rateTarget, type RatingSummary } from '@/lib/ratings';
+import { getUserPlaylist, removePlaylistMix, savePlaylistMix } from '@/lib/user-playlist';
 
 const emptyStats = {
   featured_mixes: 0,
@@ -37,6 +38,20 @@ function formatDate(value?: string | null): string {
     day: 'numeric',
     year: 'numeric',
   }).format(new Date(value));
+}
+
+function mixToPlayerTrack(mix: PublicMix): PlayerTrack {
+  return {
+    id: `mix-${mix.id}`,
+    title: mix.title,
+    artist: mix.dj.name,
+    src: mix.audio_url || '',
+    artwork: mix.cover_image_url,
+    meta: mix.genre || 'Mix',
+    duration: mix.duration,
+    countLabel: 'plays',
+    countValue: mix.play_count,
+  };
 }
 
 function CoverArt({ mix, compact = false }: { mix: PublicMix; compact?: boolean }) {
@@ -78,6 +93,44 @@ function PlayButton({
       aria-label={`Play ${mix.title}`}
     >
       <Play size={compact ? 15 : 17} fill="currentColor" />
+    </button>
+  );
+}
+
+function SaveMixButton({
+  mix,
+  isSaved,
+  isSaving,
+  onToggleSaved,
+  compact = false,
+}: {
+  mix: PublicMix;
+  isSaved: boolean;
+  isSaving: boolean;
+  onToggleSaved: (mix: PublicMix) => void;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggleSaved(mix)}
+      disabled={isSaving}
+      className={`inline-flex items-center justify-center gap-2 border transition-colors disabled:cursor-wait disabled:opacity-60 ${
+        compact ? 'h-9 w-9' : 'h-11 px-4'
+      } ${
+        isSaved
+          ? 'border-primary bg-primary text-white hover:bg-primary/90'
+          : 'border-[#444444] text-[#dddddd] hover:border-primary hover:text-primary'
+      }`}
+      aria-label={`${isSaved ? 'Remove' : 'Save'} ${mix.title} ${isSaved ? 'from' : 'to'} your playlist`}
+      title={isSaved ? 'Saved to playlist' : 'Save to playlist'}
+    >
+      <Heart size={compact ? 15 : 16} fill={isSaved ? 'currentColor' : 'none'} />
+      {!compact && (
+        <span className="text-xs font-bold uppercase tracking-widest" style={{ fontFamily: 'var(--font-heading)' }}>
+          {isSaved ? 'Saved' : 'Save'}
+        </span>
+      )}
     </button>
   );
 }
@@ -178,13 +231,19 @@ function MixRatingStars({
 function FeaturedMixCard({
   mix,
   canRate,
+  isSaved,
+  isSaving,
   onPlay,
   onRated,
+  onToggleSaved,
 }: {
   mix: PublicMix;
   canRate: boolean;
+  isSaved: boolean;
+  isSaving: boolean;
   onPlay: (mix: PublicMix) => void;
   onRated: (mixId: number, rating: RatingSummary) => void;
+  onToggleSaved: (mix: PublicMix) => void;
 }) {
   return (
     <article className="group grid overflow-hidden border border-[#2a2a2a] bg-[#111] md:grid-cols-[0.85fr_1.15fr]">
@@ -213,6 +272,7 @@ function FeaturedMixCard({
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <PlayButton mix={mix} onPlay={onPlay} />
+          <SaveMixButton mix={mix} isSaved={isSaved} isSaving={isSaving} onToggleSaved={onToggleSaved} />
           <Link
             to={`/mixes/${mix.slug}`}
             className="inline-flex items-center gap-2 border border-[#444] px-4 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:border-[#FFB800] hover:text-[#FFB800]"
@@ -230,13 +290,19 @@ function FeaturedMixCard({
 function MixCard({
   mix,
   canRate,
+  isSaved,
+  isSaving,
   onPlay,
   onRated,
+  onToggleSaved,
 }: {
   mix: PublicMix;
   canRate: boolean;
+  isSaved: boolean;
+  isSaving: boolean;
   onPlay: (mix: PublicMix) => void;
   onRated: (mixId: number, rating: RatingSummary) => void;
+  onToggleSaved: (mix: PublicMix) => void;
 }) {
   return (
     <article id={`mix-${mix.id}`} className="group overflow-hidden border border-[#242424] bg-[#121212] transition-colors hover:border-[#FFB800]/60">
@@ -245,6 +311,9 @@ function MixCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent opacity-90" />
         <div className="absolute bottom-3 right-3">
           <PlayButton mix={mix} onPlay={onPlay} compact />
+        </div>
+        <div className="absolute left-3 top-3">
+          <SaveMixButton mix={mix} isSaved={isSaved} isSaving={isSaving} onToggleSaved={onToggleSaved} compact />
         </div>
       </div>
 
@@ -275,11 +344,17 @@ function MixCard({
 function GenreRow({
   genre,
   mixes,
+  savedMixIds,
+  savingMixIds,
   onPlay,
+  onToggleSaved,
 }: {
   genre: string;
   mixes: PublicMix[];
+  savedMixIds: Set<number>;
+  savingMixIds: Set<number>;
   onPlay: (mix: PublicMix) => void;
+  onToggleSaved: (mix: PublicMix) => void;
 }) {
   return (
     <section>
@@ -297,6 +372,15 @@ function GenreRow({
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 to-transparent" />
               <div className="absolute bottom-3 right-3">
                 <PlayButton mix={mix} onPlay={onPlay} compact />
+              </div>
+              <div className="absolute left-3 top-3">
+                <SaveMixButton
+                  mix={mix}
+                  isSaved={savedMixIds.has(mix.id)}
+                  isSaving={savingMixIds.has(mix.id)}
+                  onToggleSaved={onToggleSaved}
+                  compact
+                />
               </div>
             </div>
             <div className="p-3">
@@ -318,9 +402,13 @@ function GenreRow({
 
 export default function MixesPage() {
   const { user } = useAuth();
-  const { playTrack, updateCurrentTrack } = usePlayer();
+  const { playTrack, updateCurrentTrack, loadQueue } = usePlayer();
   const { count: countTarget } = useCounter();
   const [data, setData] = useState<MixesIndexResponse | null>(null);
+  const [savedPlaylist, setSavedPlaylist] = useState<PublicMix[]>([]);
+  const [savingMixIds, setSavingMixIds] = useState<Set<number>>(() => new Set());
+  const [isPlaylistLoading, setIsPlaylistLoading] = useState(false);
+  const [playlistMessage, setPlaylistMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -346,10 +434,46 @@ export default function MixesPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!user) {
+      setSavedPlaylist([]);
+      setPlaylistMessage('');
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    setIsPlaylistLoading(true);
+
+    getUserPlaylist()
+      .then((response) => {
+        if (!isMounted) return;
+        setSavedPlaylist(response.playlist.map((item) => item.mix));
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setPlaylistMessage('Your saved playlist could not be loaded right now.');
+      })
+      .finally(() => {
+        if (isMounted) setIsPlaylistLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
   const stats = data?.stats ?? emptyStats;
   const hasMixes = Boolean(data?.mixes.length);
   const isDj = Boolean(user?.dj_profile);
   const canRate = Boolean(user);
+  const savedMixIds = useMemo(() => new Set(savedPlaylist.map((mix) => mix.id)), [savedPlaylist]);
+  const playableSavedPlaylist = useMemo(
+    () => savedPlaylist.filter((mix) => Boolean(mix.audio_url)),
+    [savedPlaylist],
+  );
 
   const statCards = useMemo(
     () => [
@@ -363,16 +487,7 @@ export default function MixesPage() {
 
   const handlePlay = async (mix: PublicMix) => {
     if (mix.audio_url) {
-      playTrack({
-        id: `mix-${mix.id}`,
-        title: mix.title,
-        artist: mix.dj.name,
-        src: mix.audio_url,
-        artwork: mix.cover_image_url,
-        meta: mix.genre || 'Mix',
-        countLabel: 'plays',
-        countValue: mix.play_count,
-      });
+      playTrack(mixToPlayerTrack(mix));
     }
 
     try {
@@ -403,6 +518,57 @@ export default function MixesPage() {
     } catch {
       setError('The mix is available, but play tracking failed.');
     }
+  };
+
+  const handleToggleSaved = async (mix: PublicMix) => {
+    if (!user) {
+      setPlaylistMessage('Log in to save mixes to your playlist.');
+      return;
+    }
+
+    setPlaylistMessage('');
+    setSavingMixIds((current) => new Set(current).add(mix.id));
+
+    try {
+      if (savedMixIds.has(mix.id)) {
+        await removePlaylistMix(mix.id);
+        setSavedPlaylist((current) => current.filter((item) => item.id !== mix.id));
+        setPlaylistMessage('Removed from your playlist.');
+      } else {
+        const response = await savePlaylistMix(mix.id);
+        setSavedPlaylist((current) => {
+          if (current.some((item) => item.id === response.item.mix.id)) return current;
+          return [...current, response.item.mix];
+        });
+        setPlaylistMessage('Saved to your playlist.');
+      }
+    } catch (saveError) {
+      setPlaylistMessage(saveError instanceof Error ? saveError.message : 'Playlist could not be updated.');
+    } finally {
+      setSavingMixIds((current) => {
+        const next = new Set(current);
+        next.delete(mix.id);
+        return next;
+      });
+    }
+  };
+
+  const handlePlaySavedPlaylist = () => {
+    if (!user) {
+      setPlaylistMessage('Log in to play your saved playlist.');
+      return;
+    }
+
+    if (playableSavedPlaylist.length === 0) {
+      setPlaylistMessage('Save a playable mix first.');
+      return;
+    }
+
+    loadQueue({
+      tracks: playableSavedPlaylist.map(mixToPlayerTrack),
+      autoplay: true,
+    });
+    setPlaylistMessage(`Playing ${playableSavedPlaylist.length} saved mix${playableSavedPlaylist.length === 1 ? '' : 'es'}.`);
   };
 
   const handleRatingUpdate = useCallback((mixId: number, rating: RatingSummary) => {
@@ -449,6 +615,28 @@ export default function MixesPage() {
               <p className="mt-6 max-w-2xl text-base leading-7 text-[#c8c8c8] md:text-lg">
                 Browse public DJ mixes, discover genre lanes, and follow the sets earning plays and ratings from the BlendBeats community.
               </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handlePlaySavedPlaylist}
+                  disabled={Boolean(user) && (isPlaylistLoading || playableSavedPlaylist.length === 0)}
+                  className="inline-flex h-12 items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-55"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                >
+                  <ListMusic size={16} />
+                  Play My Playlist
+                </button>
+                <span className="text-sm text-[#999999]">
+                  {user
+                    ? isPlaylistLoading
+                      ? 'Loading saved playlist'
+                      : `${savedPlaylist.length} saved mix${savedPlaylist.length === 1 ? '' : 'es'}`
+                    : 'Log in to save and play your own playlist'}
+                </span>
+              </div>
+              {playlistMessage && (
+                <p className="mt-3 max-w-md text-sm text-[#FFB800]">{playlistMessage}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 border border-[#2a2a2a] bg-[#111]">
@@ -519,8 +707,11 @@ export default function MixesPage() {
                       key={mix.id}
                       mix={mix}
                       canRate={canRate}
+                      isSaved={savedMixIds.has(mix.id)}
+                      isSaving={savingMixIds.has(mix.id)}
                       onPlay={handlePlay}
                       onRated={handleRatingUpdate}
+                      onToggleSaved={handleToggleSaved}
                     />
                   ))}
                 </div>
@@ -546,8 +737,11 @@ export default function MixesPage() {
                       key={mix.id}
                       mix={mix}
                       canRate={canRate}
+                      isSaved={savedMixIds.has(mix.id)}
+                      isSaving={savingMixIds.has(mix.id)}
                       onPlay={handlePlay}
                       onRated={handleRatingUpdate}
+                      onToggleSaved={handleToggleSaved}
                     />
                   ))}
                 </div>
@@ -566,7 +760,15 @@ export default function MixesPage() {
                     </h2>
                   </div>
                   {data?.genres.map((row) => (
-                    <GenreRow key={row.genre} genre={row.genre} mixes={row.mixes} onPlay={handlePlay} />
+                    <GenreRow
+                      key={row.genre}
+                      genre={row.genre}
+                      mixes={row.mixes}
+                      savedMixIds={savedMixIds}
+                      savingMixIds={savingMixIds}
+                      onPlay={handlePlay}
+                      onToggleSaved={handleToggleSaved}
+                    />
                   ))}
                 </div>
               </section>
