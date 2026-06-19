@@ -12,6 +12,7 @@ interface AuthCardProps {
   backgroundImage?: string;
   backgroundImageClassName?: string;
   backgroundOverlayClassName?: string;
+  backgroundBottomOverlayClassName?: string;
 }
 
 export default function AuthCard({
@@ -25,6 +26,7 @@ export default function AuthCard({
   backgroundImage,
   backgroundImageClassName = 'opacity-20',
   backgroundOverlayClassName = 'from-[#0a0a0a] via-[#0a0a0a]/90 to-[#0a0a0a]/65',
+  backgroundBottomOverlayClassName = 'from-[#0a0a0a] via-transparent to-transparent',
 }: AuthCardProps) {
   const resolvedBackgroundImage = backgroundImage ?? siteMedia('images/pages/home/crowd-energy');
 
@@ -38,7 +40,7 @@ export default function AuthCard({
             <div className="h-full w-full bg-[radial-gradient(circle_at_28%_35%,rgba(255,26,26,0.2),transparent_30%),linear-gradient(135deg,#141414,#050505)]" />
           )}
           <div className={`absolute inset-0 bg-gradient-to-r ${backgroundOverlayClassName}`} />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
+          <div className={`absolute inset-0 bg-gradient-to-t ${backgroundBottomOverlayClassName}`} />
         </div>
 
         <div className="container relative z-10 mx-auto grid min-h-[calc(100vh-5rem)] grid-cols-1 items-center gap-10 px-4 py-16 lg:grid-cols-[minmax(0,1fr)_440px] lg:px-8">

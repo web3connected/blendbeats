@@ -57,8 +57,9 @@ export default function RegisterPage() {
         footerAction="Log in"
         footerHref="/login"
         backgroundImage={registerBackground}
-        backgroundImageClassName="opacity-70"
-        backgroundOverlayClassName="from-[#0a0a0a]/85 via-[#0a0a0a]/55 to-[#0a0a0a]/20"
+        backgroundImageClassName="opacity-100"
+        backgroundOverlayClassName="from-[#0a0a0a]/55 via-[#0a0a0a]/20 to-transparent"
+        backgroundBottomOverlayClassName="from-[#0a0a0a]/25 via-transparent to-transparent"
       >
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="flex items-start gap-3 border border-primary/35 bg-primary/10 px-4 py-3 text-sm text-[#f2f2f2]">
