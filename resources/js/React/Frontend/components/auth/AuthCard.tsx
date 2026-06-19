@@ -9,6 +9,7 @@ interface AuthCardProps {
   footerPrompt: string;
   footerAction: string;
   footerHref: string;
+  backgroundImage?: string;
 }
 
 export default function AuthCard({
@@ -19,15 +20,16 @@ export default function AuthCard({
   footerPrompt,
   footerAction,
   footerHref,
+  backgroundImage,
 }: AuthCardProps) {
-  const backgroundImage = siteMedia('images/pages/home/crowd-energy');
+  const resolvedBackgroundImage = backgroundImage ?? siteMedia('images/pages/home/crowd-energy');
 
   return (
     <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a]">
       <section className="relative overflow-hidden border-b border-[#1a1a1a]">
         <div className="absolute inset-0">
-          {backgroundImage ? (
-            <img src={backgroundImage} alt="" className="h-full w-full object-cover opacity-20" />
+          {resolvedBackgroundImage ? (
+            <img src={resolvedBackgroundImage} alt="" className="h-full w-full object-cover opacity-20" />
           ) : (
             <div className="h-full w-full bg-[radial-gradient(circle_at_28%_35%,rgba(255,26,26,0.2),transparent_30%),linear-gradient(135deg,#141414,#050505)]" />
           )}

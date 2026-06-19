@@ -7,6 +7,8 @@ import AuthCard from '@/components/auth/AuthCard';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { ApiAuthError } from '@/lib/auth';
 
+const registerBackground = new URL('../../public/assets/images/register-bg.jpg', import.meta.url).href;
+
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { register } = useAuth();
@@ -54,6 +56,7 @@ export default function RegisterPage() {
         footerPrompt="Already have an account?"
         footerAction="Log in"
         footerHref="/login"
+        backgroundImage={registerBackground}
       >
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="flex items-start gap-3 border border-primary/35 bg-primary/10 px-4 py-3 text-sm text-[#f2f2f2]">
