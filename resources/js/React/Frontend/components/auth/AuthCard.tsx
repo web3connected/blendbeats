@@ -10,6 +10,8 @@ interface AuthCardProps {
   footerAction: string;
   footerHref: string;
   backgroundImage?: string;
+  backgroundImageClassName?: string;
+  backgroundOverlayClassName?: string;
 }
 
 export default function AuthCard({
@@ -21,6 +23,8 @@ export default function AuthCard({
   footerAction,
   footerHref,
   backgroundImage,
+  backgroundImageClassName = 'opacity-20',
+  backgroundOverlayClassName = 'from-[#0a0a0a] via-[#0a0a0a]/90 to-[#0a0a0a]/65',
 }: AuthCardProps) {
   const resolvedBackgroundImage = backgroundImage ?? siteMedia('images/pages/home/crowd-energy');
 
@@ -29,11 +33,11 @@ export default function AuthCard({
       <section className="relative overflow-hidden border-b border-[#1a1a1a]">
         <div className="absolute inset-0">
           {resolvedBackgroundImage ? (
-            <img src={resolvedBackgroundImage} alt="" className="h-full w-full object-cover opacity-20" />
+            <img src={resolvedBackgroundImage} alt="" className={`h-full w-full object-cover ${backgroundImageClassName}`} />
           ) : (
             <div className="h-full w-full bg-[radial-gradient(circle_at_28%_35%,rgba(255,26,26,0.2),transparent_30%),linear-gradient(135deg,#141414,#050505)]" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/90 to-[#0a0a0a]/65" />
+          <div className={`absolute inset-0 bg-gradient-to-r ${backgroundOverlayClassName}`} />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
         </div>
 
