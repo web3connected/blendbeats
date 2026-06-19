@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureAdminAuthenticated;
+use App\Http\Middleware\EnsureAutomationToken;
 use App\Http\Middleware\EnsurePublicAuthenticated;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin.auth' => EnsureAdminAuthenticated::class,
+            'automation.token' => EnsureAutomationToken::class,
             'public.auth' => EnsurePublicAuthenticated::class,
             'permission' => PermissionMiddleware::class,
             'role' => RoleMiddleware::class,

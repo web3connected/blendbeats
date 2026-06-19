@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             RegistrationAdCreditSeeder::class,
             CommerceProductSeeder::class,
+            NewsAutomationRuleSeeder::class,
         ]);
     }
 }

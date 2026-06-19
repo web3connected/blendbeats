@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\MixController;
 use App\Http\Controllers\Api\AdvertisementDisplayController;
 use App\Http\Controllers\Api\AdvertisementEventController;
+use App\Http\Controllers\Api\Automation\NewsAutomationController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\CommerceController;
 use App\Http\Controllers\Api\CounterController;
@@ -121,6 +122,19 @@ Route::prefix('news')
             Route::delete('comments/{comment}', [NewsCommentController::class, 'destroy'])->name('comments.destroy');
         });
         Route::get('{slug}', [NewsController::class, 'show'])->name('show');
+    });
+
+Route::prefix('automation/news')
+    ->middleware('automation.token')
+    ->name('api.automation.news.')
+    ->group(function (): void {
+        Route::get('rules', [NewsAutomationController::class, 'rules'])->name('rules');
+        Route::get('events', [NewsAutomationController::class, 'events'])->name('events');
+        Route::get('milestones', [NewsAutomationController::class, 'milestones'])->name('milestones');
+        Route::post('drafts', [NewsAutomationController::class, 'drafts'])->name('drafts');
+        Route::post('rss-drafts', [NewsAutomationController::class, 'rssDrafts'])->name('rss-drafts');
+        Route::post('logs', [NewsAutomationController::class, 'logs'])->name('logs');
+        Route::post('notifications', [NewsAutomationController::class, 'notifications'])->name('notifications');
     });
 
 Route::get('featured-ads/preview-status', $previewStatus)
