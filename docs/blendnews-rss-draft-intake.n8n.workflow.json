@@ -1,0 +1,334 @@
+{
+  "name": "BlendNews RSS Draft Intake",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "DISABLED TEST MODE\n\nReplace placeholders only inside n8n credentials/environment:\n<APP_URL>\n<AUTOMATION_API_TOKEN>\n<RSS_FEED_URL>\n\nLaravel remains the source of truth. This workflow creates review drafts only.",
+        "height": 260,
+        "width": 360
+      },
+      "id": "ad3e5f56-6f24-48d5-8a6d-2b875d30f8a0",
+      "name": "Workflow Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "7f07a5d7-2c60-4970-bda4-97a7c70fc90c",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -620,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "<APP_URL>/api/automation/news/logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer <AUTOMATION_API_TOKEN>"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"workflow_name\": \"BlendNews RSS Draft Intake\",\n  \"status\": \"started\",\n  \"message\": \"RSS intake workflow started.\",\n  \"payload\": {\n    \"feed_url\": \"<RSS_FEED_URL>\",\n    \"mode\": \"disabled-test-import\"\n  }\n}",
+        "options": {}
+      },
+      "id": "11d5c604-bbdd-4b1b-8a50-3459ae7105c4",
+      "name": "Log Workflow Started",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -380,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "url": "<RSS_FEED_URL>",
+        "options": {}
+      },
+      "id": "f405c4be-12de-4c85-a4f8-c58ee3e5a946",
+      "name": "RSS Read",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        -140,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "cb234cb4-3902-4e6a-8fa5-cf02f91ed52f",
+      "name": "Split Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        100,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const sourceUrl = $json.link || $json.url || '';\nconst sourceGuid = $json.guid || $json.id || sourceUrl;\nconst summary = $json.contentSnippet || $json.content || $json.description || '';\n\nreturn [\n  {\n    json: {\n      source_name: 'RSS Feed',\n      source_url: sourceUrl,\n      source_feed_url: '<RSS_FEED_URL>',\n      source_guid: sourceGuid,\n      original_title: $json.title || 'Untitled RSS item',\n      title: $json.title || 'Untitled RSS item',\n      summary,\n      status: 'needs_review',\n      content_type: 'news',\n      category_slug: null,\n      metadata: {\n        created_by_automation: true,\n        workflow_name: 'BlendNews RSS Draft Intake',\n        rss_published_at: $json.pubDate || $json.isoDate || null\n      }\n    }\n  }\n];"
+      },
+      "id": "e9a83d79-0f6b-4484-b7ac-a7f5e49603fd",
+      "name": "Normalize Item",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "<APP_URL>/api/automation/news/rss-drafts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer <AUTOMATION_API_TOKEN>"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "cc8b6d04-3a9b-471c-b34c-cf76e8d549ac",
+      "name": "POST RSS Draft To Laravel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        580,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.skipped === true }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "6d205749-0f41-4b86-82e2-49e924b04719",
+      "name": "Was Duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        820,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "<APP_URL>/api/automation/news/logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer <AUTOMATION_API_TOKEN>"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"workflow_name\": \"BlendNews RSS Draft Intake\",\n  \"status\": \"skipped\",\n  \"message\": \"RSS item skipped as a duplicate by Laravel.\",\n  \"payload\": {\n    \"reason\": \"duplicate_source\",\n    \"feed_url\": \"<RSS_FEED_URL>\"\n  }\n}",
+        "options": {}
+      },
+      "id": "9f64dfd6-2ea5-444b-8f6e-8762db03e181",
+      "name": "Optional Duplicate Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1060,
+        0
+      ],
+      "notes": "Laravel already logs duplicate_source. Keep this disabled or remove it unless extra n8n-level duplicate metrics are needed."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "<APP_URL>/api/automation/news/notifications",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer <AUTOMATION_API_TOKEN>"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"workflow_name\": \"BlendNews RSS Draft Intake\",\n  \"status\": \"success\",\n  \"message\": \"RSS intake created or skipped an item. Review Laravel automation logs for details.\",\n  \"payload\": {\n    \"feed_url\": \"<RSS_FEED_URL>\",\n    \"mode\": \"disabled-test-import\"\n  }\n}",
+        "options": {}
+      },
+      "id": "029f9418-62d3-40b1-89c0-c6fd63881edb",
+      "name": "Optional Admin Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1060,
+        240
+      ],
+      "notes": "Use for beta run summaries or failure alerts. Avoid notifying on every normal duplicate once beta volume rises."
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Log Workflow Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Workflow Started": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Split Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Items": {
+      "main": [
+        [
+          {
+            "node": "Normalize Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Item": {
+      "main": [
+        [
+          {
+            "node": "POST RSS Draft To Laravel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST RSS Draft To Laravel": {
+      "main": [
+        [
+          {
+            "node": "Was Duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Was Duplicate?": {
+      "main": [
+        [
+          {
+            "node": "Optional Duplicate Log",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Optional Admin Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "versionId": "disabled-test-mode",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "blendnews"
+    },
+    {
+      "name": "disabled-test-mode"
+    }
+  ]
+}

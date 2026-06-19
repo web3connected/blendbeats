@@ -1,23 +1,130 @@
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { Play, Star, Trophy, Users, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import { slamIn } from '@/config/animations';
+import { getDjScratches, type DjScratch } from '@/lib/dj-scratches';
 import { siteMedia } from '@/lib/site-media';
+
+function getYoutubeVideoId(value: string | null | undefined) {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+
+    if (host === 'youtu.be') {
+      return url.pathname.split('/').filter(Boolean)[0] ?? null;
+    }
+
+    if (host.endsWith('youtube.com')) {
+      if (url.pathname.startsWith('/embed/')) return url.pathname.split('/').filter(Boolean)[1] ?? null;
+      if (url.pathname.startsWith('/shorts/')) return url.pathname.split('/').filter(Boolean)[1] ?? null;
+
+      return url.searchParams.get('v');
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function youtubeBackgroundUrl(scratch: DjScratch) {
+  const baseUrl = scratch.embed_url || scratch.external_url || scratch.url;
+  const videoId = getYoutubeVideoId(baseUrl);
+
+  if (!videoId) return null;
+
+  const embedUrl = new URL(`https://www.youtube.com/embed/${videoId}`);
+
+  embedUrl.searchParams.set('autoplay', '1');
+  embedUrl.searchParams.set('mute', '1');
+  embedUrl.searchParams.set('controls', '0');
+  embedUrl.searchParams.set('loop', '1');
+  embedUrl.searchParams.set('playlist', videoId);
+  embedUrl.searchParams.set('playsinline', '1');
+  embedUrl.searchParams.set('rel', '0');
+  embedUrl.searchParams.set('modestbranding', '1');
+  embedUrl.searchParams.set('iv_load_policy', '3');
+  embedUrl.searchParams.set('disablekb', '1');
+
+  return embedUrl.toString();
+}
+
+function HeroScratchBackground({ scratch }: { scratch: DjScratch }) {
+  const youtubeUrl = scratch.external_provider === 'youtube' ? youtubeBackgroundUrl(scratch) : null;
+
+  if (youtubeUrl) {
+    return (
+      <iframe
+        src={youtubeUrl}
+        title=""
+        aria-hidden="true"
+        tabIndex={-1}
+        allow="autoplay; encrypted-media; picture-in-picture"
+        className="pointer-events-none absolute left-1/2 top-1/2 border-0 opacity-75"
+        style={{
+          height: 'max(100%, 56.25vw)',
+          transform: 'translate(-50%, -50%) scale(1.08)',
+          width: 'max(100%, 177.78vh)',
+        }}
+      />
+    );
+  }
+
+  return (
+    <video
+      src={scratch.url}
+      poster={scratch.cover_image_url ?? scratch.thumbnail_url ?? undefined}
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 h-full w-full scale-105 object-cover opacity-75"
+    >
+      <track kind="captions" />
+    </video>
+  );
+}
 
 const DJHero = () => {
   const heroImage = siteMedia('images/pages/home/hero.jpg');
+  const [heroScratch, setHeroScratch] = useState<DjScratch | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getDjScratches()
+      .then((response) => {
+        if (!isMounted) return;
+        setHeroScratch(response.scratches[0] ?? null);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setHeroScratch(null);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <section className="relative min-h-screen flex flex-col overflow-hidden bg-[#0a0a0a]">
         {/* Background image — stronger presence */}
         <div className="absolute inset-0">
           <div className="h-full w-full bg-[radial-gradient(circle_at_70%_35%,rgba(255,26,26,0.28),transparent_34%),linear-gradient(135deg,#171717,#050505_55%,#210606)]" />
-          <div
-            className="absolute inset-y-0 right-0 w-full scale-105 bg-cover bg-center opacity-70 md:w-[68%]"
-            style={{ backgroundImage: `url(${heroImage})` }}
-            aria-hidden="true"
-          />
+          <div className="absolute inset-y-0 right-0 w-full overflow-hidden md:w-[68%]" aria-hidden="true">
+            <div
+              className="absolute inset-0 scale-105 bg-cover bg-center opacity-70"
+              style={{ backgroundImage: `url(${heroImage})` }}
+            />
+            {heroScratch && <HeroScratchBackground scratch={heroScratch} />}
+          </div>
           <div className="absolute inset-0 bg-gradient-to-l from-[#0a0a0a]/10 via-[#0a0a0a]/35 to-[#0a0a0a]" />
           {/* Left-to-right fade so text stays readable */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/80 to-[#0a0a0a]/20" />

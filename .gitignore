@@ -28,6 +28,9 @@
 !/docs/stripe-subscriptions-audit.md
 !/docs/dj-battle-arena-build-plan.md
 !/docs/video-player-replacement-plan.md
+!/docs/blendnews-automation-manual-api-tests.md
+!/docs/blendnews-rss-draft-intake-n8n-workflow-plan.md
+!/docs/blendnews-rss-draft-intake.n8n.workflow.json
 /frontend
 _ide_helper.php
 Homestead.json
