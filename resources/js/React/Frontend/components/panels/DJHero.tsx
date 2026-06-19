@@ -64,7 +64,7 @@ function HeroScratchBackground({ scratch }: { scratch: DjScratch }) {
         aria-hidden="true"
         tabIndex={-1}
         allow="autoplay; encrypted-media; picture-in-picture"
-        className="pointer-events-none absolute left-1/2 top-1/2 border-0 opacity-75"
+        className="pointer-events-none absolute left-1/2 top-1/2 border-0 opacity-95"
         style={{
           height: 'max(100%, 56.25vw)',
           transform: 'translate(-50%, -50%) scale(1.08)',
@@ -84,7 +84,7 @@ function HeroScratchBackground({ scratch }: { scratch: DjScratch }) {
       playsInline
       preload="metadata"
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 h-full w-full scale-105 object-cover opacity-75"
+      className="pointer-events-none absolute inset-0 h-full w-full scale-105 object-cover opacity-95"
     >
       <track kind="captions" />
     </video>
