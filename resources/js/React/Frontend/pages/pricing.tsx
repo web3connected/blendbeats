@@ -282,7 +282,7 @@ export default function PricingPage() {
                     </ul>
 
                     <Link
-                      to={user ? `/subscription?plan=${plan.key}` : '/register'}
+                      to={plan.key === 'dj_plus' ? '/subscription?plan=dj_plus' : user ? `/subscription?plan=${plan.key}` : '/register'}
                       className={`mt-7 inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-opacity hover:opacity-90 ${style.cta} ${plan.is_current ? 'pointer-events-none opacity-70' : ''}`}
                       style={{ fontFamily: 'var(--font-heading)' }}
                     >

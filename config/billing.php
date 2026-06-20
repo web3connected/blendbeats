@@ -2,6 +2,8 @@
 
 $megabyte = 1024 * 1024;
 $gigabyte = 1024 * $megabyte;
+$paypalMode = env('PAYPAL_MODE', 'sandbox');
+$paypalIsSandbox = $paypalMode === 'sandbox';
 
 return [
     'stripe' => [
@@ -9,12 +11,15 @@ return [
     ],
 
     'paypal' => [
-        'mode' => env('PAYPAL_MODE', 'sandbox'),
-        'client_id' => env('PAYPAL_CLIENT_ID'),
-        'secret' => env('PAYPAL_SECRET'),
+        'mode' => $paypalMode,
+        'client_id' => $paypalIsSandbox ? env('TEST_PAYPAL_CLIENT_ID', env('PAYPAL_CLIENT_ID')) : env('PAYPAL_CLIENT_ID'),
+        'secret' => $paypalIsSandbox ? env('TEST_PAYPAL_SECRET', env('PAYPAL_SECRET')) : env('PAYPAL_SECRET'),
         'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
         'webhook_secret' => env('PAYPAL_WEBHOOK_SECRET'),
         'merchant_id' => env('PAYPAL_MERCHANT_ID'),
+        'plans' => [
+            'dj_plus' => $paypalIsSandbox ? env('TEST_PAYPAL_PLAN_DJ_PLUS', env('PAYPAL_PLAN_DJ_PLUS')) : env('PAYPAL_PLAN_DJ_PLUS'),
+        ],
     ],
 
     'promotion' => [

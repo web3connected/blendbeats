@@ -21,16 +21,107 @@ export default function SubscriptionPage() {
   const [plans, setPlans] = useState<BillingPlan[]>([]);
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [paymentProfile, setPaymentProfile] = useState<PaymentProfile | null>(null);
+  const [paypalConfig, setPaypalConfig] = useState<{
+    client_id: string;
+    plan_id: string;
+    mode: string;
+  } | null>(null);
   const [error, setError] = useState('');
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/billing/paypal/subscription-config')
+      .then((response) => response.json())
+      .then((data) => {
+        setPaypalConfig(data);
+      })
+      .catch((error) => {
+        console.error('Unable to load PayPal subscription config:', error);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!paypalConfig?.client_id || !paypalConfig?.plan_id) {
+      return;
+    }
+
+    if (document.getElementById('paypal-sdk')) {
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'paypal-sdk';
+    script.src = `https://www.paypal.com/sdk/js?client-id=${paypalConfig.client_id}&vault=true&intent=subscription`;
+    script.async = true;
+
+    document.body.appendChild(script);
+  }, [paypalConfig]);
 
   const selectedPlanKey = searchParams.get('plan') ?? 'dj_pro';
   const selectedPlan = useMemo(
     () => plans.find((plan) => plan.key === selectedPlanKey) ?? plans.find((plan) => plan.key === status?.current_tier) ?? plans[0],
     [plans, selectedPlanKey, status?.current_tier],
   );
+
+  useEffect(() => {
+    if (
+      !paypalConfig ||
+      selectedPlan?.key !== 'dj_plus'
+    ) {
+      return;
+    }
+
+    const renderButtons = () => {
+      const paypal = (window as any).paypal;
+
+      if (!paypal) {
+        setTimeout(renderButtons, 500);
+        return;
+      }
+
+      const container = document.getElementById(
+        'paypal-dj-plus-button-container'
+      );
+
+      if (!container || container.childElementCount > 0) {
+        return;
+      }
+
+      paypal.Buttons({
+        style: {
+          shape: 'pill',
+          color: 'silver',
+          layout: 'horizontal',
+          label: 'subscribe',
+        },
+
+        createSubscription: (_data: any, actions: any) => {
+          return actions.subscription.create({
+            plan_id: paypalConfig.plan_id,
+          });
+        },
+
+        onApprove: (data: any) => {
+          console.log(
+            'PayPal Subscription Approved:',
+            data.subscriptionID
+          );
+
+          window.location.href =
+            '/payment/success?subscription_id=' +
+            data.subscriptionID;
+        },
+
+        onError: (err: any) => {
+          console.error('PayPal Error', err);
+        },
+      }).render('#paypal-dj-plus-button-container');
+    };
+
+    renderButtons();
+  }, [paypalConfig, selectedPlan?.key]);
 
   useEffect(() => {
     if (!user) return;
@@ -186,16 +277,22 @@ export default function SubscriptionPage() {
                     )}
 
                     <div className="mt-7 grid gap-3">
-                      <button
-                        type="button"
-                        disabled={!selectedPlan.checkout_enabled || !providerCheckoutReady || selectedPlan.is_current || isCheckoutLoading}
-                        onClick={handleCheckout}
-                        className="inline-flex w-full items-center justify-center gap-3 bg-primary px-6 py-4 text-xs font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                        style={{ fontFamily: 'var(--font-heading)' }}
-                      >
-                        {isCheckoutLoading ? <Loader2 className="animate-spin" size={16} /> : <CreditCard size={16} />}
-                        {selectedPlan.checkout_enabled ? checkoutLabel : 'Plan Price Needed'}
-                      </button>
+                      {selectedPlan.key !== 'dj_plus' && (
+                        <button
+                          type="button"
+                          disabled={!selectedPlan.checkout_enabled || !providerCheckoutReady || selectedPlan.is_current || isCheckoutLoading}
+                          onClick={handleCheckout}
+                          className="inline-flex w-full items-center justify-center gap-3 bg-primary px-6 py-4 text-xs font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                          style={{ fontFamily: 'var(--font-heading)' }}
+                        >
+                          {isCheckoutLoading ? <Loader2 className="animate-spin" size={16} /> : <CreditCard size={16} />}
+                          {selectedPlan.checkout_enabled ? checkoutLabel : 'Plan Price Needed'}
+                        </button>
+                      )}
+
+                      {selectedPlan.key === 'dj_plus' && (
+                        <div id="paypal-dj-plus-button-container" className="mt-4" />
+                      )}
 
                       {status?.has_stripe_customer && (
                         <button

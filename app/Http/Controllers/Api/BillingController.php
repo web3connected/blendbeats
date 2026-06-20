@@ -73,6 +73,15 @@ class BillingController extends Controller
         ]);
     }
 
+    public function paypalSubscriptionConfig(): JsonResponse
+    {
+        return response()->json([
+            'client_id' => config('billing.paypal.client_id'),
+            'plan_id' => config('billing.paypal.plans.dj_plus'),
+            'mode' => config('billing.paypal.mode'),
+        ]);
+    }
+
     private function paymentProfile(): array
     {
         $activeProviders = PaymentProvider::query()

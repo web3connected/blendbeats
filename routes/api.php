@@ -149,6 +149,8 @@ Route::get('site/preview-status', $previewStatus)
 Route::get('billing/plans', [BillingController::class, 'plans'])
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
     ->name('api.billing.plans');
+Route::get('billing/paypal/subscription-config', [BillingController::class, 'paypalSubscriptionConfig'])
+    ->name('api.billing.paypal.subscription-config');
 Route::prefix('billing')
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
     ->name('api.billing.')
