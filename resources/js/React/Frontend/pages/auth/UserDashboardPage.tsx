@@ -25,7 +25,7 @@ const dashboardActions = [
   {
     title: 'My Playlist',
     description: 'Save favorite mixes and play them as your personal BlendBeats queue.',
-    href: '/mixes',
+    href: '/account/playlist',
     icon: ListMusic,
     accent: 'text-[#FFB800]',
   },

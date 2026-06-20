@@ -20,6 +20,7 @@ import StoragePage from './Frontend/pages/auth/StoragePage';
 import SupportDocPage from './Frontend/pages/auth/SupportDocPage';
 import SupportPage from './Frontend/pages/auth/SupportPage';
 import UserDashboardPage from './Frontend/pages/auth/UserDashboardPage';
+import UserPlaylistPage from './Frontend/pages/auth/UserPlaylistPage';
 import BattlesPage from './Frontend/pages/battles';
 import DjPortfolioPage from './Frontend/pages/dj/DjPortfolioPage';
 import DjScratchesPage from './Frontend/pages/dj/DjScratchesPage';
@@ -70,6 +71,7 @@ createRoot(rootElement).render(
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/dashboard" element={<UserDashboardPage />} />
                 <Route path="/account" element={<UserDashboardPage />} />
+                <Route path="/account/playlist" element={<UserPlaylistPage />} />
                 <Route path="/account/profile" element={<AccountPage />} />
                 <Route path="/account/billing" element={<BillingPaymentsPage />} />
                 <Route path="/account/featured-ads" element={<FeaturedAdsPage />} />
