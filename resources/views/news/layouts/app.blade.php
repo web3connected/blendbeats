@@ -61,8 +61,68 @@
                             class="hidden h-10 w-10 items-center justify-center border border-[#333333] bg-[#111111] text-[#dddddd] transition-colors hover:border-primary hover:text-primary md:inline-flex"
                             aria-label="Upload a mix"
                         >
-                            ^
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M12 3v12"></path>
+                                <path d="m17 8-5-5-5 5"></path>
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            </svg>
                         </a>
+                        <a
+                            href="/merch"
+                            class="hidden h-10 w-10 items-center justify-center border border-[#333333] bg-[#111111] text-[#dddddd] transition-colors hover:border-primary hover:text-primary md:inline-flex"
+                            aria-label="Open cart"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="8" cy="21" r="1"></circle>
+                                <circle cx="19" cy="21" r="1"></circle>
+                                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57L22 7H5.12"></path>
+                            </svg>
+                        </a>
+                        <a
+                            href="/account/notifications"
+                            class="hidden h-10 w-10 items-center justify-center border border-[#333333] bg-[#111111] text-[#dddddd] transition-colors hover:border-primary hover:text-primary md:inline-flex"
+                            aria-label="Notifications"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M10.27 21a2 2 0 0 0 3.46 0"></path>
+                                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7"></path>
+                            </svg>
+                        </a>
+                        @auth
+                            <a
+                                href="/account"
+                                class="hidden h-10 items-center gap-2 border border-[#333333] bg-[#111111] px-3 font-heading text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary md:inline-flex"
+                            >
+                                <span class="flex h-6 w-6 items-center justify-center bg-primary text-[10px] font-black text-white">
+                                    {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
+                                </span>
+                                <span class="max-w-24 truncate">{{ auth()->user()->name }}</span>
+                            </a>
+                        @else
+                            <a
+                                href="/login"
+                                class="hidden h-10 items-center gap-2 border border-[#444444] px-4 font-heading text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary md:inline-flex"
+                            >
+                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                                    <path d="m10 17 5-5-5-5"></path>
+                                    <path d="M15 12H3"></path>
+                                </svg>
+                                Login
+                            </a>
+                            <a
+                                href="/register"
+                                class="hidden h-10 items-center gap-2 bg-primary px-4 font-heading text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 lg:inline-flex"
+                            >
+                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M19 8v6"></path>
+                                    <path d="M22 11h-6"></path>
+                                </svg>
+                                Register
+                            </a>
+                        @endauth
                     </div>
                 </div>
             </div>
