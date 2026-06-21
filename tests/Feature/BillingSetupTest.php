@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Models\Admin;
 use App\Models\PayPalWebhookEvent;
+use App\Models\PaymentProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Env;
 use Laravel\Cashier\Billable;
@@ -95,6 +96,34 @@ class BillingSetupTest extends TestCase
                 'mode' => 'sandbox',
                 'plan_id' => 'test-plan-id',
             ]);
+    }
+
+    public function test_billing_payment_profile_syncs_paypal_mode_from_config(): void
+    {
+        config([
+            'billing.paypal.mode' => 'live',
+        ]);
+
+        PaymentProvider::query()->updateOrCreate(
+            ['provider' => 'paypal'],
+            [
+                'display_name' => 'PayPal',
+                'mode' => 'sandbox',
+                'is_active' => true,
+                'is_primary' => true,
+                'supported_features' => ['checkout', 'subscriptions'],
+            ],
+        );
+
+        $this->getJson('/api/billing/plans')
+            ->assertOk()
+            ->assertJsonPath('payment_profile.primary_provider.provider', 'paypal')
+            ->assertJsonPath('payment_profile.primary_provider.mode', 'live');
+
+        $this->assertDatabaseHas('payment_providers', [
+            'provider' => 'paypal',
+            'mode' => 'live',
+        ]);
     }
 
     public function test_paypal_subscription_approval_endpoint_saves_subscription_for_logged_in_user(): void

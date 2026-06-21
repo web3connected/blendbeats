@@ -50,11 +50,7 @@ class BillingController extends Controller
 
     public function paymentMethods(): JsonResponse
     {
-        $providers = PaymentProvider::query()
-            ->where('is_active', true)
-            ->orderByDesc('is_primary')
-            ->orderBy('display_name')
-            ->get()
+        $providers = $this->activePaymentProviders()
             ->map(fn (PaymentProvider $provider): array => [
                 'id' => $provider->id,
                 'provider' => $provider->provider,
@@ -121,11 +117,7 @@ class BillingController extends Controller
 
     private function paymentProfile(): array
     {
-        $activeProviders = PaymentProvider::query()
-            ->where('is_active', true)
-            ->orderByDesc('is_primary')
-            ->orderBy('display_name')
-            ->get();
+        $activeProviders = $this->activePaymentProviders();
         $primaryProvider = $activeProviders->firstWhere('is_primary', true) ?? $activeProviders->first();
 
         return [
@@ -150,6 +142,31 @@ class BillingController extends Controller
                 ])
                 ->values(),
         ];
+    }
+
+    private function activePaymentProviders()
+    {
+        return PaymentProvider::query()
+            ->where('is_active', true)
+            ->orderByDesc('is_primary')
+            ->orderBy('display_name')
+            ->get()
+            ->map(fn (PaymentProvider $provider): PaymentProvider => $this->syncProviderModeFromConfig($provider));
+    }
+
+    private function syncProviderModeFromConfig(PaymentProvider $provider): PaymentProvider
+    {
+        $configuredMode = match ($provider->provider) {
+            'paypal' => config('billing.paypal.mode'),
+            'stripe' => config('billing.stripe.mode'),
+            default => null,
+        };
+
+        if (filled($configuredMode) && $provider->mode !== $configuredMode) {
+            $provider->forceFill(['mode' => $configuredMode])->save();
+        }
+
+        return $provider;
     }
 
     public function checkout(Request $request): JsonResponse
