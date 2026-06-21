@@ -47,7 +47,7 @@ class MediaManagerController extends Controller
         $attributes = $request->validate([
             'file' => ['nullable', 'required_without:external_url', 'file', 'max:51200'],
             'external_url' => ['nullable', 'required_without:file', 'url', 'max:2048'],
-            'source_type' => ['nullable', Rule::in(['upload', 'youtube'])],
+            'source_type' => ['nullable', Rule::in(['upload', 'youtube', 'instagram'])],
             'disk' => ['nullable', Rule::in(['public', 'local'])],
             'collection' => ['nullable', 'string', 'max:120'],
             'title' => ['nullable', 'string', 'max:255'],
@@ -60,22 +60,29 @@ class MediaManagerController extends Controller
         ]);
 
         $youtubeVideo = $this->youtubeVideoFromAttributes($attributes);
+        $instagramMedia = $this->instagramMediaFromAttributes($attributes);
 
         $this->validateExternalVideoPayload($attributes, $youtubeVideo);
-        $this->validateScratchVideoPayload($attributes, null, $youtubeVideo !== null);
+        $this->validateScratchVideoPayload($attributes, null, $youtubeVideo !== null || $instagramMedia !== null);
         $this->assertScratchVideoMonthlyLimit($request, $membershipTiers, $attributes);
 
-        $file = $youtubeVideo
-            ? $mediaManager->createExternalYoutubeForOwner(
+        $file = match (true) {
+            $youtubeVideo !== null => $mediaManager->createExternalYoutubeForOwner(
                 $request->user(),
                 $youtubeVideo,
                 $attributes['collection'] ?? MediaManagerService::COLLECTION_DJ_MEDIA,
-            )
-            : $mediaManager->uploadFileToMediaManager(
+            ),
+            $instagramMedia !== null => $mediaManager->createExternalInstagramForOwner(
+                $request->user(),
+                $instagramMedia,
+                $attributes['collection'] ?? MediaManagerService::COLLECTION_DJ_MEDIA,
+            ),
+            default => $mediaManager->uploadFileToMediaManager(
                 $attributes['file'],
                 $attributes['disk'] ?? 'public',
                 $attributes['collection'] ?? MediaManagerService::COLLECTION_DJ_MEDIA,
-            );
+            ),
+        };
 
         $coverFile = isset($attributes['cover_image'])
             ? $mediaManager->uploadForOwner($request->user(), $attributes['cover_image'], 'public', MediaManagerService::COLLECTION_DJ_IMAGES)
@@ -96,11 +103,11 @@ class MediaManagerController extends Controller
                     'duration_seconds' => isset($attributes['duration_seconds'])
                         ? round((float) $attributes['duration_seconds'], 2)
                         : null,
-                    'source_type' => $youtubeVideo ? 'youtube' : 'upload',
-                    'external_provider' => $youtubeVideo ? 'youtube' : null,
-                    'external_url' => $youtubeVideo['watch_url'] ?? null,
-                    'embed_url' => $youtubeVideo['embed_url'] ?? null,
-                    'thumbnail_url' => $youtubeVideo['thumbnail_url'] ?? null,
+                    'source_type' => $instagramMedia['source_type'] ?? ($youtubeVideo ? 'youtube' : 'upload'),
+                    'external_provider' => $instagramMedia['external_provider'] ?? ($youtubeVideo ? 'youtube' : null),
+                    'external_url' => $instagramMedia['external_url'] ?? $youtubeVideo['watch_url'] ?? null,
+                    'embed_url' => $instagramMedia['embed_url'] ?? $youtubeVideo['embed_url'] ?? null,
+                    'thumbnail_url' => $instagramMedia['thumbnail_url'] ?? $youtubeVideo['thumbnail_url'] ?? null,
                     'cover_media_file_id' => $coverFile?->id,
                     'cover_image_path' => $coverFile?->path,
                     'cover_image_url' => $coverFile?->url ?? $youtubeVideo['thumbnail_url'] ?? null,
@@ -152,15 +159,45 @@ class MediaManagerController extends Controller
             'visibility' => ['nullable', Rule::in(['public', 'unlisted', 'private', 'draft'])],
             'media_kind' => ['nullable', Rule::in(['mix', 'track', 'video', 'scratch', 'battle_entry', 'image'])],
             'duration_seconds' => ['nullable', 'numeric', 'min:0', 'max:86400'],
+            'external_url' => ['nullable', 'url', 'max:2048'],
+            'source_type' => ['nullable', Rule::in(['upload', 'youtube', 'instagram'])],
             'cover_image' => ['nullable', 'image', 'max:10240'],
         ]);
+
+        $youtubeVideo = $this->youtubeVideoFromAttributes($attributes);
+        $instagramMedia = $this->instagramMediaFromAttributes($attributes);
+        $externalValidationAttributes = [
+            ...$attributes,
+            'media_kind' => $attributes['media_kind'] ?? $file->metadata['portfolio']['media_kind'] ?? null,
+        ];
+
+        if (($attributes['source_type'] ?? null) !== 'upload') {
+            $this->validateExternalVideoPayload($externalValidationAttributes, $youtubeVideo);
+        }
 
         $this->validateScratchVideoPayload($attributes, $file);
 
         $portfolio = collect($attributes)
-            ->except('cover_image')
+            ->except('cover_image', 'external_url', 'source_type')
             ->filter(fn ($value): bool => $value !== null)
             ->all();
+
+        $externalPortfolio = match ($attributes['source_type'] ?? null) {
+            'youtube' => $youtubeVideo ? [
+                'source_type' => 'youtube',
+                'external_provider' => 'youtube',
+                'external_url' => $youtubeVideo['watch_url'],
+                'embed_url' => $youtubeVideo['embed_url'],
+                'thumbnail_url' => $youtubeVideo['thumbnail_url'],
+            ] : [],
+            'instagram' => $instagramMedia ?? [],
+            default => [],
+        };
+
+        $portfolio = [
+            ...$portfolio,
+            ...$externalPortfolio,
+        ];
 
         if (isset($attributes['cover_image'])) {
             $coverFile = $mediaManager->uploadForOwner($request->user(), $attributes['cover_image'], 'public', MediaManagerService::COLLECTION_DJ_IMAGES);
@@ -252,6 +289,18 @@ class MediaManagerController extends Controller
             ]);
         }
 
+        $sourceType = ($attributes['source_type'] ?? null) === 'instagram' ? 'instagram' : 'youtube';
+
+        if ($sourceType === 'instagram') {
+            if (! $this->isInstagramUrl($attributes['external_url'] ?? '')) {
+                throw ValidationException::withMessages([
+                    'external_url' => ['Please provide a valid Instagram link.'],
+                ]);
+            }
+
+            return;
+        }
+
         if (! $youtubeVideo) {
             throw ValidationException::withMessages([
                 'external_url' => ['Enter a valid YouTube video link.'],
@@ -291,6 +340,31 @@ class MediaManagerController extends Controller
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array{source_type: string, external_provider: string, external_url: string, embed_url: null, thumbnail_url: null}|null
+     */
+    private function instagramMediaFromAttributes(array $attributes): ?array
+    {
+        if (($attributes['source_type'] ?? null) !== 'instagram') {
+            return null;
+        }
+
+        $url = trim((string) ($attributes['external_url'] ?? ''));
+
+        if ($url === '') {
+            return null;
+        }
+
+        return [
+            'source_type' => 'instagram',
+            'external_provider' => 'instagram',
+            'external_url' => $url,
+            'embed_url' => null,
+            'thumbnail_url' => null,
+        ];
+    }
+
     private function youtubeVideoIdFromUrl(string $url): ?string
     {
         $parts = parse_url($url);
@@ -318,6 +392,20 @@ class MediaManagerController extends Controller
         }
 
         return $videoId;
+    }
+
+    private function isInstagramUrl(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        if (! $host) {
+            return false;
+        }
+
+        $host = strtolower($host);
+
+        return $host === 'instagram.com'
+            || $host === 'www.instagram.com';
     }
 
     /**

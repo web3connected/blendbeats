@@ -42,6 +42,13 @@ function mediaKindLabel(kind: string | null, fallback: string) {
   return fallback;
 }
 
+function mediaViewLabel(provider: string | null | undefined) {
+  if (provider === 'instagram') return 'View on Instagram';
+  if (provider === 'youtube') return 'View on YouTube';
+
+  return 'View Media';
+}
+
 export default function PublicDjProfilePage() {
   const { handle } = useParams();
   const navigate = useNavigate();
@@ -386,7 +393,7 @@ export default function PublicDjProfilePage() {
                               className="inline-flex h-11 items-center justify-center border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
                               style={{ fontFamily: 'var(--font-heading)' }}
                             >
-                              View
+                              {mediaViewLabel(media.external_provider)}
                             </a>
                           )}
                         </article>

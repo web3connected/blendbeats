@@ -183,6 +183,44 @@ class MediaManagerService
         return $mediaFile;
     }
 
+    /**
+     * @param  array{external_url: string}  $instagramMedia
+     */
+    public function createExternalInstagramForOwner(Model $owner, array $instagramMedia, ?string $collection = null): MediaFile
+    {
+        $this->validateDiskAccess('public', 'upload', $owner);
+
+        $mediaAccount = app(MediaSetupService::class)->activeMediaAccount($owner)
+            ?: $this->createMediaAccountForOwner($owner);
+
+        $collection ??= self::COLLECTION_DJ_MEDIA;
+        $url = $instagramMedia['external_url'];
+        $externalId = substr(sha1($url), 0, 12);
+        $path = 'external/instagram/'.$owner->getKey().'/'.$externalId.'_'.time().'_'.Str::lower(Str::random(6));
+
+        $mediaFile = MediaFile::create([
+            ...$this->ownerColumns($owner),
+            'name' => $externalId.'.instagram',
+            'original_name' => $url,
+            'disk' => $mediaAccount->disk,
+            'path' => $path,
+            'mime_type' => 'text/html',
+            'size' => 0,
+            'collection' => $collection,
+            'media_account_id' => $mediaAccount->id,
+            'metadata' => [
+                'external_source' => [
+                    'provider' => 'instagram',
+                    'external_url' => $url,
+                ],
+            ],
+        ]);
+
+        $this->auditAction('link', $mediaAccount->disk, $path, $owner);
+
+        return $mediaFile;
+    }
+
     public function archiveToS3(MediaFile $file): MediaFile
     {
         $this->validateDiskAccess('media_s3', 'archive', $this->ownerForFile($file));
@@ -339,6 +377,9 @@ class MediaManagerService
         $metadata = $file->metadata ?? [];
         $portfolio = $metadata['portfolio'] ?? [];
         $externalSource = $metadata['external_source'] ?? [];
+        $portfolioValue = fn (string $key, mixed $fallback = null): mixed => array_key_exists($key, $portfolio)
+            ? $portfolio[$key]
+            : $fallback;
 
         return [
             'id' => $file->id,
@@ -364,9 +405,9 @@ class MediaManagerService
             'duration_seconds' => $portfolio['duration_seconds'] ?? $metadata['duration_seconds'] ?? null,
             'source_type' => $portfolio['source_type'] ?? ($externalSource ? 'youtube' : 'upload'),
             'external_provider' => $portfolio['external_provider'] ?? $externalSource['provider'] ?? null,
-            'external_url' => $portfolio['external_url'] ?? $externalSource['watch_url'] ?? null,
-            'embed_url' => $portfolio['embed_url'] ?? $externalSource['embed_url'] ?? null,
-            'thumbnail_url' => $portfolio['thumbnail_url'] ?? $externalSource['thumbnail_url'] ?? null,
+            'external_url' => $portfolioValue('external_url', $externalSource['watch_url'] ?? null),
+            'embed_url' => $portfolioValue('embed_url', $externalSource['embed_url'] ?? null),
+            'thumbnail_url' => $portfolioValue('thumbnail_url', $externalSource['thumbnail_url'] ?? null),
             'portfolio_cover_image_path' => $portfolio['cover_image_path'] ?? null,
             'portfolio_cover_image_url' => $portfolio['cover_image_url'] ?? $externalSource['thumbnail_url'] ?? null,
             'created_at' => $file->created_at,

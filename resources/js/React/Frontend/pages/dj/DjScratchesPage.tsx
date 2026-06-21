@@ -26,7 +26,7 @@ import {
 import { deleteMediaFile, linkYoutubeMediaFile, MediaManagerApiError, uploadMediaFile } from '@/lib/media-manager';
 
 const MAX_SCRATCH_DURATION_SECONDS = 300;
-type UploadSource = 'upload' | 'youtube';
+type UploadSource = 'upload' | 'youtube' | 'instagram';
 
 const genreOptions = ['Scratch Sets', 'Hip-Hop', 'Open Format', 'House', 'Drum & Bass', 'Techno', 'R&B', 'Afrobeats'];
 

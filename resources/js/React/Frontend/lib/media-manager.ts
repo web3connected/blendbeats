@@ -82,7 +82,7 @@ export type MediaUploadDetails = {
   genre: string;
   visibility: string;
   mediaKind: string;
-  sourceType?: 'upload' | 'youtube';
+  sourceType?: 'upload' | 'youtube' | 'instagram';
   externalUrl?: string | null;
   durationSeconds?: number | null;
   coverImage?: File | null;
@@ -179,6 +179,33 @@ export async function linkYoutubeMediaFile(
   }
 }
 
+export async function linkInstagramMediaFile(
+  collection = 'dj_media',
+  details: MediaUploadDetails & { externalUrl: string },
+): Promise<MediaUploadResponse> {
+  const formData = new FormData();
+  formData.append('external_url', details.externalUrl);
+  formData.append('source_type', 'instagram');
+  formData.append('disk', 'public');
+  formData.append('collection', collection);
+  formData.append('title', details.title);
+  formData.append('description', details.description);
+  formData.append('genre', details.genre);
+  formData.append('visibility', details.visibility);
+  formData.append('media_kind', details.mediaKind);
+
+  if (details.coverImage) {
+    formData.append('cover_image', details.coverImage);
+  }
+
+  try {
+    const response = await apiClient.post<MediaUploadResponse>('/media/files', formData);
+    return response.data;
+  } catch (error) {
+    toMediaManagerError(error);
+  }
+}
+
 export async function deleteMediaFile(fileId: number): Promise<MediaDeleteResponse> {
   try {
     const response = await apiClient.delete<MediaDeleteResponse>(`/media/files/${fileId}`);
@@ -204,6 +231,12 @@ export async function updateMediaFile(
       if (details.durationSeconds !== undefined && details.durationSeconds !== null) {
         formData.append('duration_seconds', String(details.durationSeconds));
       }
+      if (details.externalUrl !== undefined && details.externalUrl !== null) {
+        formData.append('external_url', details.externalUrl);
+      }
+      if (details.sourceType !== undefined && details.sourceType !== null) {
+        formData.append('source_type', details.sourceType);
+      }
       formData.append('cover_image', details.coverImage);
 
       const response = await apiClient.post<MediaUpdateResponse>(`/media/files/${fileId}`, formData);
@@ -217,6 +250,8 @@ export async function updateMediaFile(
       visibility: details.visibility,
       media_kind: details.mediaKind,
       duration_seconds: details.durationSeconds,
+      external_url: details.externalUrl,
+      source_type: details.sourceType,
     });
 
     return response.data;

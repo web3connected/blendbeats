@@ -335,6 +335,7 @@ class DjHubController extends Controller
             'genre' => $portfolio['genre'] ?? null,
             'kind' => $portfolio['media_kind'] ?? null,
             'url' => $file->url,
+            'external_provider' => $portfolio['external_provider'] ?? $file->metadata['external_source']['provider'] ?? null,
             'cover_image_url' => $portfolio['cover_image_url'] ?? null,
             'mime_type' => $file->mime_type,
             'formatted_size' => $file->formatted_size,

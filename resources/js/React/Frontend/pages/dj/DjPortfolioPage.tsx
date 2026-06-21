@@ -10,6 +10,7 @@ import {
   FileVideo,
   Filter,
   Globe2,
+  Instagram,
   LockKeyhole,
   MoreHorizontal,
   Music2,
@@ -40,6 +41,7 @@ import {
   MediaManagerApiError,
   type MediaFileRecord,
   type MediaStorageQuota,
+  linkInstagramMediaFile,
   linkYoutubeMediaFile,
   updateMediaFile,
   uploadMediaFile,
@@ -78,7 +80,7 @@ const emptyPortfolioForm = {
   mediaKind: 'mix',
 };
 const MAX_SCRATCH_DURATION_SECONDS = 300;
-type UploadSource = 'upload' | 'youtube';
+type UploadSource = 'upload' | 'youtube' | 'instagram';
 
 function getVideoDuration(file: File) {
   return new Promise<number>((resolve, reject) => {
@@ -119,6 +121,17 @@ function isYoutubeUrl(value: string) {
     const host = url.hostname.replace(/^www\./, '').toLowerCase();
 
     return host === 'youtu.be' || host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com';
+  } catch {
+    return false;
+  }
+}
+
+function isInstagramUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+
+    return host === 'instagram.com';
   } catch {
     return false;
   }
@@ -177,6 +190,13 @@ function matchesMediaFilter(file: MediaFileRecord, filter: string) {
 
 function portfolioCoverUrl(file: MediaFileRecord) {
   return file.portfolio_cover_image_url || null;
+}
+
+function sourceTypeForFile(file: MediaFileRecord): UploadSource {
+  if (file.source_type === 'youtube' || file.external_provider === 'youtube') return 'youtube';
+  if (file.source_type === 'instagram' || file.external_provider === 'instagram') return 'instagram';
+
+  return 'upload';
 }
 
 function MediaPreview({ file }: { file: MediaFileRecord }) {
@@ -246,10 +266,13 @@ export default function DjPortfolioPage() {
   const [uploadCoverFile, setUploadCoverFile] = useState<File | null>(null);
   const [uploadDurationSeconds, setUploadDurationSeconds] = useState<number | null>(null);
   const [uploadYoutubeUrl, setUploadYoutubeUrl] = useState('');
+  const [uploadInstagramUrl, setUploadInstagramUrl] = useState('');
   const [uploadForm, setUploadForm] = useState(emptyPortfolioForm);
   const [editingFile, setEditingFile] = useState<MediaFileRecord | null>(null);
   const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
   const [editForm, setEditForm] = useState(emptyPortfolioForm);
+  const [editSourceType, setEditSourceType] = useState<UploadSource>('upload');
+  const [editExternalUrl, setEditExternalUrl] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [mediaFilter, setMediaFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -389,12 +412,15 @@ export default function DjPortfolioPage() {
     setUploadCoverFile(null);
     setUploadDurationSeconds(null);
     setUploadYoutubeUrl('');
+    setUploadInstagramUrl('');
     setUploadForm(emptyPortfolioForm);
   };
 
   const openEditModal = (file: MediaFileRecord) => {
     setEditingFile(file);
     setEditCoverFile(null);
+    setEditSourceType(sourceTypeForFile(file));
+    setEditExternalUrl(file.external_url || '');
     setEditForm({
       title: file.portfolio_title || file.original_name?.replace(/\.[^/.]+$/, '') || file.name.replace(/\.[^/.]+$/, ''),
       description: file.portfolio_description || '',
@@ -407,6 +433,8 @@ export default function DjPortfolioPage() {
   const closeEditModal = () => {
     setEditingFile(null);
     setEditCoverFile(null);
+    setEditSourceType('upload');
+    setEditExternalUrl('');
     setEditForm(emptyPortfolioForm);
   };
 
@@ -431,6 +459,19 @@ export default function DjPortfolioPage() {
         return linkYoutubeMediaFile('dj_media', {
           ...uploadForm,
           externalUrl: uploadYoutubeUrl.trim(),
+          coverImage: uploadCoverFile,
+        });
+      }
+
+      if (uploadSource === 'instagram') {
+        if (!isInstagramUrl(uploadInstagramUrl.trim())) {
+          setError('Enter a valid Instagram post, reel, or profile link.');
+          return null;
+        }
+
+        return linkInstagramMediaFile('dj_media', {
+          ...uploadForm,
+          externalUrl: uploadInstagramUrl.trim(),
           coverImage: uploadCoverFile,
         });
       }
@@ -488,10 +529,33 @@ export default function DjPortfolioPage() {
     event.preventDefault();
     if (!editingFile) return;
 
-    setUpdatingFileId(editingFile.id);
     setError('');
 
-    updateMediaFile(editingFile.id, { ...editForm, coverImage: editCoverFile })
+    if (editSourceType === 'youtube') {
+      if (!canUseYoutubeSource(editForm.mediaKind)) {
+        setError('YouTube links can only be added as videos or Scratch routines.');
+        return;
+      }
+
+      if (!isYoutubeUrl(editExternalUrl.trim())) {
+        setError('Enter a valid YouTube video link.');
+        return;
+      }
+    }
+
+    if (editSourceType === 'instagram' && !isInstagramUrl(editExternalUrl.trim())) {
+      setError('Enter a valid Instagram post, reel, or profile link.');
+      return;
+    }
+
+    setUpdatingFileId(editingFile.id);
+
+    updateMediaFile(editingFile.id, {
+      ...editForm,
+      coverImage: editCoverFile,
+      sourceType: editSourceType,
+      externalUrl: editSourceType === 'upload' ? null : editExternalUrl.trim(),
+    })
       .then((updateResponse) => {
         setMediaFiles((currentFiles) =>
           currentFiles.map((mediaFile) => (mediaFile.id === editingFile.id ? updateResponse.file : mediaFile)),
@@ -1027,10 +1091,11 @@ export default function DjPortfolioPage() {
             </div>
 
             <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2 sm:grid-cols-3">
                 {[
                   { value: 'upload' as const, label: 'Upload', icon: Upload },
                   { value: 'youtube' as const, label: 'YouTube', icon: Youtube },
+                  { value: 'instagram' as const, label: 'Instagram', icon: Instagram },
                 ].map((option) => {
                   const Icon = option.icon;
                   const isDisabled = option.value === 'youtube' && !canUseYoutubeSource(uploadForm.mediaKind);
@@ -1072,6 +1137,22 @@ export default function DjPortfolioPage() {
                     />
                     <span className="text-xs text-[#666666]">
                       YouTube links do not count against monthly upload limits.
+                    </span>
+                  </label>
+                </div>
+              ) : uploadSource === 'instagram' ? (
+                <div className="grid gap-4">
+                  <label className="grid gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Instagram Link</span>
+                    <input
+                      type="url"
+                      value={uploadInstagramUrl}
+                      onChange={(event) => setUploadInstagramUrl(event.target.value)}
+                      placeholder="https://www.instagram.com/reel/..."
+                      className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none placeholder:text-[#555555] focus:border-primary"
+                    />
+                    <span className="text-xs text-[#666666]">
+                      Link an Instagram post, reel, profile, promo, or event highlight.
                     </span>
                   </label>
                 </div>
@@ -1146,7 +1227,7 @@ export default function DjPortfolioPage() {
 
                       setUploadForm((current) => ({ ...current, mediaKind }));
 
-                      if (!canUseYoutubeSource(mediaKind)) {
+                      if (uploadSource === 'youtube' && !canUseYoutubeSource(mediaKind)) {
                         setUploadSource('upload');
                       }
                     }}
@@ -1203,7 +1284,14 @@ export default function DjPortfolioPage() {
               </button>
               <button
                 type="submit"
-                disabled={isUploading || (uploadSource === 'upload' ? !uploadFile : !uploadYoutubeUrl.trim())}
+                disabled={
+                  isUploading ||
+                  (uploadSource === 'upload'
+                    ? !uploadFile
+                    : uploadSource === 'youtube'
+                      ? !uploadYoutubeUrl.trim()
+                      : !uploadInstagramUrl.trim())
+                }
                 className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
                 style={{ fontFamily: 'var(--font-heading)' }}
               >
@@ -1260,6 +1348,68 @@ export default function DjPortfolioPage() {
                 </label>
               </div>
 
+              <div className="grid gap-3">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Source</span>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {[
+                    { value: 'upload' as const, label: 'Upload', icon: Upload },
+                    { value: 'youtube' as const, label: 'YouTube', icon: Youtube },
+                    { value: 'instagram' as const, label: 'Instagram', icon: Instagram },
+                  ].map((option) => {
+                    const Icon = option.icon;
+                    const isDisabled = option.value === 'youtube' && !canUseYoutubeSource(editForm.mediaKind);
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          if (isDisabled) return;
+                          setEditSourceType(option.value);
+                          setError('');
+                        }}
+                        disabled={isDisabled}
+                        className={`inline-flex h-11 items-center justify-center gap-2 border px-4 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                          editSourceType === option.value
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-[#333333] text-[#dddddd] hover:border-primary hover:text-primary'
+                        }`}
+                        style={{ fontFamily: 'var(--font-heading)' }}
+                      >
+                        <Icon size={15} />
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {editSourceType === 'youtube' && (
+                <label className="grid gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">YouTube Video Link</span>
+                  <input
+                    type="url"
+                    value={editExternalUrl}
+                    onChange={(event) => setEditExternalUrl(event.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none placeholder:text-[#555555] focus:border-primary"
+                  />
+                </label>
+              )}
+
+              {editSourceType === 'instagram' && (
+                <label className="grid gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Instagram Link</span>
+                  <input
+                    type="url"
+                    value={editExternalUrl}
+                    onChange={(event) => setEditExternalUrl(event.target.value)}
+                    placeholder="https://www.instagram.com/reel/..."
+                    className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none placeholder:text-[#555555] focus:border-primary"
+                  />
+                </label>
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="grid gap-2">
                   <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Track Title</span>
@@ -1290,7 +1440,15 @@ export default function DjPortfolioPage() {
                   <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Media Type</span>
                   <select
                     value={editForm.mediaKind}
-                    onChange={(event) => setEditForm((current) => ({ ...current, mediaKind: event.target.value }))}
+                    onChange={(event) => {
+                      const mediaKind = event.target.value;
+
+                      setEditForm((current) => ({ ...current, mediaKind }));
+
+                      if (editSourceType === 'youtube' && !canUseYoutubeSource(mediaKind)) {
+                        setEditSourceType('upload');
+                      }
+                    }}
                     className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none focus:border-primary"
                   >
                     {kindOptions.map((option) => (
