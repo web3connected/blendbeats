@@ -171,6 +171,52 @@ class DjScratchesApiTest extends TestCase
         ]);
     }
 
+    public function test_scratch_routine_can_be_linked_from_instagram(): void
+    {
+        $user = User::factory()->create(['name' => 'DJ Insta Cut']);
+        $instagramUrl = 'https://www.instagram.com/reel/C1234567890/';
+
+        DB::table('dj_profiles')->insert([
+            'user_id' => $user->id,
+            'dj_name' => 'DJ Insta Cut',
+            'handle' => 'dj-insta-cut',
+            'profile_headline' => 'Instagram routines.',
+            'profile_status' => 'active',
+            'visibility' => 'public',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->postJson('/api/media/files', [
+                'external_url' => $instagramUrl,
+                'source_type' => 'instagram',
+                'disk' => 'public',
+                'collection' => 'dj_media',
+                'title' => 'Instagram Routine',
+                'visibility' => 'public',
+                'media_kind' => 'scratch',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('file.portfolio_kind', 'scratch')
+            ->assertJsonPath('file.duration_seconds', null)
+            ->assertJsonPath('file.source_type', 'instagram')
+            ->assertJsonPath('file.external_provider', 'instagram')
+            ->assertJsonPath('file.external_url', $instagramUrl)
+            ->assertJsonPath('file.embed_url', null)
+            ->assertJsonPath('file.thumbnail_url', null);
+
+        $this->getJson('/api/dj-scratches')
+            ->assertOk()
+            ->assertJsonCount(1, 'scratches')
+            ->assertJsonPath('scratches.0.title', 'Instagram Routine')
+            ->assertJsonPath('scratches.0.source_type', 'instagram')
+            ->assertJsonPath('scratches.0.external_provider', 'instagram')
+            ->assertJsonPath('scratches.0.url', $instagramUrl)
+            ->assertJsonPath('scratches.0.embed_url', null)
+            ->assertJsonPath('scratches.0.thumbnail_url', null);
+    }
+
     public function test_youtube_scratch_routines_do_not_use_monthly_upload_limit(): void
     {
         $user = User::factory()->create(['name' => 'DJ Free Tube', 'media_storage_tier' => 'free']);

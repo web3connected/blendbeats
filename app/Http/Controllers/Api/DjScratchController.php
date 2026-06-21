@@ -24,7 +24,6 @@ class DjScratchController extends Controller
         $scratches = MediaFile::query()
             ->with(['user.djProfile'])
             ->where('collection', 'dj_media')
-            ->where('mime_type', 'like', 'video/%')
             ->latest('created_at')
             ->limit(120)
             ->get()
@@ -58,13 +57,13 @@ class DjScratchController extends Controller
         $metadata = $file->metadata ?? [];
         $portfolio = $metadata['portfolio'] ?? [];
         $duration = $this->durationSeconds($file);
-        $isYoutubeLink = ($portfolio['source_type'] ?? $metadata['external_source']['provider'] ?? null) === 'youtube';
+        $sourceType = $portfolio['source_type'] ?? $metadata['external_source']['provider'] ?? null;
+        $isExternalLink = in_array($sourceType, ['youtube', 'instagram'], true);
         $profile = $file->user?->djProfile;
 
-        return $file->isVideo()
-            && ($portfolio['visibility'] ?? null) === 'public'
+        return ($portfolio['visibility'] ?? null) === 'public'
             && ($portfolio['media_kind'] ?? null) === 'scratch'
-            && ($isYoutubeLink || ($duration > 0 && floor($duration) <= 300))
+            && ($isExternalLink || ($file->isVideo() && $duration > 0 && floor($duration) <= 300))
             && $profile
             && $profile->visibility === 'public'
             && $profile->profile_status === 'active';
@@ -109,6 +108,9 @@ class DjScratchController extends Controller
         $externalSource = $metadata['external_source'] ?? [];
         $profile = $file->user?->djProfile;
         $duration = $this->durationSeconds($file);
+        $portfolioValue = fn (string $key, mixed $fallback = null): mixed => array_key_exists($key, $portfolio)
+            ? $portfolio[$key]
+            : $fallback;
 
         return [
             'id' => (int) $file->id,
@@ -116,12 +118,12 @@ class DjScratchController extends Controller
             'description' => $portfolio['description'] ?? null,
             'genre' => $portfolio['genre'] ?? null,
             'url' => $file->url,
-            'cover_image_url' => $portfolio['cover_image_url'] ?? $externalSource['thumbnail_url'] ?? null,
+            'cover_image_url' => $portfolioValue('cover_image_url', $externalSource['thumbnail_url'] ?? null),
             'source_type' => $portfolio['source_type'] ?? ($externalSource ? 'youtube' : 'upload'),
             'external_provider' => $portfolio['external_provider'] ?? $externalSource['provider'] ?? null,
-            'external_url' => $portfolio['external_url'] ?? $externalSource['watch_url'] ?? null,
-            'embed_url' => $portfolio['embed_url'] ?? $externalSource['embed_url'] ?? null,
-            'thumbnail_url' => $portfolio['thumbnail_url'] ?? $externalSource['thumbnail_url'] ?? null,
+            'external_url' => $portfolioValue('external_url', $externalSource['watch_url'] ?? null),
+            'embed_url' => $portfolioValue('embed_url', $externalSource['embed_url'] ?? null),
+            'thumbnail_url' => $portfolioValue('thumbnail_url', $externalSource['thumbnail_url'] ?? null),
             'mime_type' => $file->mime_type,
             'duration_seconds' => $duration,
             'formatted_size' => $file->formatted_size,

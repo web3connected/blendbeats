@@ -2,6 +2,8 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   Clock3,
   Disc3,
+  ExternalLink,
+  Instagram,
   LogIn,
   Play,
   Search,
@@ -23,7 +25,13 @@ import {
   type DjScratchStats,
   type DjScratchesQuery,
 } from '@/lib/dj-scratches';
-import { deleteMediaFile, linkYoutubeMediaFile, MediaManagerApiError, uploadMediaFile } from '@/lib/media-manager';
+import {
+  deleteMediaFile,
+  linkInstagramMediaFile,
+  linkYoutubeMediaFile,
+  MediaManagerApiError,
+  uploadMediaFile,
+} from '@/lib/media-manager';
 
 const MAX_SCRATCH_DURATION_SECONDS = 300;
 type UploadSource = 'upload' | 'youtube' | 'instagram';
@@ -54,6 +62,17 @@ function isYoutubeUrl(value: string) {
     const host = url.hostname.replace(/^www\./, '').toLowerCase();
 
     return host === 'youtu.be' || host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com';
+  } catch {
+    return false;
+  }
+}
+
+function isInstagramUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+
+    return host === 'instagram.com';
   } catch {
     return false;
   }
@@ -114,6 +133,10 @@ function ScratchRailItem({
       <div className="relative aspect-video overflow-hidden bg-[#050505]">
         {scratch.cover_image_url ? (
           <img src={scratch.cover_image_url} alt={scratch.title} className="h-full w-full object-cover" loading="lazy" />
+        ) : scratch.external_provider === 'instagram' ? (
+          <div className="flex h-full w-full items-center justify-center bg-[#111111] text-primary">
+            <Instagram size={24} />
+          </div>
         ) : (
           <video src={scratch.url} muted preload="metadata" className="h-full w-full object-cover">
             <track kind="captions" />
@@ -122,7 +145,9 @@ function ScratchRailItem({
         <span className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 text-[10px] font-bold text-white">
           {scratch.external_provider === 'youtube' && !scratch.duration_seconds
             ? 'YouTube'
-            : formatDuration(scratch.duration_seconds)}
+            : scratch.external_provider === 'instagram'
+              ? 'Instagram'
+              : formatDuration(scratch.duration_seconds)}
         </span>
       </div>
       <div className="min-w-0">
@@ -146,6 +171,7 @@ function UploadModal({
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [durationSeconds, setDurationSeconds] = useState<number | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [instagramUrl, setInstagramUrl] = useState('');
   const [title, setTitle] = useState('');
   const [genre, setGenre] = useState('Scratch Sets');
   const [visibility, setVisibility] = useState('public');
@@ -160,6 +186,7 @@ function UploadModal({
 
     if (nextSource === 'upload') {
       setYoutubeUrl('');
+      setInstagramUrl('');
     } else {
       setVideoFile(null);
       setDurationSeconds(null);
@@ -216,6 +243,11 @@ function UploadModal({
       return;
     }
 
+    if (source === 'instagram' && !isInstagramUrl(instagramUrl.trim())) {
+      setLocalError('Enter a valid Instagram link.');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -227,6 +259,16 @@ function UploadModal({
           visibility,
           mediaKind: 'scratch',
           externalUrl: youtubeUrl.trim(),
+          coverImage: coverFile,
+        });
+      } else if (source === 'instagram') {
+        await linkInstagramMediaFile('dj_media', {
+          title,
+          description,
+          genre,
+          visibility,
+          mediaKind: 'scratch',
+          externalUrl: instagramUrl.trim(),
           coverImage: coverFile,
         });
       } else if (videoFile && durationSeconds) {
@@ -281,10 +323,11 @@ function UploadModal({
         </div>
 
         <div className="grid gap-4">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid gap-2 sm:grid-cols-3">
             {[
               { value: 'upload' as const, label: 'Upload', icon: Upload },
               { value: 'youtube' as const, label: 'YouTube', icon: Youtube },
+              { value: 'instagram' as const, label: 'Instagram', icon: Instagram },
             ].map((option) => {
               const Icon = option.icon;
 
@@ -328,7 +371,7 @@ function UploadModal({
                 Monthly limit: Free 3, Plus 50, Pro 150, Elite unlimited.
               </span>
             </label>
-          ) : (
+          ) : source === 'youtube' ? (
             <div className="grid gap-4">
               <label className="grid gap-2">
                 <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">YouTube Video Link</span>
@@ -344,6 +387,22 @@ function UploadModal({
                 </span>
               </label>
 
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              <label className="grid gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-[#888888]">Instagram Link</span>
+                <input
+                  type="url"
+                  value={instagramUrl}
+                  onChange={(event) => setInstagramUrl(event.target.value)}
+                  placeholder="https://www.instagram.com/reel/..."
+                  className="h-11 border border-[#333333] bg-[#080808] px-3 text-sm text-white outline-none placeholder:text-[#555555] focus:border-primary"
+                />
+                <span className="text-xs text-[#666666]">
+                  Link an Instagram post, reel, promo, or event highlight.
+                </span>
+              </label>
             </div>
           )}
 
@@ -428,7 +487,11 @@ function UploadModal({
           </button>
           <button
             type="submit"
-            disabled={isSubmitting || isReadingDuration || (source === 'upload' ? !videoFile : !youtubeUrl.trim())}
+            disabled={
+              isSubmitting ||
+              isReadingDuration ||
+              (source === 'upload' ? !videoFile : source === 'youtube' ? !youtubeUrl.trim() : !instagramUrl.trim())
+            }
             className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
             style={{ fontFamily: 'var(--font-heading)' }}
           >
@@ -625,6 +688,32 @@ export default function DjScratchesPage() {
                         allowFullScreen
                         className="aspect-video w-full bg-black"
                       />
+                    ) : activeScratch.external_provider === 'instagram' ? (
+                      <a
+                        key={activeScratch.id}
+                        href={activeScratch.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="relative flex aspect-video w-full flex-col items-center justify-center gap-4 overflow-hidden bg-[#080808] text-center text-white transition-colors hover:text-primary"
+                      >
+                        {activeScratch.cover_image_url ? (
+                          <img
+                            src={activeScratch.cover_image_url}
+                            alt={activeScratch.title}
+                            className="absolute h-full w-full object-cover opacity-40"
+                          />
+                        ) : null}
+                        <span className="relative inline-flex h-14 w-14 items-center justify-center border border-primary bg-black/70 text-primary">
+                          <Instagram size={26} />
+                        </span>
+                        <span
+                          className="relative inline-flex items-center gap-2 text-sm font-bold uppercase tracking-widest"
+                          style={{ fontFamily: 'var(--font-heading)' }}
+                        >
+                          View on Instagram
+                          <ExternalLink size={15} />
+                        </span>
+                      </a>
                     ) : (
                       <video
                         key={activeScratch.id}
@@ -651,7 +740,9 @@ export default function DjScratchesPage() {
                             <Clock3 size={15} className="text-primary" />
                             {activeScratch.external_provider === 'youtube' && !activeScratch.duration_seconds
                               ? 'YouTube'
-                              : formatDuration(activeScratch.duration_seconds)}
+                              : activeScratch.external_provider === 'instagram'
+                                ? 'Instagram'
+                                : formatDuration(activeScratch.duration_seconds)}
                           </span>
                           {activeScratch.genre && (
                             <span className="inline-flex items-center gap-2">
