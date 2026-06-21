@@ -14,7 +14,21 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Cashier\Billable;
 
-#[Fillable(['name', 'first_name', 'last_name', 'email', 'password', 'avatar', 'is_gravatar', 'use_gravatar', 'media_storage_tier'])]
+#[Fillable([
+    'name',
+    'first_name',
+    'last_name',
+    'email',
+    'password',
+    'avatar',
+    'is_gravatar',
+    'use_gravatar',
+    'media_storage_tier',
+    'billing_provider',
+    'comped_subscription_expires_at',
+    'comped_subscription_reason',
+    'comped_by_user_id',
+])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -43,6 +57,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_gravatar' => 'boolean',
             'use_gravatar' => 'boolean',
+            'comped_subscription_expires_at' => 'datetime',
         ];
     }
 

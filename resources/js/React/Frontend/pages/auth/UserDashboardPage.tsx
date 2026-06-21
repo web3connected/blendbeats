@@ -10,9 +10,17 @@ import {
   User,
   Users,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import { BillingApiError, getAccountSubscription, type AccountSubscriptionDetails } from '@/lib/billing';
+import {
+  formatSubscriptionDate,
+  formatSubscriptionLabel,
+  subscriptionIdDisplay,
+  subscriptionProviderDisplay,
+} from '@/lib/subscription-display';
 
 const dashboardActions = [
   {
@@ -106,6 +114,29 @@ const membershipTiers: Record<string, { label: string; storage: string; groups: 
 
 export default function UserDashboardPage() {
   const { user, isLoading } = useAuth();
+  const [subscription, setSubscription] = useState<AccountSubscriptionDetails | null>(null);
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState('');
+
+  useEffect(() => {
+    if (!user) {
+      setSubscription(null);
+      setIsSubscriptionLoading(false);
+      setSubscriptionError('');
+      return;
+    }
+
+    setIsSubscriptionLoading(true);
+    setSubscriptionError('');
+
+    getAccountSubscription()
+      .then((response) => setSubscription(response))
+      .catch((loadError) => {
+        setSubscription(null);
+        setSubscriptionError(loadError instanceof BillingApiError ? loadError.message : 'Unable to load subscription details.');
+      })
+      .finally(() => setIsSubscriptionLoading(false));
+  }, [user?.id]);
 
   if (isLoading) {
     return (
@@ -125,6 +156,15 @@ export default function UserDashboardPage() {
   const tierKey = user.media_storage_tier ?? 'free';
   const membership = membershipTiers[tierKey] ?? membershipTiers.free;
   const isFreeTier = ['free', 'starter'].includes(tierKey);
+  const subscriptionRows = [
+    ['Current Plan', formatSubscriptionLabel(subscription?.plan ?? tierKey)],
+    ['Status', formatSubscriptionLabel(subscription?.status)],
+    ['Billing Provider', subscriptionProviderDisplay(subscription)],
+    ['Subscription ID', subscriptionIdDisplay(subscription)],
+    ['Approved Date', formatSubscriptionDate(subscription?.approved_at)],
+    ['Expiration Date', formatSubscriptionDate(subscription?.expires_at)],
+    ['Reason', subscription?.reason || 'Not Set'],
+  ];
   const djProfileActionLabel = hasDjProfile ? 'Edit DJ Profile' : 'Start DJ Career';
   const djProfileStatus = hasDjProfile ? 'DJ profile active' : 'DJ profile not started';
   const actions = dashboardActions.map((action) =>
@@ -213,6 +253,23 @@ export default function UserDashboardPage() {
                   <ArrowRight size={16} />
                 </Link>
               </div>
+
+              {subscriptionError ? (
+                <p className="mt-5 border-t border-[#252525] pt-5 text-sm leading-6 text-primary">
+                  {subscriptionError}
+                </p>
+              ) : (
+                <dl className="mt-5 grid gap-4 border-t border-[#252525] pt-5 sm:grid-cols-2 lg:grid-cols-4">
+                  {subscriptionRows.map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">{label}</dt>
+                      <dd className="mt-1 break-words text-sm font-semibold text-[#eeeeee]">
+                        {isSubscriptionLoading ? 'Loading' : value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
             </div>
           </div>
         </section>

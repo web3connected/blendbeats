@@ -69,6 +69,16 @@ export type PaymentMethodsResponse = {
   payment_profile: PaymentProfile;
 };
 
+export type AccountSubscriptionDetails = {
+  plan: string | null;
+  status: string | null;
+  billing_provider: string | null;
+  subscription_id: string | null;
+  approved_at: string | null;
+  expires_at: string | null;
+  reason: string | null;
+};
+
 export class BillingApiError extends Error {
   status: number;
 
@@ -113,6 +123,15 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
 export async function getPaymentMethods(): Promise<PaymentMethodsResponse> {
   try {
     const response = await apiClient.get<PaymentMethodsResponse>('/billing/payment-methods');
+    return response.data;
+  } catch (error) {
+    toBillingError(error);
+  }
+}
+
+export async function getAccountSubscription(): Promise<AccountSubscriptionDetails> {
+  try {
+    const response = await apiClient.get<AccountSubscriptionDetails>('/account/subscription');
     return response.data;
   } catch (error) {
     toBillingError(error);

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\Admin;
 use App\Models\PayPalWebhookEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Env;
@@ -119,12 +120,48 @@ class BillingSetupTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
             'media_storage_tier' => 'dj_plus',
+            'billing_provider' => 'paypal',
             'paypal_subscription_id' => 'I-test-subscription',
             'paypal_plan_id' => 'test-plan-id',
             'paypal_subscription_status' => 'approved',
         ]);
 
         $this->assertNotNull($user->fresh()->paypal_subscription_approved_at);
+    }
+
+    public function test_account_subscription_details_endpoint_returns_logged_in_user_subscription_data(): void
+    {
+        $user = User::factory()->create([
+            'media_storage_tier' => 'dj_plus',
+        ]);
+        $user->forceFill([
+            'paypal_subscription_status' => 'active',
+            'billing_provider' => 'internal',
+            'paypal_subscription_id' => null,
+            'paypal_subscription_approved_at' => now(),
+            'comped_subscription_expires_at' => now()->addDays(7),
+            'comped_subscription_reason' => 'Manual free DJ Plus test',
+        ])->save();
+
+        $this->actingAs($user)
+            ->getJson('/api/account/subscription')
+            ->assertOk()
+            ->assertJson([
+                'plan' => 'dj_plus',
+                'status' => 'active',
+                'billing_provider' => 'internal',
+                'subscription_id' => null,
+                'reason' => 'Manual free DJ Plus test',
+            ])
+            ->assertJsonStructure([
+                'plan',
+                'status',
+                'billing_provider',
+                'subscription_id',
+                'approved_at',
+                'expires_at',
+                'reason',
+            ]);
     }
 
     public function test_paypal_webhook_endpoint_stores_raw_event_payload(): void
@@ -157,6 +194,7 @@ class BillingSetupTest extends TestCase
                 'media_storage_tier' => 'free',
             ]);
             $user->forceFill([
+                'billing_provider' => 'paypal',
                 'paypal_subscription_id' => "I-{$eventType}",
                 'paypal_subscription_status' => 'approved',
             ])->save();
@@ -188,6 +226,7 @@ class BillingSetupTest extends TestCase
                 'media_storage_tier' => 'dj_plus',
             ]);
             $user->forceFill([
+                'billing_provider' => 'paypal',
                 'paypal_subscription_id' => "I-{$expectedStatus}",
                 'paypal_subscription_status' => 'active',
             ])->save();
@@ -212,6 +251,7 @@ class BillingSetupTest extends TestCase
             'media_storage_tier' => 'dj_plus',
         ]);
         $user->forceFill([
+            'billing_provider' => 'paypal',
             'paypal_subscription_id' => 'I-payment-failed',
             'paypal_subscription_status' => 'active',
         ])->save();
@@ -227,6 +267,138 @@ class BillingSetupTest extends TestCase
 
         $this->assertSame('payment_failed', $user->paypal_subscription_status);
         $this->assertSame('dj_plus', $user->media_storage_tier);
+    }
+
+    public function test_paypal_webhook_does_not_change_internal_subscriptions(): void
+    {
+        $user = User::factory()->create([
+            'media_storage_tier' => 'dj_plus',
+        ]);
+        $user->forceFill([
+            'billing_provider' => 'internal',
+            'paypal_subscription_id' => 'I-internal-comped',
+            'paypal_subscription_status' => 'active',
+        ])->save();
+
+        $this->postJson('/api/paypal/webhook', [
+            'event_type' => 'BILLING.SUBSCRIPTION.CANCELLED',
+            'resource' => [
+                'id' => 'I-internal-comped',
+            ],
+        ])->assertOk();
+
+        $user->refresh();
+
+        $this->assertSame('active', $user->paypal_subscription_status);
+        $this->assertSame('dj_plus', $user->media_storage_tier);
+        $this->assertSame('internal', $user->billing_provider);
+    }
+
+    public function test_admin_can_grant_free_dj_plus_subscription(): void
+    {
+        $admin = Admin::query()->create([
+            'name' => 'Subscription Admin',
+            'email' => 'subscription-admin@example.com',
+            'password' => 'password',
+            'role' => 'super-admin',
+            'is_active' => true,
+        ]);
+        $user = User::factory()->create([
+            'media_storage_tier' => 'free',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->postJson("/api/admin/users/{$user->id}/grant-free-subscription", [
+                'reason' => 'Manual free DJ Plus test',
+            ])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Free DJ Plus subscription granted.',
+            ]);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'media_storage_tier' => 'dj_plus',
+            'paypal_subscription_status' => 'active',
+            'billing_provider' => 'internal',
+            'paypal_subscription_id' => null,
+            'paypal_plan_id' => null,
+            'comped_subscription_reason' => 'Manual free DJ Plus test',
+            'comped_by_user_id' => $admin->id,
+        ]);
+    }
+
+    public function test_admin_can_revoke_free_dj_plus_subscription(): void
+    {
+        $admin = Admin::query()->create([
+            'name' => 'Subscription Admin',
+            'email' => 'subscription-admin@example.com',
+            'password' => 'password',
+            'role' => 'super-admin',
+            'is_active' => true,
+        ]);
+        $user = User::factory()->create([
+            'media_storage_tier' => 'dj_plus',
+        ]);
+        $user->forceFill([
+            'paypal_subscription_status' => 'active',
+            'billing_provider' => 'internal',
+            'comped_subscription_reason' => 'Manual free DJ Plus test',
+            'comped_by_user_id' => $admin->id,
+        ])->save();
+
+        $this->actingAs($admin, 'admin')
+            ->postJson("/api/admin/users/{$user->id}/revoke-free-subscription")
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Free DJ Plus subscription revoked.',
+            ]);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'media_storage_tier' => 'free',
+            'paypal_subscription_status' => 'cancelled',
+            'billing_provider' => null,
+            'comped_subscription_expires_at' => null,
+            'comped_subscription_reason' => null,
+            'comped_by_user_id' => null,
+        ]);
+    }
+
+    public function test_admin_user_detail_page_shows_subscription_management_controls(): void
+    {
+        $admin = Admin::query()->create([
+            'name' => 'Subscription Admin',
+            'email' => 'subscription-admin@example.com',
+            'password' => 'password',
+            'role' => 'super-admin',
+            'is_active' => true,
+        ]);
+        $user = User::factory()->create([
+            'media_storage_tier' => 'dj_plus',
+        ]);
+        $user->forceFill([
+            'paypal_subscription_status' => 'active',
+            'billing_provider' => 'internal',
+            'comped_subscription_reason' => 'Manual free DJ Plus test',
+            'comped_by_user_id' => $admin->id,
+        ])->save();
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.users.show', $user))
+            ->assertOk()
+            ->assertSee('Subscription Management')
+            ->assertSee('Current Plan')
+            ->assertSee('Status')
+            ->assertSee('Billing Provider')
+            ->assertSee('Expires At')
+            ->assertSee('Reason')
+            ->assertSee('Grant Free DJ Plus')
+            ->assertSee('Revoke Free Subscription')
+            ->assertSee('Complimentary')
+            ->assertSee('Manual free DJ Plus test');
     }
 
     private function billingConfigForEnv(array $values): array

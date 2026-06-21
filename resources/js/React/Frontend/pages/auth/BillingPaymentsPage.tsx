@@ -13,7 +13,19 @@ import { Link, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/components/auth/AuthProvider';
-import { getPaymentMethods, type PaymentProfile } from '@/lib/billing';
+import {
+  BillingApiError,
+  getAccountSubscription,
+  getPaymentMethods,
+  type AccountSubscriptionDetails,
+  type PaymentProfile,
+} from '@/lib/billing';
+import {
+  formatSubscriptionDate,
+  formatSubscriptionLabel,
+  subscriptionIdDisplay,
+  subscriptionProviderDisplay,
+} from '@/lib/subscription-display';
 
 const billingCards = [
   {
@@ -47,6 +59,9 @@ const billingCards = [
 export default function BillingPaymentsPage() {
   const { user, isLoading } = useAuth();
   const [paymentProfile, setPaymentProfile] = useState<PaymentProfile | null>(null);
+  const [subscription, setSubscription] = useState<AccountSubscriptionDetails | null>(null);
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -54,6 +69,17 @@ export default function BillingPaymentsPage() {
     getPaymentMethods()
       .then((response) => setPaymentProfile(response.payment_profile))
       .catch(() => setPaymentProfile(null));
+
+    setIsSubscriptionLoading(true);
+    setSubscriptionError('');
+
+    getAccountSubscription()
+      .then((response) => setSubscription(response))
+      .catch((loadError) => {
+        setSubscription(null);
+        setSubscriptionError(loadError instanceof BillingApiError ? loadError.message : 'Unable to load subscription details.');
+      })
+      .finally(() => setIsSubscriptionLoading(false));
   }, [user]);
 
   if (isLoading) {
@@ -73,6 +99,15 @@ export default function BillingPaymentsPage() {
   const providerDescription = primaryProvider
     ? `Primary ${primaryProvider.mode} payment provider.`
     : 'Enable a payment provider before checkout can be used.';
+  const subscriptionRows = [
+    ['Current Plan', formatSubscriptionLabel(subscription?.plan)],
+    ['Status', formatSubscriptionLabel(subscription?.status)],
+    ['Billing Provider', subscriptionProviderDisplay(subscription)],
+    ['Subscription ID', subscriptionIdDisplay(subscription)],
+    ['Approved Date', formatSubscriptionDate(subscription?.approved_at)],
+    ['Expiration Date', formatSubscriptionDate(subscription?.expires_at)],
+    ['Reason', subscription?.reason || 'Not Set'],
+  ];
 
   return (
     <>
@@ -148,52 +183,81 @@ export default function BillingPaymentsPage() {
               </div>
             </aside>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              {billingCards.map((item) => {
-                const Icon = item.icon;
-                const content = (
-                  <>
-                    {item.actionLabel}
-                    <ArrowRight size={15} />
-                  </>
-                );
+            <div className="grid gap-4">
+              <section className="border border-[#2a2a2a] bg-[#111111] p-5">
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-[#FFB800]">Current Subscription</p>
+                    <h2 className="mt-2 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                      {isSubscriptionLoading ? 'Loading' : formatSubscriptionLabel(subscription?.plan)}
+                    </h2>
+                  </div>
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center bg-[#080808] text-primary">
+                    <BadgeCheck size={20} />
+                  </div>
+                </div>
 
-                return (
-                  <article key={item.title} className="grid min-h-64 border border-[#2a2a2a] bg-[#111111] p-5">
-                    <div>
-                      <div className="mb-5 flex items-center justify-between gap-4">
-                        <div className="flex h-11 w-11 items-center justify-center bg-[#080808] text-primary">
-                          <Icon size={20} />
-                        </div>
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-[#555555]">{providerName}</span>
+                {subscriptionError ? (
+                  <div className="border border-primary/30 bg-primary/10 p-3 text-sm text-primary">{subscriptionError}</div>
+                ) : (
+                  <dl className="grid gap-3 sm:grid-cols-2">
+                    {subscriptionRows.map(([label, value]) => (
+                      <div key={label} className="border border-[#252525] bg-[#080808] p-4">
+                        <dt className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">{label}</dt>
+                        <dd className="mt-2 break-words text-sm font-semibold text-[#eeeeee]">{isSubscriptionLoading ? 'Loading' : value}</dd>
                       </div>
-                      <h2 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                        {item.title}
-                      </h2>
-                      <p className="mt-3 text-sm leading-6 text-[#888888]">{item.description}</p>
-                    </div>
+                    ))}
+                  </dl>
+                )}
+              </section>
 
-                    {item.href ? (
-                      <Link
-                        to={item.href}
-                        className="mt-6 inline-flex h-11 items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
-                        style={{ fontFamily: 'var(--font-heading)' }}
-                      >
-                        {content}
-                      </Link>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled
-                        className="mt-6 inline-flex h-11 cursor-not-allowed items-center justify-center gap-2 border border-[#222222] px-4 text-xs font-bold uppercase tracking-widest text-[#555555]"
-                        style={{ fontFamily: 'var(--font-heading)' }}
-                      >
-                        {content}
-                      </button>
-                    )}
-                  </article>
-                );
-              })}
+              <div className="grid gap-4 md:grid-cols-2">
+                {billingCards.map((item) => {
+                  const Icon = item.icon;
+                  const content = (
+                    <>
+                      {item.actionLabel}
+                      <ArrowRight size={15} />
+                    </>
+                  );
+
+                  return (
+                    <article key={item.title} className="grid min-h-64 border border-[#2a2a2a] bg-[#111111] p-5">
+                      <div>
+                        <div className="mb-5 flex items-center justify-between gap-4">
+                          <div className="flex h-11 w-11 items-center justify-center bg-[#080808] text-primary">
+                            <Icon size={20} />
+                          </div>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-[#555555]">{providerName}</span>
+                        </div>
+                        <h2 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                          {item.title}
+                        </h2>
+                        <p className="mt-3 text-sm leading-6 text-[#888888]">{item.description}</p>
+                      </div>
+
+                      {item.href ? (
+                        <Link
+                          to={item.href}
+                          className="mt-6 inline-flex h-11 items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                          style={{ fontFamily: 'var(--font-heading)' }}
+                        >
+                          {content}
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          className="mt-6 inline-flex h-11 cursor-not-allowed items-center justify-center gap-2 border border-[#222222] px-4 text-xs font-bold uppercase tracking-widest text-[#555555]"
+                          style={{ fontFamily: 'var(--font-heading)' }}
+                        >
+                          {content}
+                        </button>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>

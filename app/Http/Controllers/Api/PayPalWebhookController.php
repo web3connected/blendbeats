@@ -64,6 +64,10 @@ class PayPalWebhookController extends Controller
             return;
         }
 
+        if ($user->billing_provider !== 'paypal') {
+            return;
+        }
+
         $updates = [
             'paypal_subscription_status' => $status,
         ];

@@ -90,6 +90,7 @@ class BillingController extends Controller
 
         $request->user()->forceFill([
             'media_storage_tier' => 'dj_plus',
+            'billing_provider' => 'paypal',
             'paypal_subscription_id' => $validated['subscriptionID'],
             'paypal_plan_id' => config('billing.paypal.plans.dj_plus'),
             'paypal_subscription_status' => 'approved',
@@ -100,6 +101,21 @@ class BillingController extends Controller
             'message' => 'PayPal subscription approved.',
             'current_tier' => 'dj_plus',
             'paypal_subscription_id' => $validated['subscriptionID'],
+        ]);
+    }
+
+    public function subscriptionDetails(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'plan' => $user->media_storage_tier,
+            'status' => $user->paypal_subscription_status,
+            'billing_provider' => $user->billing_provider,
+            'subscription_id' => $user->paypal_subscription_id,
+            'approved_at' => $user->paypal_subscription_approved_at,
+            'expires_at' => $user->comped_subscription_expires_at,
+            'reason' => $user->comped_subscription_reason,
         ]);
     }
 

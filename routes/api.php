@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\UserSubscriptionController;
 use App\Http\Controllers\Api\MixController;
 use App\Http\Controllers\Api\AdvertisementDisplayController;
 use App\Http\Controllers\Api\AdvertisementEventController;
@@ -150,11 +151,19 @@ Route::get('site/preview-status', $previewStatus)
 Route::post('/paypal/webhook', [PayPalWebhookController::class, 'handle'])
     ->name('api.paypal.webhook');
 
+Route::middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'admin.auth'])->group(function (): void {
+    Route::post('/admin/users/{user}/grant-free-subscription', [UserSubscriptionController::class, 'grantFreeSubscription']);
+    Route::post('/admin/users/{user}/revoke-free-subscription', [UserSubscriptionController::class, 'revokeFreeSubscription']);
+});
+
 Route::get('billing/plans', [BillingController::class, 'plans'])
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
     ->name('api.billing.plans');
 Route::get('billing/paypal/subscription-config', [BillingController::class, 'paypalSubscriptionConfig'])
     ->name('api.billing.paypal.subscription-config');
+Route::get('/account/subscription', [BillingController::class, 'subscriptionDetails'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.account.subscription');
 Route::prefix('billing')
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
     ->name('api.billing.')

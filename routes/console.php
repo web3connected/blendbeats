@@ -16,3 +16,4 @@ Artisan::command('featured-ads:sync-notifications', function () {
 })->purpose('Send featured ad ending notifications and expire completed campaigns');
 
 Schedule::command('featured-ads:sync-notifications')->everyFifteenMinutes();
+Schedule::command('subscriptions:expire-comped')->daily();
