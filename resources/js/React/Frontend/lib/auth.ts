@@ -153,3 +153,20 @@ export async function requestPasswordReset(email: string): Promise<void> {
     throw error;
   }
 }
+
+export async function resetPassword(
+  token: string,
+  email: string,
+  password: string,
+  passwordConfirmation: string,
+): Promise<void> {
+  await request<{ ok?: boolean; message?: string }>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({
+      token,
+      email,
+      password,
+      password_confirmation: passwordConfirmation,
+    }),
+  });
+}

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Listeners\SyncSubscriptionTierFromStripe;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -24,6 +25,13 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::listen(WebhookHandled::class, SyncSubscriptionTierFromStripe::class);
+
+        ResetPassword::createUrlUsing(function (object $notifiable, string $token): string {
+            return url('/reset-password?'.http_build_query([
+                'token' => $token,
+                'email' => $notifiable->getEmailForPasswordReset(),
+            ]));
+        });
 
         Gate::before(function ($user, string $ability): ?bool {
             if (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['super-admin', 'sys-admin'])) {

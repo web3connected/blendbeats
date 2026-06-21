@@ -39,7 +39,7 @@ export default function ForgotPasswordPage() {
       <AuthCard
         eyebrow="Reset access"
         title="Password Reset"
-        subtitle="Enter your account email and we will send instructions when password email delivery is enabled."
+        subtitle="Enter your account email and we will send password reset instructions."
         footerPrompt="Remembered your password?"
         footerAction="Log in"
         footerHref="/login"

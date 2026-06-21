@@ -15,6 +15,7 @@ import LoginPage from './Frontend/pages/auth/LoginPage';
 import NotificationsPage from './Frontend/pages/auth/NotificationsPage';
 import PaymentMethodsPage from './Frontend/pages/auth/PaymentMethodsPage';
 import RegisterPage from './Frontend/pages/auth/RegisterPage';
+import ResetPasswordPage from './Frontend/pages/auth/ResetPasswordPage';
 import SettingsPage from './Frontend/pages/auth/SettingsPage';
 import StoragePage from './Frontend/pages/auth/StoragePage';
 import SupportDocPage from './Frontend/pages/auth/SupportDocPage';
@@ -69,6 +70,7 @@ createRoot(rootElement).render(
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/dashboard" element={<UserDashboardPage />} />
                 <Route path="/account" element={<UserDashboardPage />} />
                 <Route path="/account/playlist" element={<UserPlaylistPage />} />

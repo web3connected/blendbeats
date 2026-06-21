@@ -70,6 +70,7 @@ Route::prefix('auth')
         Route::patch('account', [UserAuthController::class, 'updateAccount'])->middleware('public.auth')->name('account.update');
         Route::post('logout', [UserAuthController::class, 'logout'])->name('logout');
         Route::post('forgot-password', [UserAuthController::class, 'forgotPassword'])->name('forgot-password');
+        Route::post('reset-password', [UserAuthController::class, 'resetPassword'])->name('reset-password');
         Route::post('avatar', [UserAuthController::class, 'updateAvatar'])->middleware('public.auth')->name('avatar');
     });
 

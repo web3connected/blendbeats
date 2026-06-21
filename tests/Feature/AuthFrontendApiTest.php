@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
 
 class AuthFrontendApiTest extends TestCase
@@ -63,5 +66,54 @@ class AuthFrontendApiTest extends TestCase
         $this->getJson('/api/auth/me')
             ->assertOk()
             ->assertJsonPath('user', null);
+    }
+
+    public function test_frontend_user_can_request_password_reset_link(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create([
+            'email' => 'reset@example.com',
+        ]);
+
+        $this->postJson('/api/auth/forgot-password', [
+            'email' => 'reset@example.com',
+        ])
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        Notification::assertSentTo(
+            $user,
+            ResetPassword::class,
+            fn (ResetPassword $notification): bool => filled($notification->token),
+        );
+    }
+
+    public function test_frontend_user_can_reset_password_with_valid_token(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'reset-login@example.com',
+            'password' => Hash::make('old-password'),
+        ]);
+
+        $token = Password::broker('users')->createToken($user);
+
+        $this->postJson('/api/auth/reset-password', [
+            'token' => $token,
+            'email' => 'reset-login@example.com',
+            'password' => 'new-password123',
+            'password_confirmation' => 'new-password123',
+        ])
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertTrue(Hash::check('new-password123', $user->fresh()->password));
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'reset-login@example.com',
+            'password' => 'new-password123',
+        ])
+            ->assertOk()
+            ->assertJsonPath('user.email', 'reset-login@example.com');
     }
 }
