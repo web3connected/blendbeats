@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\MediaSetupController;
 use App\Http\Controllers\Api\NewsCommentController;
 use App\Http\Controllers\Api\NewsController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\PayPalWebhookController;
 use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\Auth\UserAuthController;
 use App\Http\Controllers\Api\UserPlaylistController;
@@ -146,6 +147,9 @@ Route::get('site/preview-status', $previewStatus)
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
     ->name('api.site.preview-status');
 
+Route::post('/paypal/webhook', [PayPalWebhookController::class, 'handle'])
+    ->name('api.paypal.webhook');
+
 Route::get('billing/plans', [BillingController::class, 'plans'])
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class])
     ->name('api.billing.plans');
@@ -158,6 +162,8 @@ Route::prefix('billing')
         Route::get('subscription', [BillingController::class, 'subscription'])->name('subscription');
         Route::get('payment-methods', [BillingController::class, 'paymentMethods'])->name('payment-methods');
         Route::post('checkout', [BillingController::class, 'checkout'])->name('checkout');
+        Route::post('paypal/subscription-approved', [BillingController::class, 'paypalSubscriptionApproved'])
+            ->name('paypal.subscription-approved');
         Route::post('portal', [BillingController::class, 'portal'])->name('portal');
     });
 

@@ -103,11 +103,19 @@ export default function SubscriptionPage() {
           });
         },
 
-        onApprove: (data: any) => {
-          console.log(
-            'PayPal Subscription Approved:',
-            data.subscriptionID
-          );
+        onApprove: async (data: any) => {
+          await fetch('/api/billing/paypal/subscription-approved', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              'X-CSRF-TOKEN':
+                document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
+            },
+            body: JSON.stringify({
+              subscriptionID: data.subscriptionID,
+            }),
+          });
 
           window.location.href =
             '/payment/success?subscription_id=' +

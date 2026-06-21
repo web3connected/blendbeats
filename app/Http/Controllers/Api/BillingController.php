@@ -82,6 +82,27 @@ class BillingController extends Controller
         ]);
     }
 
+    public function paypalSubscriptionApproved(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'subscriptionID' => ['required', 'string', 'max:255'],
+        ]);
+
+        $request->user()->forceFill([
+            'media_storage_tier' => 'dj_plus',
+            'paypal_subscription_id' => $validated['subscriptionID'],
+            'paypal_plan_id' => config('billing.paypal.plans.dj_plus'),
+            'paypal_subscription_status' => 'approved',
+            'paypal_subscription_approved_at' => now(),
+        ])->save();
+
+        return response()->json([
+            'message' => 'PayPal subscription approved.',
+            'current_tier' => 'dj_plus',
+            'paypal_subscription_id' => $validated['subscriptionID'],
+        ]);
+    }
+
     private function paymentProfile(): array
     {
         $activeProviders = PaymentProvider::query()
