@@ -2,10 +2,12 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowRight,
   CreditCard,
+  History,
   ListMusic,
   Music2,
   Radio,
   ShieldCheck,
+  Trophy,
   Swords,
   User,
   Users,
@@ -15,6 +17,12 @@ import { Link, Navigate } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import { BillingApiError, getAccountSubscription, type AccountSubscriptionDetails } from '@/lib/billing';
+import {
+  getAccountGamification,
+  getAccountGamificationEvents,
+  type AccountGamificationEvent,
+  type AccountGamificationSummary,
+} from '@/lib/gamification';
 import {
   formatSubscriptionDate,
   formatSubscriptionLabel,
@@ -112,11 +120,25 @@ const membershipTiers: Record<string, { label: string; storage: string; groups: 
   },
 };
 
+function formatActionKey(actionKey: string): string {
+  return actionKey
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export default function UserDashboardPage() {
   const { user, isLoading } = useAuth();
   const [subscription, setSubscription] = useState<AccountSubscriptionDetails | null>(null);
+  const [gamification, setGamification] = useState<AccountGamificationSummary | null>(null);
+  const [gamificationEvents, setGamificationEvents] = useState<AccountGamificationEvent[]>([]);
   const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
+  const [isGamificationLoading, setIsGamificationLoading] = useState(false);
+  const [isGamificationEventsLoading, setIsGamificationEventsLoading] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState('');
+  const [gamificationError, setGamificationError] = useState('');
+  const [gamificationEventsError, setGamificationEventsError] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -136,6 +158,39 @@ export default function UserDashboardPage() {
         setSubscriptionError(loadError instanceof BillingApiError ? loadError.message : 'Unable to load subscription details.');
       })
       .finally(() => setIsSubscriptionLoading(false));
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user) {
+      setGamification(null);
+      setGamificationEvents([]);
+      setIsGamificationLoading(false);
+      setIsGamificationEventsLoading(false);
+      setGamificationError('');
+      setGamificationEventsError('');
+      return;
+    }
+
+    setIsGamificationLoading(true);
+    setIsGamificationEventsLoading(true);
+    setGamificationError('');
+    setGamificationEventsError('');
+
+    getAccountGamification()
+      .then((response) => setGamification(response))
+      .catch(() => {
+        setGamification(null);
+        setGamificationError('Unable to load gamification details.');
+      })
+      .finally(() => setIsGamificationLoading(false));
+
+    getAccountGamificationEvents()
+      .then((response) => setGamificationEvents(response))
+      .catch(() => {
+        setGamificationEvents([]);
+        setGamificationEventsError('Unable to load recent achievements.');
+      })
+      .finally(() => setIsGamificationEventsLoading(false));
   }, [user?.id]);
 
   if (isLoading) {
@@ -167,6 +222,13 @@ export default function UserDashboardPage() {
   ];
   const djProfileActionLabel = hasDjProfile ? 'Edit DJ Profile' : 'Start DJ Career';
   const djProfileStatus = hasDjProfile ? 'DJ profile active' : 'DJ profile not started';
+  const gamificationRows = [
+    ['DJ Level', gamification?.dj_level ?? 1],
+    ['Fan Level', gamification?.fan_level ?? 1],
+    ['Total XP', gamification?.total_xp ?? 0],
+    ['DJ XP', gamification?.dj_xp ?? 0],
+    ['Fan XP', gamification?.fan_xp ?? 0],
+  ];
   const actions = dashboardActions.map((action) =>
     action.href === '/dj/start'
       ? {
@@ -312,6 +374,69 @@ export default function UserDashboardPage() {
             </aside>
 
             <div className="grid gap-5">
+              <section className="border border-[#2a2a2a] bg-[#111111] p-5 sm:p-6">
+                <div className="mb-5 flex items-center gap-3">
+                  <Trophy size={18} className="text-[#FFB800]" />
+                  <h2 className="text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                    Gamification
+                  </h2>
+                </div>
+
+                {gamificationError ? (
+                  <p className="text-sm leading-6 text-primary">{gamificationError}</p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    {gamificationRows.map(([label, value]) => (
+                      <div key={label} className="border border-[#303030] bg-[#0b0b0b] p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">
+                          {label}
+                        </p>
+                        <p className="mt-2 text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                          {isGamificationLoading ? 'Loading' : value.toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-6 border-t border-[#252525] pt-5">
+                  <div className="mb-4 flex items-center gap-3">
+                    <History size={17} className="text-primary" />
+                    <h3 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                      Recent Achievements
+                    </h3>
+                  </div>
+
+                  {gamificationEventsError ? (
+                    <p className="text-sm leading-6 text-primary">{gamificationEventsError}</p>
+                  ) : isGamificationEventsLoading ? (
+                    <p className="text-sm leading-6 text-[#888888]">Loading recent achievements.</p>
+                  ) : gamificationEvents.length > 0 ? (
+                    <div className="grid gap-2">
+                      {gamificationEvents.map((event, index) => (
+                        <div
+                          key={`${event.action_key}-${event.created_at ?? index}`}
+                          className="flex items-center justify-between gap-4 border border-[#303030] bg-[#0b0b0b] px-4 py-3"
+                        >
+                          <p className="text-sm font-semibold text-white">
+                            <span className="text-[#FFB800]">+{event.xp_awarded.toLocaleString()} XP</span>
+                            <span className="text-[#666666]"> — </span>
+                            {formatActionKey(event.action_key)}
+                          </p>
+                          <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-[#777777]">
+                            {event.role_context}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm leading-6 text-[#888888]">
+                      Earn XP by uploading, saving mixes, following DJs, rating mixes, and logging in daily.
+                    </p>
+                  )}
+                </div>
+              </section>
+
               <section className="border border-[#2a2a2a] bg-[#111111] p-5 sm:p-6">
                 <div className="mb-5 flex items-center gap-3">
                   <ListMusic size={18} className="text-primary" />

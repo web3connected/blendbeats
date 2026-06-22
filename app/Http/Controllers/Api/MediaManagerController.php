@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MediaFile;
 use App\Notifications\PortfolioAudioUploadedNotification;
+use App\Services\GamificationService;
 use App\Services\MediaManagerService;
 use App\Services\MediaStorageQuotaService;
 use App\Services\MembershipTierService;
@@ -114,6 +115,34 @@ class MediaManagerController extends Controller
                 ],
             ],
         ])->save();
+
+        if (($attributes['media_kind'] ?? null) === 'scratch') {
+            app(GamificationService::class)->award(
+                userId: $request->user()->id,
+                actionKey: 'scratch_uploaded',
+                targetType: 'media_file',
+                targetId: $file->id,
+                metadata: [
+                    'source_type' => $file->metadata['portfolio']['source_type'] ?? null,
+                    'media_type' => $file->type ?? null,
+                    'media_kind' => $attributes['media_kind'] ?? null,
+                ],
+            );
+        }
+
+        if (($attributes['media_kind'] ?? null) !== 'scratch') {
+            app(GamificationService::class)->award(
+                userId: $request->user()->id,
+                actionKey: 'portfolio_uploaded',
+                targetType: 'media_file',
+                targetId: $file->id,
+                metadata: [
+                    'source_type' => $file->metadata['portfolio']['source_type'] ?? null,
+                    'media_type' => $file->type ?? null,
+                    'media_kind' => $attributes['media_kind'] ?? null,
+                ],
+            );
+        }
 
         $portfolioKind = $attributes['media_kind'] ?? null;
         if (

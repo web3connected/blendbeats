@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\MediaFile;
 use App\Models\User;
+use App\Models\UserGamificationStat;
+use Database\Seeders\GamificationActionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +57,86 @@ class DjPortfolioApiTest extends TestCase
             ->deleteJson("/api/media/files/{$fileId}")
             ->assertOk()
             ->assertJsonPath('deleted', true);
+    }
+
+    public function test_portfolio_upload_awards_gamification_xp(): void
+    {
+        Storage::fake('public');
+        $this->seed(GamificationActionSeeder::class);
+        $user = User::factory()->create(['name' => 'DJ XP']);
+
+        $fileId = $this->actingAs($user)
+            ->postJson('/api/media/files', [
+                'file' => UploadedFile::fake()->create('xp-mix.mp3', 128, 'audio/mpeg'),
+                'disk' => 'public',
+                'collection' => 'dj_media',
+                'title' => 'XP Mix',
+                'visibility' => 'public',
+                'media_kind' => 'mix',
+            ])
+            ->assertCreated()
+            ->json('file.id');
+
+        $this->assertDatabaseHas('gamification_events', [
+            'user_id' => $user->id,
+            'action_key' => 'portfolio_uploaded',
+            'role_context' => 'dj',
+            'xp_awarded' => 25,
+            'target_type' => 'media_file',
+            'target_id' => $fileId,
+        ]);
+
+        $stats = UserGamificationStat::query()->where('user_id', $user->id)->firstOrFail();
+
+        $this->assertSame(25, (int) $stats->dj_xp);
+        $this->assertSame(0, (int) $stats->fan_xp);
+        $this->assertSame(25, (int) $stats->total_xp);
+        $this->assertSame(1, (int) $stats->dj_level);
+        $this->assertNotNull($stats->last_activity_at);
+    }
+
+    public function test_scratch_upload_awards_scratch_xp_without_portfolio_xp(): void
+    {
+        Storage::fake('public');
+        $this->seed(GamificationActionSeeder::class);
+        $user = User::factory()->create(['name' => 'DJ Scratch XP']);
+
+        $fileId = $this->actingAs($user)
+            ->postJson('/api/media/files', [
+                'file' => UploadedFile::fake()->create('scratch-routine.mp4', 128, 'video/mp4'),
+                'disk' => 'public',
+                'collection' => 'dj_media',
+                'title' => 'Scratch Routine',
+                'visibility' => 'public',
+                'media_kind' => 'scratch',
+                'duration_seconds' => 120,
+            ])
+            ->assertCreated()
+            ->json('file.id');
+
+        $this->assertDatabaseMissing('gamification_events', [
+            'user_id' => $user->id,
+            'action_key' => 'portfolio_uploaded',
+            'target_type' => 'media_file',
+            'target_id' => $fileId,
+        ]);
+
+        $this->assertDatabaseHas('gamification_events', [
+            'user_id' => $user->id,
+            'action_key' => 'scratch_uploaded',
+            'role_context' => 'dj',
+            'xp_awarded' => 40,
+            'target_type' => 'media_file',
+            'target_id' => $fileId,
+        ]);
+
+        $stats = UserGamificationStat::query()->where('user_id', $user->id)->firstOrFail();
+
+        $this->assertSame(40, (int) $stats->dj_xp);
+        $this->assertSame(0, (int) $stats->fan_xp);
+        $this->assertSame(40, (int) $stats->total_xp);
+        $this->assertSame(1, (int) $stats->dj_level);
+        $this->assertNotNull($stats->last_activity_at);
     }
 
     public function test_instagram_source_requires_instagram_url(): void

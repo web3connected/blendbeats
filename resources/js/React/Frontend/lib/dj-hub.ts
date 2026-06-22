@@ -29,6 +29,12 @@ export type DjHubDj = {
     url: string;
     mime_type: string | null;
   } | null;
+  gamification: {
+    dj_xp: number;
+    dj_level: number;
+    dj_rank: string;
+    badges: string[];
+  };
   portfolio_media?: Array<{
     id: number;
     title: string;

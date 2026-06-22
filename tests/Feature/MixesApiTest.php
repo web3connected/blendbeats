@@ -5,7 +5,10 @@ namespace Tests\Feature;
 use App\Models\Mix;
 use App\Models\MediaFile;
 use App\Models\User;
+use App\Models\UserGamificationStat;
+use Database\Seeders\GamificationActionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class MixesApiTest extends TestCase
@@ -81,6 +84,7 @@ class MixesApiTest extends TestCase
 
     public function test_authenticated_users_can_save_list_and_remove_their_playlist_mixes(): void
     {
+        $this->seed(GamificationActionSeeder::class);
         $owner = User::factory()->create(['name' => 'DJ Owner']);
         $listener = User::factory()->create();
 
@@ -106,11 +110,40 @@ class MixesApiTest extends TestCase
             ->assertJsonPath('item.mix.id', $mix->id)
             ->assertJsonPath('item.mix.audio_url', '/storage/media/mixes/saved-favorite.mp3');
 
+        $this->actingAs($listener)
+            ->postJson("/api/user-playlist/mixes/{$mix->id}")
+            ->assertOk()
+            ->assertJsonPath('item.mix.id', $mix->id);
+
         $this->assertDatabaseHas('user_playlist_items', [
             'user_id' => $listener->id,
             'mix_id' => $mix->id,
             'position' => 1,
         ]);
+
+        $this->assertDatabaseHas('gamification_events', [
+            'user_id' => $listener->id,
+            'action_key' => 'mix_saved_to_playlist',
+            'role_context' => 'fan',
+            'xp_awarded' => 10,
+            'target_type' => 'mix',
+            'target_id' => $mix->id,
+        ]);
+
+        $this->assertSame(1, DB::table('gamification_events')
+            ->where('user_id', $listener->id)
+            ->where('action_key', 'mix_saved_to_playlist')
+            ->where('target_type', 'mix')
+            ->where('target_id', $mix->id)
+            ->count());
+
+        $stats = UserGamificationStat::query()->where('user_id', $listener->id)->firstOrFail();
+
+        $this->assertSame(0, (int) $stats->dj_xp);
+        $this->assertSame(10, (int) $stats->fan_xp);
+        $this->assertSame(10, (int) $stats->total_xp);
+        $this->assertSame(1, (int) $stats->fan_level);
+        $this->assertNotNull($stats->last_activity_at);
 
         $this->actingAs($listener)
             ->getJson('/api/user-playlist')

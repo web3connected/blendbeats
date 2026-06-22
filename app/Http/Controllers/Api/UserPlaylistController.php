@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Mix;
 use App\Models\User;
 use App\Models\UserPlaylistItem;
+use App\Services\GamificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
@@ -47,6 +48,19 @@ class UserPlaylistController extends Controller
                 'added_at' => now(),
             ],
         );
+
+        if ($item->wasRecentlyCreated) {
+            app(GamificationService::class)->award(
+                userId: $user->id,
+                actionKey: 'mix_saved_to_playlist',
+                targetType: 'mix',
+                targetId: $mix->id,
+                metadata: [
+                    'playlist_item_id' => $item->id,
+                    'mix_title' => $mix->title ?? null,
+                ],
+            );
+        }
 
         $item->load(['mix.user:id,name', 'mix.audioMediaFile', 'mix.coverMediaFile']);
 

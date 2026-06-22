@@ -12,6 +12,7 @@ import {
   Radio,
   ShieldCheck,
   Star,
+  Trophy,
   UserCheck,
   UserPlus,
   Users,
@@ -138,6 +139,13 @@ export default function PublicDjProfilePage() {
       </main>
     );
   }
+
+  const djProgress = dj.gamification ?? {
+    dj_level: 1,
+    dj_xp: 0,
+    dj_rank: 'New DJ',
+    badges: [],
+  };
 
   return (
     <>
@@ -409,6 +417,43 @@ export default function PublicDjProfilePage() {
             </div>
 
             <aside className="grid gap-5 self-start">
+              <section className="border border-[#2a2a2a] bg-[#111111] p-5">
+                <div className="flex items-center gap-3">
+                  <Trophy size={18} className="text-[#FFB800]" />
+                  <h2 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                    DJ Progress
+                  </h2>
+                </div>
+                <div className="mt-4 grid gap-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="border border-[#333333] bg-[#080808] p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">DJ Level</p>
+                      <p className="mt-1 text-3xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                        {djProgress.dj_level.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="border border-[#333333] bg-[#080808] p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">DJ XP</p>
+                      <p className="mt-1 text-3xl text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                        {djProgress.dj_xp.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="border border-[#333333] bg-[#080808] p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Rank</p>
+                    <p className="mt-1 text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                      {djProgress.dj_rank || 'New DJ'}
+                    </p>
+                  </div>
+                  <div className="border border-[#333333] bg-[#080808] p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Badges</p>
+                    <p className="mt-2 text-sm text-[#aaaaaa]">
+                      {djProgress.badges.length > 0 ? djProgress.badges.join(', ') : 'Coming Soon'}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
               <section className="border border-[#2a2a2a] bg-[#111111] p-5">
                 <div className="flex items-center gap-3">
                   <Disc3 size={18} className="text-primary" />

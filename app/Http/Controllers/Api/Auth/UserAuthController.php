@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\AccountUpdatedNotification;
 use App\Notifications\RegistrationWelcomeNotification;
+use App\Services\GamificationService;
 use App\Services\UserAdCreditService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -67,8 +68,13 @@ class UserAuthController extends Controller
 
         $request->session()->regenerate();
 
+        /** @var User $user */
+        $user = Auth::guard('web')->user();
+
+        app(GamificationService::class)->awardDailyLogin($user->id);
+
         return response()->json([
-            'user' => $this->userPayload(Auth::guard('web')->user()),
+            'user' => $this->userPayload($user),
         ]);
     }
 

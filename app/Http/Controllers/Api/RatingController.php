@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Mix;
+use App\Services\GamificationService;
 use App\Services\RatingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,6 +44,19 @@ class RatingController extends Controller
             $attributes['review'] ?? null,
             $attributes['context'] ?? 'default',
         );
+
+        if ($target instanceof Mix && $rating->wasRecentlyCreated) {
+            app(GamificationService::class)->award(
+                userId: $request->user()->id,
+                actionKey: 'mix_liked',
+                targetType: 'mix',
+                targetId: $target->id,
+                metadata: [
+                    'rating_id' => $rating->id,
+                    'rating' => $rating->rating,
+                ],
+            );
+        }
 
         return response()->json([
             'rating' => [

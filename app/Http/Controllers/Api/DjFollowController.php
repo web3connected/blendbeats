@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DjProfile;
 use App\Models\Follower;
 use App\Notifications\DjProfileFollowedNotification;
+use App\Services\GamificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -24,6 +25,17 @@ class DjFollowController extends Controller
         ]);
 
         if ($follow->wasRecentlyCreated) {
+            app(GamificationService::class)->award(
+                userId: $request->user()->id,
+                actionKey: 'dj_followed',
+                targetType: 'dj_profile',
+                targetId: $profile->id,
+                metadata: [
+                    'dj_handle' => $profile->handle,
+                    'follow_id' => $follow->id,
+                ],
+            );
+
             $profile->user?->notify(new DjProfileFollowedNotification($profile, $user));
         }
 

@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\UserGamificationStat;
+use Database\Seeders\GamificationActionSeeder;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
@@ -66,6 +69,59 @@ class AuthFrontendApiTest extends TestCase
         $this->getJson('/api/auth/me')
             ->assertOk()
             ->assertJsonPath('user', null);
+    }
+
+    public function test_successful_login_awards_daily_login_xp_once_per_day(): void
+    {
+        $this->seed(GamificationActionSeeder::class);
+
+        $user = User::factory()->create([
+            'email' => 'daily-login@example.com',
+            'password' => Hash::make('password123'),
+        ]);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'daily-login@example.com',
+            'password' => 'password123',
+        ])
+            ->assertOk()
+            ->assertJsonPath('user.email', 'daily-login@example.com');
+
+        $this->assertDatabaseHas('gamification_events', [
+            'user_id' => $user->id,
+            'action_key' => 'daily_login',
+            'role_context' => 'fan',
+            'xp_awarded' => 10,
+            'target_type' => 'daily_login',
+            'target_id' => (int) now()->format('Ymd'),
+        ]);
+
+        $stats = UserGamificationStat::query()->where('user_id', $user->id)->firstOrFail();
+
+        $this->assertSame(0, (int) $stats->dj_xp);
+        $this->assertSame(10, (int) $stats->fan_xp);
+        $this->assertSame(10, (int) $stats->total_xp);
+
+        $this->postJson('/api/auth/logout')->assertOk();
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'daily-login@example.com',
+            'password' => 'password123',
+        ])
+            ->assertOk()
+            ->assertJsonPath('user.email', 'daily-login@example.com');
+
+        $this->assertSame(1, DB::table('gamification_events')
+            ->where('user_id', $user->id)
+            ->where('action_key', 'daily_login')
+            ->where('target_type', 'daily_login')
+            ->where('target_id', (int) now()->format('Ymd'))
+            ->count());
+
+        $stats->refresh();
+
+        $this->assertSame(10, (int) $stats->fan_xp);
+        $this->assertSame(10, (int) $stats->total_xp);
     }
 
     public function test_frontend_user_can_request_password_reset_link(): void

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\UserSubscriptionController;
+use App\Http\Controllers\Api\AccountGamificationController;
 use App\Http\Controllers\Api\MixController;
 use App\Http\Controllers\Api\AdvertisementDisplayController;
 use App\Http\Controllers\Api\AdvertisementEventController;
@@ -165,6 +166,12 @@ Route::get('billing/paypal/subscription-config', [BillingController::class, 'pay
 Route::get('/account/subscription', [BillingController::class, 'subscriptionDetails'])
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
     ->name('api.account.subscription');
+Route::get('/account/gamification', [AccountGamificationController::class, 'show'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.account.gamification');
+Route::get('/account/gamification/events', [AccountGamificationController::class, 'events'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.account.gamification.events');
 Route::prefix('billing')
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
     ->name('api.billing.')

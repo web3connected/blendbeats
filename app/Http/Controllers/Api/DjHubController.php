@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MediaFile;
 use App\Models\User;
+use App\Models\UserGamificationStat;
 use App\Services\FeaturedAdNotificationService;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
@@ -194,6 +195,7 @@ class DjHubController extends Controller
             'featured_slot' => $this->featuredSlotFor((int) $profile->id),
             'featured_statuses' => $this->featuredStatusesFor((int) $profile->id),
             'featured_mix' => $this->featuredMixFor((int) $profile->user_id),
+            'gamification' => $this->djGamificationFor((int) $profile->user_id),
         ];
 
         if ($includeDetails) {
@@ -205,6 +207,29 @@ class DjHubController extends Controller
         }
 
         return $payload;
+    }
+
+    private function djGamificationFor(int $userId): array
+    {
+        if (! Schema::hasTable('user_gamification_stats')) {
+            return [
+                'dj_xp' => 0,
+                'dj_level' => 1,
+                'dj_rank' => 'New DJ',
+                'badges' => [],
+            ];
+        }
+
+        $stats = UserGamificationStat::query()
+            ->where('user_id', $userId)
+            ->first();
+
+        return [
+            'dj_xp' => (int) ($stats?->dj_xp ?? 0),
+            'dj_level' => (int) ($stats?->dj_level ?? 1),
+            'dj_rank' => $stats?->dj_rank ?: 'New DJ',
+            'badges' => [],
+        ];
     }
 
     private function featuredSlotFor(int $profileId): ?int
