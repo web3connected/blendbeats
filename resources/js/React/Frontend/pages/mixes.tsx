@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, Disc3, Eye, Headphones, Heart, ListMusic, Play, Radio, Star } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Disc3, Eye, Headphones, Heart, ListMusic, Play, Radio, Star } from 'lucide-react';
 
 import HeaderTitle from '@/layouts/HeaderTitle';
 import MixesFeaturedDjAdSpaces from '@/components/advertising/MixesFeaturedDjAdSpaces';
@@ -409,13 +409,16 @@ export default function MixesPage() {
   const [savingMixIds, setSavingMixIds] = useState<Set<number>>(() => new Set());
   const [isPlaylistLoading, setIsPlaylistLoading] = useState(false);
   const [playlistMessage, setPlaylistMessage] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    getMixesIndex()
+    setIsLoading(true);
+
+    getMixesIndex(currentPage)
       .then((response) => {
         if (!isMounted) return;
         setData(response);
@@ -432,7 +435,7 @@ export default function MixesPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [currentPage]);
 
   useEffect(() => {
     let isMounted = true;
@@ -467,6 +470,8 @@ export default function MixesPage() {
 
   const stats = data?.stats ?? emptyStats;
   const hasMixes = Boolean(data?.mixes.length);
+  const pagination = data?.pagination;
+  const hasPagination = Boolean(pagination && pagination.last_page > 1);
   const isDj = Boolean(user?.dj_profile);
   const canRate = Boolean(user);
   const savedMixIds = useMemo(() => new Set(savedPlaylist.map((mix) => mix.id)), [savedPlaylist]);
@@ -569,6 +574,11 @@ export default function MixesPage() {
       autoplay: true,
     });
     setPlaylistMessage(`Playing ${playableSavedPlaylist.length} saved mix${playableSavedPlaylist.length === 1 ? '' : 'es'}.`);
+  };
+
+  const goToMixPage = (page: number) => {
+    const nextPage = Math.max(1, Math.min(page, pagination?.last_page ?? page));
+    setCurrentPage(nextPage);
   };
 
   const handleRatingUpdate = useCallback((mixId: number, rating: RatingSummary) => {
@@ -729,7 +739,11 @@ export default function MixesPage() {
                       Latest Public Uploads
                     </h2>
                   </div>
-                  <span className="text-sm text-[#888]">{data?.mixes.length} public mixes</span>
+                  <span className="text-sm text-[#888]">
+                    {pagination?.total
+                      ? `${pagination.from ?? 0}-${pagination.to ?? 0} of ${pagination.total} public mixes`
+                      : `${data?.mixes.length ?? 0} public mixes`}
+                  </span>
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
                   {data?.mixes.map((mix) => (
@@ -745,6 +759,36 @@ export default function MixesPage() {
                     />
                   ))}
                 </div>
+
+                {hasPagination && pagination && (
+                  <div className="mt-8 flex flex-col gap-4 border-t border-[#1f1f1f] pt-6 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-[#888888]">
+                      Page {pagination.current_page.toLocaleString()} of {pagination.last_page.toLocaleString()}
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => goToMixPage(pagination.current_page - 1)}
+                        disabled={pagination.current_page <= 1 || isLoading}
+                        className="inline-flex h-11 items-center justify-center gap-2 border border-[#444444] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-[#FFB800] hover:text-[#FFB800] disabled:cursor-not-allowed disabled:opacity-50"
+                        style={{ fontFamily: 'var(--font-heading)' }}
+                      >
+                        <ChevronLeft size={15} />
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => goToMixPage(pagination.current_page + 1)}
+                        disabled={!pagination.has_more_pages || isLoading}
+                        className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                        style={{ fontFamily: 'var(--font-heading)' }}
+                      >
+                        Next
+                        <ChevronRight size={15} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
 

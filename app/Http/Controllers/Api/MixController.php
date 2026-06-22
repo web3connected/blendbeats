@@ -6,20 +6,30 @@ use App\Http\Controllers\Controller;
 use App\Models\MediaFile;
 use App\Models\Mix;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class MixController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $this->syncPublicPortfolioMediaToMixes();
+
+        $perPage = min(max($request->integer('per_page', 25), 1), 25);
+        $page = max($request->integer('page', 1), 1);
 
         $publicMixes = Mix::query()
             ->public()
             ->with('user:id,name')
             ->latestPublished()
             ->get();
+
+        $paginatedMixes = Mix::query()
+            ->public()
+            ->with('user:id,name')
+            ->latestPublished()
+            ->paginate($perPage, ['*'], 'page', $page);
 
         $featuredMixes = $publicMixes
             ->where('is_featured', true)
@@ -29,8 +39,17 @@ class MixController extends Controller
         return response()->json([
             'stats' => $this->stats($publicMixes, $featuredMixes),
             'featured' => $featuredMixes->map(fn (Mix $mix): array => $this->mixPayload($mix))->values(),
-            'mixes' => $publicMixes->map(fn (Mix $mix): array => $this->mixPayload($mix))->values(),
+            'mixes' => $paginatedMixes->getCollection()->map(fn (Mix $mix): array => $this->mixPayload($mix))->values(),
             'genres' => $this->genreRows($publicMixes),
+            'pagination' => [
+                'current_page' => $paginatedMixes->currentPage(),
+                'per_page' => $paginatedMixes->perPage(),
+                'total' => $paginatedMixes->total(),
+                'last_page' => $paginatedMixes->lastPage(),
+                'from' => $paginatedMixes->firstItem(),
+                'to' => $paginatedMixes->lastItem(),
+                'has_more_pages' => $paginatedMixes->hasMorePages(),
+            ],
         ]);
     }
 

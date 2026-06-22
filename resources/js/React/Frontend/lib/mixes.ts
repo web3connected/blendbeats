@@ -40,6 +40,15 @@ export type MixesIndexResponse = {
   featured: PublicMix[];
   mixes: PublicMix[];
   genres: GenreMixRow[];
+  pagination: {
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+    has_more_pages: boolean;
+  };
 };
 
 async function parseJson<T>(response: Response): Promise<T> {
@@ -52,8 +61,12 @@ async function parseJson<T>(response: Response): Promise<T> {
   return body as T;
 }
 
-export async function getMixesIndex(): Promise<MixesIndexResponse> {
-  const response = await fetch(`${API_BASE}/mixes`, {
+export async function getMixesIndex(page = 1): Promise<MixesIndexResponse> {
+  const params = new URLSearchParams({
+    page: String(page),
+    per_page: '25',
+  });
+  const response = await fetch(`${API_BASE}/mixes?${params.toString()}`, {
     credentials: 'include',
     headers: { Accept: 'application/json' },
   });
