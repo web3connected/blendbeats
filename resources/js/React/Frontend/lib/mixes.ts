@@ -64,7 +64,7 @@ async function parseJson<T>(response: Response): Promise<T> {
 export async function getMixesIndex(page = 1): Promise<MixesIndexResponse> {
   const params = new URLSearchParams({
     page: String(page),
-    per_page: '25',
+    per_page: '15',
   });
   const response = await fetch(`${API_BASE}/mixes?${params.toString()}`, {
     credentials: 'include',

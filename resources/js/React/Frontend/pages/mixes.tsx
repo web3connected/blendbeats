@@ -471,7 +471,7 @@ export default function MixesPage() {
   const stats = data?.stats ?? emptyStats;
   const hasMixes = Boolean(data?.mixes.length);
   const pagination = data?.pagination;
-  const hasPagination = Boolean(pagination && pagination.last_page > 1);
+  const hasPagination = Boolean(pagination);
   const isDj = Boolean(user?.dj_profile);
   const canRate = Boolean(user);
   const savedMixIds = useMemo(() => new Set(savedPlaylist.map((mix) => mix.id)), [savedPlaylist]);

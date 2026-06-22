@@ -63,7 +63,7 @@ class MixesApiTest extends TestCase
             ->assertJsonMissing(['title' => 'Private Featured']);
     }
 
-    public function test_public_mixes_endpoint_paginates_mixes_at_twenty_five_per_page(): void
+    public function test_public_mixes_endpoint_paginates_mixes_at_fifteen_per_page(): void
     {
         $user = User::factory()->create(['name' => 'DJ Pages']);
 
@@ -78,27 +78,27 @@ class MixesApiTest extends TestCase
 
         $this->getJson('/api/mixes?per_page=100')
             ->assertOk()
-            ->assertJsonCount(25, 'mixes')
+            ->assertJsonCount(15, 'mixes')
             ->assertJsonPath('pagination.current_page', 1)
-            ->assertJsonPath('pagination.per_page', 25)
+            ->assertJsonPath('pagination.per_page', 15)
             ->assertJsonPath('pagination.total', 30)
             ->assertJsonPath('pagination.last_page', 2)
             ->assertJsonPath('pagination.from', 1)
-            ->assertJsonPath('pagination.to', 25)
+            ->assertJsonPath('pagination.to', 15)
             ->assertJsonPath('pagination.has_more_pages', true)
             ->assertJsonPath('mixes.0.title', 'Paged Mix 1')
-            ->assertJsonPath('mixes.24.title', 'Paged Mix 25');
+            ->assertJsonPath('mixes.14.title', 'Paged Mix 15');
 
-        $this->getJson('/api/mixes?page=2&per_page=25')
+        $this->getJson('/api/mixes?page=2&per_page=15')
             ->assertOk()
-            ->assertJsonCount(5, 'mixes')
+            ->assertJsonCount(15, 'mixes')
             ->assertJsonPath('pagination.current_page', 2)
-            ->assertJsonPath('pagination.per_page', 25)
-            ->assertJsonPath('pagination.from', 26)
+            ->assertJsonPath('pagination.per_page', 15)
+            ->assertJsonPath('pagination.from', 16)
             ->assertJsonPath('pagination.to', 30)
             ->assertJsonPath('pagination.has_more_pages', false)
-            ->assertJsonPath('mixes.0.title', 'Paged Mix 26')
-            ->assertJsonPath('mixes.4.title', 'Paged Mix 30');
+            ->assertJsonPath('mixes.0.title', 'Paged Mix 16')
+            ->assertJsonPath('mixes.14.title', 'Paged Mix 30');
     }
 
     public function test_play_endpoint_increments_public_mix_play_count(): void

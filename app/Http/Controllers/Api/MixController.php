@@ -16,7 +16,7 @@ class MixController extends Controller
     {
         $this->syncPublicPortfolioMediaToMixes();
 
-        $perPage = min(max($request->integer('per_page', 25), 1), 25);
+        $perPage = min(max($request->integer('per_page', 15), 1), 15);
         $page = max($request->integer('page', 1), 1);
 
         $publicMixes = Mix::query()
