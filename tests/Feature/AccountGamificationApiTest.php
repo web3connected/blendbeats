@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Badge;
 use App\Models\GamificationEvent;
 use App\Models\User;
+use App\Models\UserBadge;
 use App\Models\UserGamificationStat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -29,6 +31,7 @@ class AccountGamificationApiTest extends TestCase
                 'dj_rank' => null,
                 'fan_rank' => null,
                 'last_activity_at' => null,
+                'badges' => [],
             ]);
     }
 
@@ -63,7 +66,50 @@ class AccountGamificationApiTest extends TestCase
                 'dj_rank' => 'Bedroom DJ',
                 'fan_rank' => 'Supporter',
                 'last_activity_at' => $activityAt->toISOString(),
+                'badges' => [],
             ]);
+    }
+
+    public function test_account_gamification_returns_unlocked_badges(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $unlockedAt = now()->subMinute()->startOfSecond();
+
+        $badge = Badge::query()->create([
+            'badge_key' => 'first_portfolio_upload',
+            'name' => 'First Upload',
+            'description' => 'Uploaded your first portfolio item.',
+            'role_context' => 'dj',
+            'icon' => 'badges/first-upload.svg',
+            'rarity' => 'common',
+            'unlock_action_key' => 'portfolio_uploaded',
+            'unlock_threshold' => 1,
+            'is_active' => true,
+        ]);
+
+        UserBadge::query()->create([
+            'user_id' => $user->id,
+            'badge_id' => $badge->id,
+            'unlocked_at' => $unlockedAt,
+        ]);
+
+        UserBadge::query()->create([
+            'user_id' => $otherUser->id,
+            'badge_id' => $badge->id,
+            'unlocked_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/api/account/gamification')
+            ->assertOk()
+            ->assertJsonCount(1, 'badges')
+            ->assertJsonPath('badges.0.badge_key', 'first_portfolio_upload')
+            ->assertJsonPath('badges.0.name', 'First Upload')
+            ->assertJsonPath('badges.0.description', 'Uploaded your first portfolio item.')
+            ->assertJsonPath('badges.0.icon', 'badges/first-upload.svg')
+            ->assertJsonPath('badges.0.rarity', 'common')
+            ->assertJsonPath('badges.0.unlocked_at', $unlockedAt->toISOString());
     }
 
     public function test_account_gamification_events_returns_latest_user_events(): void

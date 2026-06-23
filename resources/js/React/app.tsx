@@ -6,6 +6,7 @@ import { AuthProvider } from './Frontend/components/auth/AuthProvider';
 import { PlayerProvider } from './Frontend/components/player/PlayerProvider';
 import SiteWrapper from './Frontend/layouts/SiteWrapper';
 import AccountPage from './Frontend/pages/auth/AccountPage';
+import BadgesPage from './Frontend/pages/auth/BadgesPage';
 import BillingPaymentsPage from './Frontend/pages/auth/BillingPaymentsPage';
 import FeaturedAdAnalyticsPage from './Frontend/pages/auth/FeaturedAdAnalyticsPage';
 import FeaturedAdPlacementsPage from './Frontend/pages/auth/FeaturedAdPlacementsPage';
@@ -73,6 +74,7 @@ createRoot(rootElement).render(
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/dashboard" element={<UserDashboardPage />} />
                 <Route path="/account" element={<UserDashboardPage />} />
+                <Route path="/account/badges" element={<BadgesPage />} />
                 <Route path="/account/playlist" element={<UserPlaylistPage />} />
                 <Route path="/account/profile" element={<AccountPage />} />
                 <Route path="/account/billing" element={<BillingPaymentsPage />} />

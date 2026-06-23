@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Badge;
 use App\Models\GamificationEvent;
 use App\Models\User;
+use App\Models\UserBadge;
 use App\Models\UserGamificationStat;
 use App\Services\GamificationService;
+use Database\Seeders\BadgeSeeder;
 use Database\Seeders\GamificationActionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -83,6 +86,40 @@ class GamificationServiceTest extends TestCase
 
         $this->assertSame(25, (int) $stats->dj_xp);
         $this->assertSame(25, (int) $stats->total_xp);
+    }
+
+    public function test_portfolio_uploaded_unlocks_first_portfolio_upload_badge_once(): void
+    {
+        $this->seed(BadgeSeeder::class);
+
+        $user = User::factory()->create();
+        $gamification = app(GamificationService::class);
+
+        $firstAward = $gamification->award($user->id, 'portfolio_uploaded', 'media_file', 42);
+        $secondAward = $gamification->award($user->id, 'portfolio_uploaded', 'media_file', 43);
+
+        $badge = Badge::query()
+            ->where('badge_key', 'first_portfolio_upload')
+            ->firstOrFail();
+
+        $this->assertTrue($firstAward);
+        $this->assertTrue($secondAward);
+        $this->assertDatabaseHas('user_badges', [
+            'user_id' => $user->id,
+            'badge_id' => $badge->id,
+        ]);
+
+        $userBadge = UserBadge::query()
+            ->where('user_id', $user->id)
+            ->where('badge_id', $badge->id)
+            ->firstOrFail();
+
+        $this->assertSame('portfolio_uploaded', $userBadge->metadata['action_key']);
+        $this->assertSame(1, $userBadge->metadata['event_count']);
+        $this->assertSame(1, UserBadge::query()
+            ->where('user_id', $user->id)
+            ->where('badge_id', $badge->id)
+            ->count());
     }
 
     public function test_daily_login_awards_fan_xp_once_per_day(): void

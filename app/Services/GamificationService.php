@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Badge;
 use App\Models\GamificationAction;
 use App\Models\GamificationEvent;
+use App\Models\UserBadge;
 use App\Models\UserGamificationStat;
 use Illuminate\Support\Facades\DB;
 
@@ -99,8 +101,48 @@ class GamificationService
             $stats->last_activity_at = now();
             $stats->save();
 
+            $this->checkBadgeUnlocks(
+                $userId,
+                $action->action_key,
+            );
+
             return true;
         });
+    }
+
+    protected function checkBadgeUnlocks(
+        int $userId,
+        string $actionKey,
+    ): void {
+        $badges = Badge::query()
+            ->where('is_active', true)
+            ->where('unlock_action_key', $actionKey)
+            ->get();
+
+        foreach ($badges as $badge) {
+            $eventCount = GamificationEvent::query()
+                ->where('user_id', $userId)
+                ->where('action_key', $actionKey)
+                ->count();
+
+            if ($eventCount < $badge->unlock_threshold) {
+                continue;
+            }
+
+            UserBadge::firstOrCreate(
+                [
+                    'user_id' => $userId,
+                    'badge_id' => $badge->id,
+                ],
+                [
+                    'unlocked_at' => now(),
+                    'metadata' => [
+                        'action_key' => $actionKey,
+                        'event_count' => $eventCount,
+                    ],
+                ],
+            );
+        }
     }
 
     protected function generateEventHash(

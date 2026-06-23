@@ -446,10 +446,37 @@ export default function PublicDjProfilePage() {
                     </p>
                   </div>
                   <div className="border border-[#333333] bg-[#080808] p-3">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Badges</p>
-                    <p className="mt-2 text-sm text-[#aaaaaa]">
-                      {djProgress.badges.length > 0 ? djProgress.badges.join(', ') : 'Coming Soon'}
-                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Achievements</p>
+                    {djProgress.badges.length > 0 ? (
+                      <div className="mt-3 grid gap-3">
+                        {djProgress.badges.map((badge) => (
+                          <div
+                            key={badge.badge_key ?? badge.name ?? badge.icon ?? 'badge'}
+                            className="flex items-center gap-3 border border-[#242424] bg-[#050505] p-3"
+                          >
+                            {badge.icon ? (
+                              <img
+                                src={`/assets/${badge.icon}`}
+                                alt={badge.name ?? 'Achievement'}
+                                className="h-12 w-12 shrink-0 rounded-full border border-[#303030] bg-[#080808] object-contain p-1"
+                              />
+                            ) : (
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#303030] bg-[#080808] text-[#FFB800]">
+                                <Trophy size={20} />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-white">{badge.name ?? 'Achievement'}</p>
+                              <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">
+                                {badge.rarity ?? 'common'}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm text-[#aaaaaa]">No achievements unlocked yet.</p>
+                    )}
                   </div>
                 </div>
               </section>

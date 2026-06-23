@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MediaFile;
 use App\Models\User;
+use App\Models\UserBadge;
 use App\Models\UserGamificationStat;
 use App\Services\FeaturedAdNotificationService;
 use Illuminate\Database\Query\Builder;
@@ -211,12 +212,14 @@ class DjHubController extends Controller
 
     private function djGamificationFor(int $userId): array
     {
+        $badges = $this->publicDjBadgesFor($userId);
+
         if (! Schema::hasTable('user_gamification_stats')) {
             return [
                 'dj_xp' => 0,
                 'dj_level' => 1,
                 'dj_rank' => 'New DJ',
-                'badges' => [],
+                'badges' => $badges,
             ];
         }
 
@@ -228,7 +231,7 @@ class DjHubController extends Controller
             'dj_xp' => (int) ($stats?->dj_xp ?? 0),
             'dj_level' => (int) ($stats?->dj_level ?? 1),
             'dj_rank' => $stats?->dj_rank ?: 'New DJ',
-            'badges' => [],
+            'badges' => $badges,
         ];
     }
 
@@ -261,6 +264,29 @@ class DjHubController extends Controller
             ->where('follower_user_id', $userId)
             ->where('followed_dj_id', $profileId)
             ->exists();
+    }
+
+    private function publicDjBadgesFor(int $userId): array
+    {
+        if (! Schema::hasTable('user_badges') || ! Schema::hasTable('badges')) {
+            return [];
+        }
+
+        return UserBadge::query()
+            ->with('badge:id,badge_key,name,icon,rarity,role_context')
+            ->where('user_id', $userId)
+            ->latest('unlocked_at')
+            ->latest('id')
+            ->get()
+            ->filter(fn (UserBadge $userBadge): bool => in_array($userBadge->badge?->role_context, ['dj', 'both'], true))
+            ->map(fn (UserBadge $userBadge): array => [
+                'badge_key' => $userBadge->badge?->badge_key,
+                'name' => $userBadge->badge?->name,
+                'icon' => $userBadge->badge?->icon,
+                'rarity' => $userBadge->badge?->rarity,
+            ])
+            ->values()
+            ->all();
     }
 
     private function genresFor(int $profileId): array

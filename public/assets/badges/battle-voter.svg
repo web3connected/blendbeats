@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-hidden="true">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="64%">
+      <stop offset="0" stop-color="#182968"/>
+      <stop offset="0.58" stop-color="#17123a"/>
+      <stop offset="1" stop-color="#040408"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="18" x2="110" y1="18" y2="110">
+      <stop offset="0" stop-color="#fff1a6"/>
+      <stop offset="0.5" stop-color="#ffb800"/>
+      <stop offset="1" stop-color="#a85f00"/>
+    </linearGradient>
+    <linearGradient id="neon" x1="30" x2="98" y1="92" y2="32">
+      <stop offset="0" stop-color="#00d4ff"/>
+      <stop offset="1" stop-color="#a855f7"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="58" fill="url(#bg)"/>
+  <circle cx="64" cy="64" r="56" fill="none" stroke="url(#gold)" stroke-width="4"/>
+  <path d="M39 39c-8 7-12 17-12 29v7h12V62c0-14 10-25 25-25s25 11 25 25v13h12v-7c0-12-4-22-12-29" fill="none" stroke="url(#neon)" stroke-linecap="round" stroke-width="5" filter="url(#glow)"/>
+  <path d="M42 82h44l8 17H34z" fill="#090a13" stroke="#ffffff" stroke-width="3" opacity=".9"/>
+  <path d="m48 63 14 14 28-31" fill="none" stroke="#ffb800" stroke-linecap="round" stroke-linejoin="round" stroke-width="8" filter="url(#glow)"/>
+  <path d="M41 95h46" fill="none" stroke="#00d4ff" stroke-linecap="round" stroke-width="4" opacity=".8"/>
+</svg>

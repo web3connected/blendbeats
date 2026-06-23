@@ -46,6 +46,13 @@ const dashboardActions = [
     accent: 'text-[#FFB800]',
   },
   {
+    title: 'My Badges',
+    description: 'View unlocked achievements, locked badges, rarity, and progress.',
+    href: '/account/badges',
+    icon: Trophy,
+    accent: 'text-[#FFB800]',
+  },
+  {
     title: 'Start DJ Career',
     description: 'Create your DJ profile, claim a handle, and unlock creator tools.',
     href: '/dj/start',
@@ -126,6 +133,16 @@ function formatActionKey(actionKey: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+function formatBadgeDate(value: string | null): string {
+  if (!value) return 'Not Set';
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(value));
 }
 
 export default function UserDashboardPage() {
@@ -385,18 +402,61 @@ export default function UserDashboardPage() {
                 {gamificationError ? (
                   <p className="text-sm leading-6 text-primary">{gamificationError}</p>
                 ) : (
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                    {gamificationRows.map(([label, value]) => (
-                      <div key={label} className="border border-[#303030] bg-[#0b0b0b] p-4">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">
-                          {label}
-                        </p>
-                        <p className="mt-2 text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                          {isGamificationLoading ? 'Loading' : value.toLocaleString()}
-                        </p>
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                      {gamificationRows.map(([label, value]) => (
+                        <div key={label} className="border border-[#303030] bg-[#0b0b0b] p-4">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">
+                            {label}
+                          </p>
+                          <p className="mt-2 text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                            {isGamificationLoading ? 'Loading' : value.toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-6 border-t border-[#252525] pt-5">
+                      <div className="mb-4 flex items-center gap-3">
+                        <ShieldCheck size={17} className="text-[#FFB800]" />
+                        <h3 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                          Badges
+                        </h3>
                       </div>
-                    ))}
-                  </div>
+
+                      {isGamificationLoading ? (
+                        <p className="text-sm leading-6 text-[#888888]">Loading badges.</p>
+                      ) : gamification?.badges?.length ? (
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                          {gamification.badges.map((badge) => (
+                            <div
+                              key={badge.badge_key ?? badge.name ?? badge.unlocked_at ?? 'badge'}
+                              className="flex min-h-28 gap-4 border border-[#303030] bg-[#0b0b0b] p-4"
+                            >
+                              <img
+                                src={`/assets/${badge.icon}`}
+                                alt={badge.name ?? 'Badge'}
+                                className="h-14 w-14 shrink-0 rounded-full border border-[#303030] bg-[#080808] object-contain p-1"
+                              />
+                              <div className="min-w-0">
+                                <p className="text-lg uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                                  {badge.name}
+                                </p>
+                                <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">
+                                  {badge.rarity ?? 'common'}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-[#888888]">
+                                  Unlocked {formatBadgeDate(badge.unlocked_at)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm leading-6 text-[#888888]">No badges unlocked yet.</p>
+                      )}
+                    </div>
+                  </>
                 )}
 
                 <div className="mt-6 border-t border-[#252525] pt-5">

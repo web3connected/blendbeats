@@ -2,6 +2,13 @@ import apiClient from '@/lib/api-client';
 
 const API_BASE = import.meta.env?.VITE_API_BASE || '/api';
 
+export type DjHubBadge = {
+  badge_key: string | null;
+  name: string | null;
+  icon: string | null;
+  rarity: string | null;
+};
+
 export type DjHubDj = {
   id: number;
   dj_name: string;
@@ -33,7 +40,7 @@ export type DjHubDj = {
     dj_xp: number;
     dj_level: number;
     dj_rank: string;
-    badges: string[];
+    badges: DjHubBadge[];
   };
   portfolio_media?: Array<{
     id: number;

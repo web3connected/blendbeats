@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\GamificationEvent;
+use App\Models\UserBadge;
 use App\Models\UserGamificationStat;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,13 @@ class AccountGamificationController extends Controller
             ->where('user_id', $request->user()->id)
             ->first();
 
+        $badges = UserBadge::query()
+            ->with('badge:id,badge_key,name,description,icon,rarity')
+            ->where('user_id', $request->user()->id)
+            ->latest('unlocked_at')
+            ->latest('id')
+            ->get();
+
         return response()->json([
             'dj_xp' => (int) ($stats?->dj_xp ?? 0),
             'fan_xp' => (int) ($stats?->fan_xp ?? 0),
@@ -26,6 +34,14 @@ class AccountGamificationController extends Controller
             'dj_rank' => $stats?->dj_rank,
             'fan_rank' => $stats?->fan_rank,
             'last_activity_at' => $stats?->last_activity_at?->toISOString(),
+            'badges' => $badges->map(fn (UserBadge $userBadge): array => [
+                'badge_key' => $userBadge->badge?->badge_key,
+                'name' => $userBadge->badge?->name,
+                'description' => $userBadge->badge?->description,
+                'icon' => $userBadge->badge?->icon,
+                'rarity' => $userBadge->badge?->rarity,
+                'unlocked_at' => $userBadge->unlocked_at?->toISOString(),
+            ])->values(),
         ]);
     }
 

@@ -10,6 +10,28 @@ export type AccountGamificationSummary = {
   dj_rank: string | null;
   fan_rank: string | null;
   last_activity_at: string | null;
+  badges: AccountGamificationBadge[];
+};
+
+export type AccountGamificationBadge = {
+  badge_key: string | null;
+  name: string | null;
+  description: string | null;
+  icon: string | null;
+  rarity: string | null;
+  unlocked_at: string | null;
+};
+
+export type GamificationBadgeCatalogItem = {
+  badge_key: string;
+  name: string;
+  description: string | null;
+  role_context: string;
+  icon: string | null;
+  rarity: string;
+  unlock_action_key: string | null;
+  unlock_threshold: number;
+  unlock_condition: string;
 };
 
 export type AccountGamificationEvent = {
@@ -28,6 +50,12 @@ export async function getAccountGamification(): Promise<AccountGamificationSumma
 
 export async function getAccountGamificationEvents(): Promise<AccountGamificationEvent[]> {
   const response = await apiClient.get<AccountGamificationEvent[]>('/account/gamification/events');
+
+  return response.data;
+}
+
+export async function getGamificationBadges(): Promise<GamificationBadgeCatalogItem[]> {
+  const response = await apiClient.get<GamificationBadgeCatalogItem[]>('/gamification/badges');
 
   return response.data;
 }

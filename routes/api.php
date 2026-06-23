@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\DjLoungeController;
 use App\Http\Controllers\Api\DjProfileController;
 use App\Http\Controllers\Api\DjScratchController;
 use App\Http\Controllers\Api\FeaturedAdController;
+use App\Http\Controllers\Api\GamificationBadgeController;
 use App\Http\Controllers\Api\LoungeLiveStateController;
 use App\Http\Controllers\Api\MediaManagerController;
 use App\Http\Controllers\Api\MediaSetupController;
@@ -172,6 +173,8 @@ Route::get('/account/gamification', [AccountGamificationController::class, 'show
 Route::get('/account/gamification/events', [AccountGamificationController::class, 'events'])
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
     ->name('api.account.gamification.events');
+Route::get('/gamification/badges', [GamificationBadgeController::class, 'index'])
+    ->name('api.gamification.badges.index');
 Route::prefix('billing')
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
     ->name('api.billing.')

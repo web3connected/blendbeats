@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Badge;
 use App\Models\User;
+use App\Models\UserBadge;
 use App\Models\UserGamificationStat;
 use Database\Seeders\GamificationActionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -107,12 +109,53 @@ class DjHubApiTest extends TestCase
             'last_activity_at' => now(),
         ]);
 
+        $djBadge = Badge::query()->create([
+            'badge_key' => 'first_portfolio_upload',
+            'name' => 'First Upload',
+            'description' => 'Uploaded your first portfolio item.',
+            'role_context' => 'dj',
+            'icon' => 'badges/first-upload.svg',
+            'rarity' => 'common',
+            'unlock_action_key' => 'portfolio_uploaded',
+            'unlock_threshold' => 1,
+            'is_active' => true,
+        ]);
+
+        $fanBadge = Badge::query()->create([
+            'badge_key' => 'super_fan',
+            'name' => 'Super Fan',
+            'description' => 'Reached a fan engagement milestone.',
+            'role_context' => 'fan',
+            'icon' => 'badges/super-fan.svg',
+            'rarity' => 'rare',
+            'unlock_action_key' => 'dj_followed',
+            'unlock_threshold' => 10,
+            'is_active' => true,
+        ]);
+
+        UserBadge::query()->create([
+            'user_id' => $user->id,
+            'badge_id' => $djBadge->id,
+            'unlocked_at' => now(),
+        ]);
+
+        UserBadge::query()->create([
+            'user_id' => $user->id,
+            'badge_id' => $fanBadge->id,
+            'unlocked_at' => now(),
+        ]);
+
         $this->getJson('/api/dj-hub/djs/dj-progress')
             ->assertOk()
             ->assertJsonPath('dj.gamification.dj_level', 2)
             ->assertJsonPath('dj.gamification.dj_xp', 125)
             ->assertJsonPath('dj.gamification.dj_rank', 'Rising DJ')
-            ->assertJsonPath('dj.gamification.badges', []);
+            ->assertJsonCount(1, 'dj.gamification.badges')
+            ->assertJsonPath('dj.gamification.badges.0.badge_key', 'first_portfolio_upload')
+            ->assertJsonPath('dj.gamification.badges.0.name', 'First Upload')
+            ->assertJsonPath('dj.gamification.badges.0.icon', 'badges/first-upload.svg')
+            ->assertJsonPath('dj.gamification.badges.0.rarity', 'common')
+            ->assertJsonMissing(['badge_key' => 'super_fan']);
     }
 
     public function test_following_dj_awards_fan_xp_once(): void

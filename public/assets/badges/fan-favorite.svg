@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-hidden="true">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="64%">
+      <stop offset="0" stop-color="#4b123f"/>
+      <stop offset="0.58" stop-color="#101943"/>
+      <stop offset="1" stop-color="#040408"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="18" x2="110" y1="18" y2="110">
+      <stop offset="0" stop-color="#fff1a6"/>
+      <stop offset="0.5" stop-color="#ffb800"/>
+      <stop offset="1" stop-color="#a85f00"/>
+    </linearGradient>
+    <linearGradient id="heart" x1="34" x2="94" y1="36" y2="94">
+      <stop offset="0" stop-color="#ff4fd8"/>
+      <stop offset="1" stop-color="#7dd3fc"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="58" fill="url(#bg)"/>
+  <circle cx="64" cy="64" r="56" fill="none" stroke="url(#gold)" stroke-width="4"/>
+  <path d="M64 94 35 66c-15-15 4-39 24-22l5 5 5-5c20-17 39 7 24 22z" fill="url(#heart)" stroke="#ffffff" stroke-width="3" filter="url(#glow)"/>
+  <path d="M28 80h15l5-9 8 17 7-31 8 31 7-15 6 7h16" fill="none" stroke="#ffb800" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" filter="url(#glow)"/>
+  <circle cx="34" cy="39" r="4" fill="#00d4ff"/>
+  <circle cx="96" cy="43" r="4" fill="#a855f7"/>
+</svg>
