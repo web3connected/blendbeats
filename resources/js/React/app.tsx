@@ -31,6 +31,7 @@ import PublicDjProfilePage from './Frontend/pages/dj/PublicDjProfilePage';
 import StartDjCareerPage from './Frontend/pages/dj/StartDjCareerPage';
 import DjsPage from './Frontend/pages/djs';
 import HomePage from './Frontend/pages';
+import { AboutPage, ContactPage, PrivacyPage, TermsPage } from './Frontend/pages/info';
 import MerchPage from './Frontend/pages/merch';
 import MixesPage from './Frontend/pages/mixes';
 import PricingPage from './Frontend/pages/pricing';
@@ -63,6 +64,10 @@ createRoot(rootElement).render(
                 <Route path="/subscription/success" element={<SubscriptionSuccessPage />} />
                 <Route path="/subscription/cancel" element={<SubscriptionCancelPage />} />
                 <Route path="/merch" element={<MerchPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
                 <Route path="/djs" element={<DjsPage />} />
                 <Route path="/djs/scratches" element={<DjScratchesPage />} />
                 <Route path="/djs/:handle" element={<PublicDjProfilePage />} />
