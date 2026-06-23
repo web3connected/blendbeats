@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CaptureAffiliateReferral;
 use App\Http\Middleware\EnsureAdminAuthenticated;
 use App\Http\Middleware\EnsureAutomationToken;
 use App\Http\Middleware\EnsurePublicAuthenticated;
@@ -26,6 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(append: [
+            CaptureAffiliateReferral::class,
+        ]);
+
         $middleware->alias([
             'admin.auth' => EnsureAdminAuthenticated::class,
             'automation.token' => EnsureAutomationToken::class,

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminCenter\AdminPermissionController;
+use App\Http\Controllers\Admin\AdminCenter\AffiliateManagementController;
 use App\Http\Controllers\Admin\AdminCenter\FeaturedSlotController;
 use App\Http\Controllers\Admin\AdminCenter\AdminRoleController;
 use App\Http\Controllers\Admin\AdminCenter\LoungePlaylistController;
@@ -104,6 +105,49 @@ Route::middleware('admin.auth')->group(function (): void {
         ->middleware('permission:paymentproviders.update,admin')
         ->name('admincenter.paymentproviders.update');
     Route::get('admin_center/paymentproviders', fn () => redirect()->route('admin.admincenter.paymentproviders.index'));
+
+    Route::get('admincenter/affiliates', [AffiliateManagementController::class, 'affiliates'])
+        ->middleware('permission:affiliates.view,admin')
+        ->name('admincenter.affiliates.index');
+    Route::get('admincenter/affiliatesettings', [AffiliateManagementController::class, 'settings'])
+        ->middleware('permission:affiliates.view,admin')
+        ->name('admincenter.affiliates.settings');
+    Route::get('admincenter/affiliateanalytics', [AffiliateManagementController::class, 'analytics'])
+        ->middleware('permission:affiliates.view,admin')
+        ->name('admincenter.affiliates.analytics');
+    Route::get('admincenter/affiliatecampaigns', [AffiliateManagementController::class, 'campaigns'])
+        ->middleware('permission:affiliates.view,admin')
+        ->name('admincenter.affiliatecampaigns.index');
+    Route::post('admincenter/affiliatecampaigns', [AffiliateManagementController::class, 'storeCampaign'])
+        ->middleware('permission:affiliates.update,admin')
+        ->name('admincenter.affiliatecampaigns.store');
+    Route::patch('admincenter/affiliatecampaigns/{campaign}', [AffiliateManagementController::class, 'updateCampaign'])
+        ->middleware('permission:affiliates.update,admin')
+        ->name('admincenter.affiliatecampaigns.update');
+    Route::patch('admincenter/affiliatecodes/{code}/campaign', [AffiliateManagementController::class, 'updateReferralCodeCampaign'])
+        ->middleware('permission:affiliates.update,admin')
+        ->name('admincenter.affiliatecodes.campaign.update');
+    Route::patch('admincenter/affiliates/{affiliate}/status', [AffiliateManagementController::class, 'updateAffiliateStatus'])
+        ->middleware('permission:affiliates.update,admin')
+        ->name('admincenter.affiliates.status.update');
+    Route::get('admincenter/affiliatereferrals', [AffiliateManagementController::class, 'referrals'])
+        ->middleware('permission:affiliatereferrals.view,admin')
+        ->name('admincenter.affiliatereferrals.index');
+    Route::patch('admincenter/affiliatereferrals/{referral}/status', [AffiliateManagementController::class, 'updateReferralStatus'])
+        ->middleware('permission:affiliatereferrals.update,admin')
+        ->name('admincenter.affiliatereferrals.status.update');
+    Route::get('admincenter/affiliaterewards', [AffiliateManagementController::class, 'rewards'])
+        ->middleware('permission:affiliaterewards.view,admin')
+        ->name('admincenter.affiliaterewards.index');
+    Route::patch('admincenter/affiliaterewards/{reward}/status', [AffiliateManagementController::class, 'updateRewardStatus'])
+        ->middleware('permission:affiliaterewards.update,admin')
+        ->name('admincenter.affiliaterewards.status.update');
+    Route::get('admincenter/affiliatepayouts', [AffiliateManagementController::class, 'payouts'])
+        ->middleware('permission:affiliatepayouts.view,admin')
+        ->name('admincenter.affiliatepayouts.index');
+    Route::patch('admincenter/affiliatepayouts/{payout}/status', [AffiliateManagementController::class, 'updatePayoutStatus'])
+        ->middleware('permission:affiliatepayouts.update,admin')
+        ->name('admincenter.affiliatepayouts.status.update');
 
     Route::resource('users', UserController::class);
     Route::resource('blendnews', BlendNewsPostController::class)

@@ -17,3 +17,4 @@ Artisan::command('featured-ads:sync-notifications', function () {
 
 Schedule::command('featured-ads:sync-notifications')->everyFifteenMinutes();
 Schedule::command('subscriptions:expire-comped')->daily();
+Schedule::command('affiliate:expire-membership-credits')->daily();

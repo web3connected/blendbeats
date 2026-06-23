@@ -370,6 +370,41 @@ return [
                     'url' => 'admin/admincenter/paymentproviders',
                     'icon' => 'fas fa-fw fa-credit-card',
                 ],
+                [
+                    'text' => 'Affiliates',
+                    'url' => 'admin/admincenter/affiliates',
+                    'icon' => 'fas fa-fw fa-handshake',
+                ],
+                [
+                    'text' => 'Affiliate Referrals',
+                    'url' => 'admin/admincenter/affiliatereferrals',
+                    'icon' => 'fas fa-fw fa-route',
+                ],
+                [
+                    'text' => 'Affiliate Campaigns',
+                    'url' => 'admin/admincenter/affiliatecampaigns',
+                    'icon' => 'fas fa-fw fa-bullhorn',
+                ],
+                [
+                    'text' => 'Affiliate Rewards',
+                    'url' => 'admin/admincenter/affiliaterewards',
+                    'icon' => 'fas fa-fw fa-award',
+                ],
+                [
+                    'text' => 'Affiliate Payouts',
+                    'url' => 'admin/admincenter/affiliatepayouts',
+                    'icon' => 'fas fa-fw fa-money-check-alt',
+                ],
+                [
+                    'text' => 'Affiliate Analytics',
+                    'url' => 'admin/admincenter/affiliateanalytics',
+                    'icon' => 'fas fa-fw fa-chart-line',
+                ],
+                [
+                    'text' => 'Affiliate Settings',
+                    'url' => 'admin/admincenter/affiliatesettings',
+                    'icon' => 'fas fa-fw fa-sliders-h',
+                ],
             ],
         ],
         [

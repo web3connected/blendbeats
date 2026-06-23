@@ -5,12 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PayPalWebhookEvent;
 use App\Models\User;
+use App\Services\AffiliateReferralQualificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class PayPalWebhookController extends Controller
 {
+    public function __construct(private readonly AffiliateReferralQualificationService $referralQualification)
+    {
+    }
+
     public function handle(Request $request): JsonResponse
     {
         $eventType = $request->input('event_type');
@@ -79,5 +84,16 @@ class PayPalWebhookController extends Controller
         }
 
         $user->forceFill($updates)->save();
+
+        if ($status === 'active') {
+            $this->referralQualification->qualifySubscription(
+                user: $user,
+                provider: 'paypal',
+                transactionId: $resourceId,
+                source: 'paypal_webhook:'.$eventType,
+                planKey: 'dj_plus',
+                status: $status,
+            );
+        }
     }
 }

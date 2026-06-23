@@ -24,6 +24,14 @@ class AdminRoleSeeder extends Seeder
             'featuredslots.update',
             'paymentproviders.view',
             'paymentproviders.update',
+            'affiliates.view',
+            'affiliates.update',
+            'affiliatereferrals.view',
+            'affiliatereferrals.update',
+            'affiliaterewards.view',
+            'affiliaterewards.update',
+            'affiliatepayouts.view',
+            'affiliatepayouts.update',
         ];
 
         foreach ($permissions as $permission) {
@@ -51,6 +59,14 @@ class AdminRoleSeeder extends Seeder
                     'featuredslots.update',
                     'paymentproviders.view',
                     'paymentproviders.update',
+                    'affiliates.view',
+                    'affiliates.update',
+                    'affiliatereferrals.view',
+                    'affiliatereferrals.update',
+                    'affiliaterewards.view',
+                    'affiliaterewards.update',
+                    'affiliatepayouts.view',
+                    'affiliatepayouts.update',
                 ],
             ],
             'manager' => [

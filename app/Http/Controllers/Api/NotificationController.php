@@ -17,6 +17,7 @@ class NotificationController extends Controller
         'dj_lounge',
         'featured_ads',
         'billing',
+        'affiliate',
         'support',
         'system',
     ];

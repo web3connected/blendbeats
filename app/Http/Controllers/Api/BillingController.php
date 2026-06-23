@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PaymentProvider;
 use App\Services\BillingPlanService;
+use App\Services\AffiliateReferralQualificationService;
 use App\Services\SubscriptionTierSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class BillingController extends Controller
     public function __construct(
         private readonly BillingPlanService $plans,
         private readonly SubscriptionTierSyncService $tierSync,
+        private readonly AffiliateReferralQualificationService $referralQualification,
     ) {}
 
     public function plans(Request $request): JsonResponse
@@ -84,7 +86,9 @@ class BillingController extends Controller
             'subscriptionID' => ['required', 'string', 'max:255'],
         ]);
 
-        $request->user()->forceFill([
+        $user = $request->user();
+
+        $user->forceFill([
             'media_storage_tier' => 'dj_plus',
             'billing_provider' => 'paypal',
             'paypal_subscription_id' => $validated['subscriptionID'],
@@ -93,10 +97,20 @@ class BillingController extends Controller
             'paypal_subscription_approved_at' => now(),
         ])->save();
 
+        $qualification = $this->referralQualification->qualifySubscription(
+            user: $user,
+            provider: 'paypal',
+            transactionId: $validated['subscriptionID'],
+            source: 'paypal_subscription_approved',
+            planKey: 'dj_plus',
+            status: 'approved',
+        );
+
         return response()->json([
             'message' => 'PayPal subscription approved.',
             'current_tier' => 'dj_plus',
             'paypal_subscription_id' => $validated['subscriptionID'],
+            'referral_qualification' => $this->referralQualification->publicQualification($qualification),
         ]);
     }
 

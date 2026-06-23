@@ -166,4 +166,13 @@ return [
             ],
         ],
     ],
+
+    'affiliate' => [
+        'membership_credit' => [
+            'tier' => 'dj_plus',
+            'days' => 30,
+            'expires_after_months' => 12,
+            'expiring_notice_days' => 7,
+        ],
+    ],
 ];

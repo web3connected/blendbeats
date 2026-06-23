@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Admin\UserSubscriptionController;
 use App\Http\Controllers\Api\AccountGamificationController;
+use App\Http\Controllers\Api\AdminAffiliateAnalyticsController;
+use App\Http\Controllers\Api\AffiliateAccountController;
 use App\Http\Controllers\Api\MixController;
 use App\Http\Controllers\Api\AdvertisementDisplayController;
 use App\Http\Controllers\Api\AdvertisementEventController;
@@ -157,6 +159,9 @@ Route::post('/paypal/webhook', [PayPalWebhookController::class, 'handle'])
 Route::middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'admin.auth'])->group(function (): void {
     Route::post('/admin/users/{user}/grant-free-subscription', [UserSubscriptionController::class, 'grantFreeSubscription']);
     Route::post('/admin/users/{user}/revoke-free-subscription', [UserSubscriptionController::class, 'revokeFreeSubscription']);
+    Route::get('/admin/affiliate-analytics', AdminAffiliateAnalyticsController::class)
+        ->middleware('permission:affiliates.view,admin')
+        ->name('api.admin.affiliate-analytics');
 });
 
 Route::get('billing/plans', [BillingController::class, 'plans'])
@@ -173,6 +178,30 @@ Route::get('/account/gamification', [AccountGamificationController::class, 'show
 Route::get('/account/gamification/events', [AccountGamificationController::class, 'events'])
     ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
     ->name('api.account.gamification.events');
+Route::get('/account/affiliate', [AffiliateAccountController::class, 'show'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.account.affiliate.show');
+Route::post('/account/affiliate', [AffiliateAccountController::class, 'store'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.account.affiliate.store');
+Route::get('/account/affiliate/summary', [AffiliateAccountController::class, 'summary'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.account.affiliate.summary');
+Route::get('/account/affiliate/referrals', [AffiliateAccountController::class, 'referrals'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.account.affiliate.referrals');
+Route::get('/account/affiliate/rewards', [AffiliateAccountController::class, 'rewards'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.account.affiliate.rewards');
+Route::post('/account/affiliate/rewards/{reward}/redeem', [AffiliateAccountController::class, 'redeemReward'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.account.affiliate.rewards.redeem');
+Route::get('/account/affiliate/payouts', [AffiliateAccountController::class, 'payouts'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.account.affiliate.payouts');
+Route::post('/account/affiliate/payouts', [AffiliateAccountController::class, 'requestPayout'])
+    ->middleware([AddQueuedCookiesToResponse::class, StartSession::class, 'public.auth'])
+    ->name('api.account.affiliate.payouts.store');
 Route::get('/gamification/badges', [GamificationBadgeController::class, 'index'])
     ->name('api.gamification.badges.index');
 Route::prefix('billing')

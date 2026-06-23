@@ -100,4 +100,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserPlaylistItem::class);
     }
+
+    public function affiliateAccount(): HasOne
+    {
+        return $this->hasOne(AffiliateAccount::class);
+    }
+
+    public function affiliateReferral(): HasOne
+    {
+        return $this->hasOne(AffiliateReferral::class, 'referred_user_id');
+    }
 }

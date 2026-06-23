@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\AccountUpdatedNotification;
 use App\Notifications\RegistrationWelcomeNotification;
+use App\Services\AffiliateReferralAttributionService;
+use App\Services\AffiliateReferralTrackingService;
 use App\Services\GamificationService;
 use App\Services\UserAdCreditService;
 use Illuminate\Http\JsonResponse;
@@ -21,18 +23,27 @@ use Illuminate\Validation\ValidationException;
 
 class UserAuthController extends Controller
 {
-    public function register(Request $request): JsonResponse
-    {
+    public function register(
+        Request $request,
+        AffiliateReferralTrackingService $referrals,
+        AffiliateReferralAttributionService $attribution,
+    ): JsonResponse {
         $attributes = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
+        $referralContext = $referrals->currentContext($request);
 
         $user = User::query()->create([
             ...$attributes,
             'media_storage_tier' => config('billing.subscription.free_tier', 'free'),
         ]);
+        $affiliateReferral = $attribution->attributeSignup($user, $referralContext, $request);
+
+        if ($referralContext) {
+            $referrals->clearContext($request);
+        }
 
         if (Schema::hasTable('notifications')) {
             $user->notify(new RegistrationWelcomeNotification());
@@ -50,6 +61,8 @@ class UserAuthController extends Controller
 
         return response()->json([
             'user' => $this->userPayload($user),
+            'referral_context' => $referrals->publicContext($referralContext),
+            'referral_attribution' => $attribution->publicAttribution($affiliateReferral),
         ], 201);
     }
 
