@@ -37,47 +37,9 @@ import {
   requestAffiliatePayout,
 } from '@/lib/affiliate';
 
-function formatDate(value: string | null): string {
-  if (!value) return 'Not Set';
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(value));
-}
-
-function statusLabel(status: string): string {
-  return status
-    .split('_')
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
-function numberLabel(value: number): string {
-  return value.toLocaleString();
-}
-
-function percentLabel(value: number): string {
-  return `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
-}
-
-function titleLabel(value: string | null | undefined): string {
-  if (!value) return 'Not Set';
-
-  return value
-    .split('_')
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
-function firstError(error: AffiliateApiError): string {
-  const fieldError = Object.values(error.errors)[0]?.[0];
-
-  return fieldError || error.message;
-}
+import ActivityPanel from './affiliate/ActivityPanel';
+import AffiliateMetricGrid from './affiliate/AffiliateMetricGrid';
+import { firstError, formatDate, numberLabel, percentLabel, statusLabel, titleLabel } from './affiliate/formatters';
 
 export default function AffiliateProgramPage() {
   const { user, isLoading } = useAuth();
@@ -502,37 +464,27 @@ export default function AffiliateProgramPage() {
                       {isDashboardLoading && <Loader2 className="animate-spin text-primary" size={18} />}
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                      {[
-                        ['Visits', numberLabel(referralStats.visits), `${numberLabel(referralStats.signups)} signups`],
-                        ['Conversion', percentLabel(referralStats.conversion_rate), 'Visits to signups'],
-                        ['Qualified', numberLabel(qualificationStats.qualified), `${numberLabel(qualificationStats.pending)} pending`],
-                        ['Rewards', numberLabel(rewardStats.total), `${numberLabel(rewardStats.pending)} pending`],
-                      ].map(([label, value, note]) => (
-                        <div key={label} className="border border-[#303030] bg-[#080808] p-4">
-                          <p className="text-xs font-bold uppercase text-[#777777]">{label}</p>
-                          <p className="mt-2 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                            {value}
-                          </p>
-                          <p className="mt-2 text-xs text-[#888888]">{note}</p>
-                        </div>
-                      ))}
-                    </div>
+                    <AffiliateMetricGrid
+                      metrics={[
+                        { label: 'Visits', value: numberLabel(referralStats.visits), note: `${numberLabel(referralStats.signups)} signups` },
+                        { label: 'Conversion', value: percentLabel(referralStats.conversion_rate), note: 'Visits to signups' },
+                        { label: 'Qualified', value: numberLabel(qualificationStats.qualified), note: `${numberLabel(qualificationStats.pending)} pending` },
+                        { label: 'Rewards', value: numberLabel(rewardStats.total), note: `${numberLabel(rewardStats.pending)} pending` },
+                      ]}
+                    />
 
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                      {[
-                        ['Qualification Rate', percentLabel(qualificationStats.qualification_rate)],
-                        ['Rejected', numberLabel(qualificationStats.rejected)],
-                        ['Issued Rewards', numberLabel(rewardStats.issued)],
-                        ['Membership Credits', `${numberLabel(rewardStats.membership_credits_available)} available`],
-                        ...(payoutsEnabled ? [['Payable Balance', payoutBalance.amount_label]] : []),
-                        ['Reward Points', numberLabel(rewardStats.total_points)],
-                      ].map(([label, value]) => (
-                        <div key={label} className="border border-[#303030] bg-[#080808] p-4">
-                          <p className="text-xs font-bold uppercase text-[#777777]">{label}</p>
-                          <p className="mt-2 text-xl font-semibold text-[#eeeeee]">{value}</p>
-                        </div>
-                      ))}
+                    <div className="mt-4">
+                      <AffiliateMetricGrid
+                        valueSize="medium"
+                        metrics={[
+                          { label: 'Qualification Rate', value: percentLabel(qualificationStats.qualification_rate) },
+                          { label: 'Rejected', value: numberLabel(qualificationStats.rejected) },
+                          { label: 'Issued Rewards', value: numberLabel(rewardStats.issued) },
+                          { label: 'Membership Credits', value: `${numberLabel(rewardStats.membership_credits_available)} available` },
+                          ...(payoutsEnabled ? [{ label: 'Payable Balance', value: payoutBalance.amount_label }] : []),
+                          { label: 'Reward Points', value: numberLabel(rewardStats.total_points) },
+                        ]}
+                      />
                     </div>
                   </div>
 
@@ -743,45 +695,20 @@ export default function AffiliateProgramPage() {
                   </div>
 
                   <div className="mt-6 grid gap-6 xl:grid-cols-2">
-                    <section className="border border-[#303030] bg-[#080808] p-4">
-                      <div className="mb-4 flex items-center gap-3">
-                        <History className="text-[#FFB800]" size={18} />
-                        <h3 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                          Referral Activity
-                        </h3>
-                      </div>
-                      <div className="grid gap-2">
-                        {referralActivity.length > 0 ? referralActivity.slice(0, 8).map((item, index) => (
-                          <div key={`${item.type}-${item.occurred_at ?? index}`} className="border border-[#303030] bg-[#111111] p-3">
-                            <p className="text-sm font-semibold text-white">{item.label}</p>
-                            <p className="mt-1 text-xs leading-5 text-[#888888]">{item.description}</p>
-                            <p className="mt-2 text-xs text-[#666666]">{formatDate(item.occurred_at)}</p>
-                          </div>
-                        )) : (
-                          <p className="text-sm leading-6 text-[#888888]">No referral activity yet.</p>
-                        )}
-                      </div>
-                    </section>
-
-                    <section className="border border-[#303030] bg-[#080808] p-4">
-                      <div className="mb-4 flex items-center gap-3">
-                        <History className="text-primary" size={18} />
-                        <h3 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                          Reward Activity
-                        </h3>
-                      </div>
-                      <div className="grid gap-2">
-                        {rewardActivity.length > 0 ? rewardActivity.slice(0, 8).map((item, index) => (
-                          <div key={`${item.type}-${item.occurred_at ?? index}`} className="border border-[#303030] bg-[#111111] p-3">
-                            <p className="text-sm font-semibold text-white">{item.label}</p>
-                            <p className="mt-1 text-xs leading-5 text-[#888888]">{item.description}</p>
-                            <p className="mt-2 text-xs text-[#666666]">{formatDate(item.occurred_at)}</p>
-                          </div>
-                        )) : (
-                          <p className="text-sm leading-6 text-[#888888]">No reward activity yet.</p>
-                        )}
-                      </div>
-                    </section>
+                    <ActivityPanel
+                      emptyText="No referral activity yet."
+                      icon={History}
+                      iconClassName="text-[#FFB800]"
+                      items={referralActivity}
+                      title="Referral Activity"
+                    />
+                    <ActivityPanel
+                      emptyText="No reward activity yet."
+                      icon={History}
+                      iconClassName="text-primary"
+                      items={rewardActivity}
+                      title="Reward Activity"
+                    />
                   </div>
                 </section>
               ) : (

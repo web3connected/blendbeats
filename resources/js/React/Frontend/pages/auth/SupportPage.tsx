@@ -16,30 +16,32 @@ import { Link, Navigate } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 
+import AccountLoadingState from './AccountLoadingState';
+
 const helpTopics = [
   {
     title: 'Account & Profile',
     description: 'Get help with login, profile details, avatar, DJ identity, and account settings.',
     icon: ShieldCheck,
-    href: '/account/support/docs/account-profile',
+    href: '/account/docs/account-management',
   },
   {
     title: 'Uploads & Storage',
     description: 'Review upload limits, portfolio media, audio playback, file storage, and cover images.',
     icon: UploadCloud,
-    href: '/account/support/docs/uploads-storage',
+    href: '/account/docs/dj-portfolio-and-mixes',
   },
   {
     title: 'Billing & Payments',
     description: 'Manage PayPal, payment methods, receipts, provider status, and billing questions.',
     icon: CreditCard,
-    href: '/account/support/docs/billing-payments',
+    href: '/account/docs/memberships-subscriptions',
   },
   {
     title: 'Featured Ads',
     description: 'Get support for placement setup, campaign checkout, ad status, impressions, and clicks.',
     icon: Megaphone,
-    href: '/account/support/docs/featured-ads',
+    href: '/account/docs/featured-ads-promotions',
   },
 ];
 
@@ -47,17 +49,17 @@ const quickAnswers = [
   {
     question: 'Where do I upload mixes?',
     answer: 'Use your DJ Portfolio to upload audio, add cover art, set visibility, and publish public mixes.',
-    href: '/account/support/docs/upload-mixes',
+    href: '/account/docs/dj-portfolio-and-mixes',
   },
   {
     question: 'Where do I manage payment methods?',
     answer: 'Payment methods live in the account billing area. PayPal is the active provider right now.',
-    href: '/account/support/docs/payment-methods',
+    href: '/account/docs/purchases-downloads',
   },
   {
     question: 'Where do I review ad performance?',
     answer: 'Featured Ad Analytics shows impressions, clicks, CTR, and campaign performance.',
-    href: '/account/support/docs/ad-performance',
+    href: '/account/docs/featured-ads-promotions',
   },
 ];
 
@@ -65,13 +67,7 @@ export default function SupportPage() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a] px-4 py-20">
-        <div className="container mx-auto max-w-6xl">
-          <div className="h-48 animate-pulse bg-[#141414]" />
-        </div>
-      </main>
-    );
+    return <AccountLoadingState />;
   }
 
   if (!user) return <Navigate to="/login" replace />;
@@ -226,6 +222,24 @@ export default function SupportPage() {
                     Submit Coming Soon
                   </button>
                 </div>
+              </section>
+
+              <section className="border border-[#2a2a2a] bg-[#111111] p-5">
+                <BookOpen className="text-primary" size={24} />
+                <h2 className="mt-5 text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                  Documentation Center
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-[#888888]">
+                  Browse account, membership, affiliate, DJ, marketplace, community, and FAQ articles.
+                </p>
+                <Link
+                  to="/account/docs"
+                  className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                >
+                  Open Docs
+                  <ArrowRight size={15} />
+                </Link>
               </section>
 
               <section className="border border-[#2a2a2a] bg-[#111111] p-5">

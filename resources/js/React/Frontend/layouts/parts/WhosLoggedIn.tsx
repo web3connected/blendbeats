@@ -1,4 +1,4 @@
-import { Bell, ChevronDown, LayoutDashboard, ListMusic, LogIn, LogOut, Music2, Radio, Settings, User, UserPlus } from 'lucide-react';
+import { Bell, BookOpen, ChevronDown, LayoutDashboard, ListMusic, LogIn, LogOut, Music2, Radio, Settings, User, UserPlus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -139,6 +139,14 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
             Notifications
           </Link>
           <Link
+            to="/account/docs"
+            onClick={onNavigate}
+            className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
+          >
+            <BookOpen size={15} />
+            Documentation
+          </Link>
+          <Link
             to="/account/settings"
             onClick={onNavigate}
             className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
@@ -237,6 +245,15 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
               <Bell size={15} />
             </span>
             Notifications
+          </Link>
+          <Link
+            to="/account/docs"
+            onClick={() => setIsOpen(false)}
+            className="flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
+            role="menuitem"
+          >
+            <BookOpen size={15} />
+            Documentation
           </Link>
           <Link
             to="/account/settings"

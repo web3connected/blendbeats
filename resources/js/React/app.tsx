@@ -8,6 +8,8 @@ import SiteWrapper from './Frontend/layouts/SiteWrapper';
 import AccountPage from './Frontend/pages/auth/AccountPage';
 import BadgesPage from './Frontend/pages/auth/BadgesPage';
 import BillingPaymentsPage from './Frontend/pages/auth/BillingPaymentsPage';
+import DocumentationArticlePage from './Frontend/pages/auth/DocumentationArticlePage';
+import DocumentationCenterPage from './Frontend/pages/auth/DocumentationCenterPage';
 import FeaturedAdAnalyticsPage from './Frontend/pages/auth/FeaturedAdAnalyticsPage';
 import FeaturedAdPlacementsPage from './Frontend/pages/auth/FeaturedAdPlacementsPage';
 import FeaturedAdsPage from './Frontend/pages/auth/FeaturedAdsPage';
@@ -93,6 +95,8 @@ createRoot(rootElement).render(
                 <Route path="/account/notifications" element={<NotificationsPage />} />
                 <Route path="/account/settings" element={<SettingsPage />} />
                 <Route path="/account/storage" element={<StoragePage />} />
+                <Route path="/account/docs" element={<DocumentationCenterPage />} />
+                <Route path="/account/docs/:slug" element={<DocumentationArticlePage />} />
                 <Route path="/account/support" element={<SupportPage />} />
                 <Route path="/account/support/docs/:topic" element={<SupportDocPage />} />
                 <Route path="/settings" element={<Navigate to="/account/settings" replace />} />

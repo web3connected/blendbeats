@@ -2,6 +2,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowRight,
   Bell,
+  BookOpen,
   CreditCard,
   HelpCircle,
   Lock,
@@ -15,6 +16,8 @@ import {
 import { Link, Navigate } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+
+import AccountLoadingState from './AccountLoadingState';
 
 const settingsCards = [
   {
@@ -60,6 +63,12 @@ const settingsCards = [
     icon: Bell,
   },
   {
+    title: 'Documentation',
+    description: 'Browse feature guides, workflows, affiliate help, marketplace notes, and FAQs.',
+    href: '/account/docs',
+    icon: BookOpen,
+  },
+  {
     title: 'Support',
     description: 'Get help with your account, billing, uploads, promotions, and platform tools.',
     href: '/account/support',
@@ -71,13 +80,7 @@ export default function SettingsPage() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a] px-4 py-20">
-        <div className="container mx-auto max-w-6xl">
-          <div className="h-48 animate-pulse bg-[#141414]" />
-        </div>
-      </main>
-    );
+    return <AccountLoadingState />;
   }
 
   if (!user) return <Navigate to="/login" replace />;

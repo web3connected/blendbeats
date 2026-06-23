@@ -472,6 +472,11 @@ return [
                     'icon' => 'fas fa-fw fa-file-alt',
                 ],
                 [
+                    'text' => 'Documentation',
+                    'url' => 'admin/admincenter/documentation',
+                    'icon' => 'fas fa-fw fa-book-open',
+                ],
+                [
                     'text' => 'Reporting',
                     'url' => 'admin/resources/reports',
                     'icon' => 'fas fa-fw fa-chart-line',

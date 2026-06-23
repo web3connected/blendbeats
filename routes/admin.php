@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminCenter\AdminPermissionController;
 use App\Http\Controllers\Admin\AdminCenter\AffiliateManagementController;
+use App\Http\Controllers\Admin\AdminCenter\DocumentationManagementController;
 use App\Http\Controllers\Admin\AdminCenter\FeaturedSlotController;
 use App\Http\Controllers\Admin\AdminCenter\AdminRoleController;
 use App\Http\Controllers\Admin\AdminCenter\LoungePlaylistController;
@@ -105,6 +106,10 @@ Route::middleware('admin.auth')->group(function (): void {
         ->middleware('permission:paymentproviders.update,admin')
         ->name('admincenter.paymentproviders.update');
     Route::get('admin_center/paymentproviders', fn () => redirect()->route('admin.admincenter.paymentproviders.index'));
+
+    Route::get('admincenter/documentation', DocumentationManagementController::class)
+        ->middleware('permission:documentation.view,admin')
+        ->name('admincenter.documentation.index');
 
     Route::get('admincenter/affiliates', [AffiliateManagementController::class, 'affiliates'])
         ->middleware('permission:affiliates.view,admin')

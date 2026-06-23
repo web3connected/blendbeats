@@ -1,6 +1,7 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowRight,
+  BookOpen,
   CreditCard,
   History,
   ListMusic,
@@ -30,6 +31,8 @@ import {
   subscriptionProviderDisplay,
 } from '@/lib/subscription-display';
 
+import AccountLoadingState from './AccountLoadingState';
+
 const dashboardActions = [
   {
     title: 'Enter DJLounge',
@@ -51,6 +54,13 @@ const dashboardActions = [
     href: '/account/badges',
     icon: Trophy,
     accent: 'text-[#FFB800]',
+  },
+  {
+    title: 'Documentation Center',
+    description: 'Find account, membership, affiliate, DJ, marketplace, community, and FAQ articles.',
+    href: '/account/docs',
+    icon: BookOpen,
+    accent: 'text-primary',
   },
   {
     title: 'Start DJ Career',
@@ -211,13 +221,7 @@ export default function UserDashboardPage() {
   }, [user?.id]);
 
   if (isLoading) {
-    return (
-      <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a] px-4 py-20">
-        <div className="container mx-auto max-w-6xl">
-          <div className="h-48 animate-pulse bg-[#141414]" />
-        </div>
-      </main>
-    );
+    return <AccountLoadingState />;
   }
 
   if (!user) return <Navigate to="/login" replace />;
