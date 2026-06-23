@@ -71,6 +71,17 @@
                         <th>Expiring-Soon Notification Window</th>
                         <td>{{ $settings['expiring_soon_notification_days'] }} days before expiration</td>
                     </tr>
+                    <tr>
+                        <th>Payouts Enabled</th>
+                        <td>
+                            @if ($settings['payouts_enabled'])
+                                <span class="badge badge-success">Enabled</span>
+                            @else
+                                <span class="badge badge-secondary">Disabled</span>
+                                <span class="text-muted ml-2">Membership credits are the active affiliate reward.</span>
+                            @endif
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -89,6 +100,7 @@
                     'AFFILIATE_MEMBERSHIP_CREDIT_DAYS',
                     'AFFILIATE_MEMBERSHIP_CREDIT_EXPIRES_AFTER_MONTHS',
                     'AFFILIATE_MEMBERSHIP_CREDIT_EXPIRING_SOON_DAYS',
+                    'AFFILIATE_PAYOUTS_ENABLED',
                 ] as $key)
                     <div class="col-lg-6">
                         <code>{{ $key }}</code>

@@ -390,11 +390,13 @@ return [
                     'url' => 'admin/admincenter/affiliaterewards',
                     'icon' => 'fas fa-fw fa-award',
                 ],
-                [
-                    'text' => 'Affiliate Payouts',
-                    'url' => 'admin/admincenter/affiliatepayouts',
-                    'icon' => 'fas fa-fw fa-money-check-alt',
-                ],
+                ...(env('AFFILIATE_PAYOUTS_ENABLED', false) ? [
+                    [
+                        'text' => 'Affiliate Payouts',
+                        'url' => 'admin/admincenter/affiliatepayouts',
+                        'icon' => 'fas fa-fw fa-money-check-alt',
+                    ],
+                ] : []),
                 [
                     'text' => 'Affiliate Analytics',
                     'url' => 'admin/admincenter/affiliateanalytics',

@@ -20,8 +20,48 @@ class AffiliatePayoutTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_payouts_are_disabled_by_default_for_active_affiliate_program(): void
+    {
+        ['user' => $user, 'account' => $account] = $this->affiliateFixture();
+        $reward = $this->createCashReward($account, 5000, 'disabled-default');
+
+        $this->assertFalse((bool) config('affiliate.payouts.enabled'));
+        $this->assertNotContains('Affiliate Payouts', $this->adminMenuLabels());
+
+        $this->actingAs($user)
+            ->getJson('/api/account/affiliate/summary')
+            ->assertOk()
+            ->assertJsonPath('payouts_enabled', false)
+            ->assertJsonPath('payout_balance.amount_cents', 0)
+            ->assertJsonPath('payout_balance.reward_count', 0)
+            ->assertJsonPath('payout_balance.can_request_payout', false)
+            ->assertJsonPath('payout_statistics.total', 0)
+            ->assertJsonPath('payout_history', []);
+
+        $this->actingAs($user)
+            ->getJson('/api/account/affiliate/payouts')
+            ->assertOk()
+            ->assertJsonPath('payouts_enabled', false)
+            ->assertJsonPath('balance.amount_cents', 0)
+            ->assertJsonPath('statistics.total', 0)
+            ->assertJsonPath('payouts', []);
+
+        $this->actingAs($user)
+            ->postJson('/api/account/affiliate/payouts', [
+                'payment_method' => 'paypal',
+                'notes' => 'paypal@example.com',
+            ])
+            ->assertForbidden()
+            ->assertJsonPath('message', 'Affiliate payouts are not enabled for the current program.');
+
+        $this->assertDatabaseCount('affiliate_payouts', 0);
+        $this->assertNull($reward->fresh()->affiliate_payout_id);
+    }
+
     public function test_affiliate_can_view_payable_balance_and_request_payout(): void
     {
+        $this->enablePayouts();
+
         ['user' => $user, 'account' => $account] = $this->affiliateFixture();
         $rewardOne = $this->createCashReward($account, 5000, 'cash-one');
         $rewardTwo = $this->createCashReward($account, 2500, 'cash-two');
@@ -64,6 +104,8 @@ class AffiliatePayoutTest extends TestCase
 
     public function test_admin_can_approve_and_pay_payout_requests(): void
     {
+        $this->enablePayouts();
+
         $admin = $this->superAdmin();
         ['account' => $account] = $this->affiliateFixture();
         $this->createCashReward($account, 4000, 'admin-pay-one');
@@ -128,6 +170,8 @@ class AffiliatePayoutTest extends TestCase
 
     public function test_rejected_payout_releases_rewards_back_to_payable_balance(): void
     {
+        $this->enablePayouts();
+
         $admin = $this->superAdmin();
         ['account' => $account] = $this->affiliateFixture();
         $reward = $this->createCashReward($account, 3000, 'reject-release');
@@ -159,6 +203,8 @@ class AffiliatePayoutTest extends TestCase
 
     public function test_payout_analytics_are_available_in_service_and_admin_api(): void
     {
+        $this->enablePayouts();
+
         $admin = $this->superAdmin();
         ['account' => $account] = $this->affiliateFixture();
         $this->createCashReward($account, 4500, 'paid-analytics');
@@ -184,6 +230,21 @@ class AffiliatePayoutTest extends TestCase
             ->assertOk()
             ->assertJsonPath('statistics.total_payable_balance_cents', 2000)
             ->assertJsonPath('payouts.paid_amount_cents', 4500);
+    }
+
+    private function enablePayouts(): void
+    {
+        config(['affiliate.payouts.enabled' => true]);
+    }
+
+    private function adminMenuLabels(): array
+    {
+        return collect(config('adminlte.menu'))
+            ->flatMap(fn (array $item): array => $item['submenu'] ?? [$item])
+            ->pluck('text')
+            ->filter()
+            ->values()
+            ->all();
     }
 
     private function affiliateFixture(): array

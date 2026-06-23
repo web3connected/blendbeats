@@ -138,7 +138,7 @@ export default function AffiliateProgramPage() {
     const [referralsData, rewardsData, payoutsData] = await Promise.all([
       getAffiliateReferrals(),
       getAffiliateRewards(),
-      getAffiliatePayouts(),
+      summaryResponse.payouts_enabled ? getAffiliatePayouts() : Promise.resolve(null),
     ]);
 
     setReferralsResponse(referralsData);
@@ -224,6 +224,7 @@ export default function AffiliateProgramPage() {
     total_amount_label: '$0.00',
     total_points: 0,
   };
+  const payoutsEnabled = summary?.payouts_enabled ?? payoutsResponse?.payouts_enabled ?? false;
   const payoutBalance = payoutsResponse?.balance ?? summary?.payout_balance ?? {
     amount_cents: 0,
     amount_label: '$0.00',
@@ -244,7 +245,7 @@ export default function AffiliateProgramPage() {
   };
   const referrals = referralsResponse?.referrals ?? [];
   const rewards = rewardsResponse?.rewards ?? [];
-  const payouts = payoutsResponse?.payouts ?? summary?.payout_history ?? [];
+  const payouts = payoutsEnabled ? (payoutsResponse?.payouts ?? summary?.payout_history ?? []) : [];
   const referralActivity = summary?.referral_activity ?? [];
   const rewardActivity = rewardsResponse?.activity ?? summary?.reward_activity ?? [];
 
@@ -278,6 +279,8 @@ export default function AffiliateProgramPage() {
 
   const submitPayoutRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!payoutsEnabled) return;
+
     setError('');
     setPayoutMessage('');
     setIsRequestingPayout(true);
@@ -407,7 +410,7 @@ export default function AffiliateProgramPage() {
                     </p>
                   )}
 
-                  {payoutMessage && (
+                  {payoutsEnabled && payoutMessage && (
                     <p className="mb-6 border border-[#FFB800]/40 bg-[#FFB800]/10 px-4 py-3 text-sm text-[#FFB800]">
                       {payoutMessage}
                     </p>
@@ -522,7 +525,7 @@ export default function AffiliateProgramPage() {
                         ['Rejected', numberLabel(qualificationStats.rejected)],
                         ['Issued Rewards', numberLabel(rewardStats.issued)],
                         ['Membership Credits', `${numberLabel(rewardStats.membership_credits_available)} available`],
-                        ['Payable Balance', payoutBalance.amount_label],
+                        ...(payoutsEnabled ? [['Payable Balance', payoutBalance.amount_label]] : []),
                         ['Reward Points', numberLabel(rewardStats.total_points)],
                       ].map(([label, value]) => (
                         <div key={label} className="border border-[#303030] bg-[#080808] p-4">
@@ -533,7 +536,8 @@ export default function AffiliateProgramPage() {
                     </div>
                   </div>
 
-                  <section className="mt-6 border border-[#303030] bg-[#080808] p-4">
+                  {payoutsEnabled && (
+                    <section className="mt-6 border border-[#303030] bg-[#080808] p-4">
                     <div className="mb-4 flex items-center gap-3">
                       <Wallet className="text-[#FFB800]" size={18} />
                       <h3 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -612,7 +616,8 @@ export default function AffiliateProgramPage() {
                         </div>
                       </form>
                     </div>
-                  </section>
+                    </section>
+                  )}
 
                   <div className="mt-6 grid gap-6 xl:grid-cols-2">
                     <section className="border border-[#303030] bg-[#080808] p-4">

@@ -49,6 +49,11 @@ class AffiliateProgramSettings
         );
     }
 
+    public function payoutsEnabled(): bool
+    {
+        return $this->booleanSetting('affiliate.payouts.enabled', false);
+    }
+
     public function toArray(): array
     {
         return [
@@ -58,6 +63,7 @@ class AffiliateProgramSettings
             'membership_credit_days' => $this->membershipCreditDays(),
             'membership_credit_expiration_months' => $this->membershipCreditExpirationMonths(),
             'expiring_soon_notification_days' => $this->expiringSoonNotificationDays(),
+            'payouts_enabled' => $this->payoutsEnabled(),
         ];
     }
 
@@ -75,5 +81,12 @@ class AffiliateProgramSettings
         $value = (int) config($key, $fallback);
 
         return $value > 0 ? $value : $fallback;
+    }
+
+    private function booleanSetting(string $key, bool $fallback): bool
+    {
+        $value = filter_var(config($key, $fallback), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+        return is_bool($value) ? $value : $fallback;
     }
 }

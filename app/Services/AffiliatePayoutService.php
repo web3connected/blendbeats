@@ -18,6 +18,10 @@ class AffiliatePayoutService
 {
     public const DEFAULT_CURRENCY = 'USD';
 
+    public function __construct(private readonly AffiliateProgramSettings $settings)
+    {
+    }
+
     public function payableRewardsQuery(AffiliateAccount $account, string $currency = self::DEFAULT_CURRENCY)
     {
         return $account->rewards()
@@ -47,6 +51,12 @@ class AffiliatePayoutService
         ?string $notes = null,
         string $currency = self::DEFAULT_CURRENCY,
     ): AffiliatePayout {
+        if (! $this->settings->payoutsEnabled()) {
+            throw ValidationException::withMessages([
+                'payout' => 'Affiliate payouts are not enabled for the current program.',
+            ]);
+        }
+
         if ((int) $account->user_id !== (int) $user->id) {
             throw ValidationException::withMessages([
                 'payout' => 'That affiliate account does not belong to this user.',

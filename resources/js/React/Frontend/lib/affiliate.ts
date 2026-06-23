@@ -107,6 +107,7 @@ export type AffiliateSummaryResponse = {
   referral_statistics: AffiliateReferralStatistics;
   qualification_statistics: AffiliateQualificationStatistics;
   reward_statistics: AffiliateRewardStatistics;
+  payouts_enabled: boolean;
   payout_balance: AffiliatePayoutBalance;
   payout_statistics: AffiliatePayoutStatistics;
   payout_history: AffiliatePayoutRecord[];
@@ -190,6 +191,7 @@ export type AffiliateRewardsResponse = {
 };
 
 export type AffiliatePayoutsResponse = {
+  payouts_enabled: boolean;
   balance: AffiliatePayoutBalance;
   statistics: AffiliatePayoutStatistics;
   payouts: AffiliatePayoutRecord[];

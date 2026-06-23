@@ -10,6 +10,7 @@ use App\Models\AffiliateReward;
 use App\Models\User;
 use App\Services\AffiliateAccountService;
 use App\Services\AffiliatePayoutService;
+use App\Services\AffiliateProgramSettings;
 use App\Services\AffiliateRewardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -56,20 +57,26 @@ class AffiliateAccountController extends Controller
         ], $registration['created'] ? 201 : 200);
     }
 
-    public function summary(AffiliateAccountService $affiliates, AffiliatePayoutService $payouts): JsonResponse
+    public function summary(
+        AffiliateAccountService $affiliates,
+        AffiliatePayoutService $payouts,
+        AffiliateProgramSettings $settings,
+    ): JsonResponse
     {
         /** @var User $user */
         $user = Auth::guard('web')->user();
         $account = $this->accountFor($user, $affiliates);
+        $payoutsEnabled = $settings->payoutsEnabled();
 
         return response()->json([
             'affiliate_account' => $this->accountPayload($account),
             'referral_statistics' => $this->referralStatistics($account),
             'qualification_statistics' => $this->qualificationStatistics($account),
             'reward_statistics' => $this->rewardStatistics($account),
-            'payout_balance' => $payouts->payableBalance($account),
-            'payout_statistics' => $this->payoutStatistics($account),
-            'payout_history' => $this->payoutHistory($account, $payouts),
+            'payouts_enabled' => $payoutsEnabled,
+            'payout_balance' => $payoutsEnabled ? $payouts->payableBalance($account) : $this->emptyPayoutBalance(),
+            'payout_statistics' => $payoutsEnabled ? $this->payoutStatistics($account) : $this->emptyPayoutStatistics(),
+            'payout_history' => $payoutsEnabled ? $this->payoutHistory($account, $payouts) : [],
             'referral_activity' => $this->referralActivity($account),
             'reward_activity' => $this->rewardActivity($account),
         ]);
@@ -114,16 +121,22 @@ class AffiliateAccountController extends Controller
         ]);
     }
 
-    public function payouts(AffiliateAccountService $affiliates, AffiliatePayoutService $payouts): JsonResponse
+    public function payouts(
+        AffiliateAccountService $affiliates,
+        AffiliatePayoutService $payouts,
+        AffiliateProgramSettings $settings,
+    ): JsonResponse
     {
         /** @var User $user */
         $user = Auth::guard('web')->user();
         $account = $this->accountFor($user, $affiliates);
+        $payoutsEnabled = $settings->payoutsEnabled();
 
         return response()->json([
-            'balance' => $payouts->payableBalance($account),
-            'statistics' => $this->payoutStatistics($account),
-            'payouts' => $this->payoutHistory($account, $payouts, 25),
+            'payouts_enabled' => $payoutsEnabled,
+            'balance' => $payoutsEnabled ? $payouts->payableBalance($account) : $this->emptyPayoutBalance(),
+            'statistics' => $payoutsEnabled ? $this->payoutStatistics($account) : $this->emptyPayoutStatistics(),
+            'payouts' => $payoutsEnabled ? $this->payoutHistory($account, $payouts, 25) : [],
         ]);
     }
 
@@ -131,7 +144,10 @@ class AffiliateAccountController extends Controller
         Request $request,
         AffiliateAccountService $affiliates,
         AffiliatePayoutService $payouts,
+        AffiliateProgramSettings $settings,
     ): JsonResponse {
+        abort_unless($settings->payoutsEnabled(), 403, 'Affiliate payouts are not enabled for the current program.');
+
         $validated = $request->validate([
             'payment_method' => ['required', 'string', 'max:120'],
             'notes' => ['nullable', 'string', 'max:500'],
@@ -293,6 +309,32 @@ class AffiliateAccountController extends Controller
             'cancelled' => $base ? (clone $base)->where('status', AffiliatePayout::STATUS_CANCELLED)->count() : 0,
             'total_requested_cents' => $base ? (int) (clone $base)->sum('amount_cents') : 0,
             'total_paid_cents' => $base ? (int) (clone $base)->where('status', AffiliatePayout::STATUS_PAID)->sum('amount_cents') : 0,
+        ];
+    }
+
+    private function emptyPayoutBalance(): array
+    {
+        return [
+            'amount_cents' => 0,
+            'amount_label' => Number::currency(0, AffiliatePayoutService::DEFAULT_CURRENCY),
+            'currency' => AffiliatePayoutService::DEFAULT_CURRENCY,
+            'reward_count' => 0,
+            'can_request_payout' => false,
+        ];
+    }
+
+    private function emptyPayoutStatistics(): array
+    {
+        return [
+            'total' => 0,
+            'requested' => 0,
+            'approved' => 0,
+            'processing' => 0,
+            'paid' => 0,
+            'rejected' => 0,
+            'cancelled' => 0,
+            'total_requested_cents' => 0,
+            'total_paid_cents' => 0,
         ];
     }
 

@@ -10,6 +10,10 @@ return [
         'expires_after_months' => (int) env('AFFILIATE_MEMBERSHIP_CREDIT_EXPIRES_AFTER_MONTHS', 12),
     ],
 
+    'payouts' => [
+        'enabled' => env('AFFILIATE_PAYOUTS_ENABLED', false),
+    ],
+
     'notifications' => [
         'expiring_soon_days' => (int) env('AFFILIATE_MEMBERSHIP_CREDIT_EXPIRING_SOON_DAYS', 7),
     ],

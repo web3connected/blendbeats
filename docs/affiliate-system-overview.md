@@ -2,9 +2,9 @@
 
 ## Goal
 
-Build a BlendBeats affiliate system that lets existing users refer new users, track visits and signups, attribute credit to the correct affiliate, and later award incentives without redesigning the core foundation.
+Build a BlendBeats affiliate system that lets existing users refer new users, track visits and signups, attribute credit to the correct affiliate, and award free membership credits without redesigning the core foundation.
 
-The first build should focus on referral tracking and attribution. Rewards, payouts, leaderboards, reports, promotions, and advanced analytics can layer on afterward.
+The active BlendBeats affiliate reward is a free membership credit. Payout infrastructure exists in the codebase for a possible future program, but payouts are disabled by default and hidden from users in the current affiliate program.
 
 ## Current BlendBeats Setup
 
@@ -271,13 +271,13 @@ Implemented approach:
 - Keep affiliate rewards in their own records.
 - Allow reward types such as `future_incentive`, `ad_credit`, `membership_credit`, `cash_commission`, `points`, or `manual`.
 - A qualified subscription referral creates an issued `membership_credit` reward.
-- Approved monetary rewards with `amount_cents` become the affiliate payable balance until attached to a payout.
+- Approved monetary rewards with `amount_cents` can become a payable balance only if payouts are enabled in a future program.
 - Each membership credit is worth 30 days of DJ Plus and expires 12 months after issue if unused.
 - Membership credits are uncapped and stack by extending the affiliate user's internal/free DJ Plus expiration.
 - Expired unused membership credits move to `expired` and cannot be redeemed.
 - For early non-cash rewards, use `UserAdCreditService` patterns to grant featured-ad credits.
 - For engagement-style rewards, add affiliate-related `gamification_actions` later.
-- Cash payouts use `affiliate_payouts` records linked back to approved monetary rewards.
+- Cash payouts use `affiliate_payouts` records linked back to approved monetary rewards when payout mode is enabled.
 
 Implemented table:
 
@@ -322,17 +322,21 @@ Implemented audit table:
 
 ## Affiliate Payouts
 
-Affiliate payouts convert approved monetary rewards into requested, approved, processing, paid, rejected, or cancelled payout records.
+Affiliate payouts convert approved monetary rewards into requested, approved, processing, paid, rejected, or cancelled payout records. This foundation is built but disabled in the active BlendBeats affiliate program.
 
 Implemented behavior:
 
+- Payouts are controlled by `AFFILIATE_PAYOUTS_ENABLED`, defaulting to disabled.
+- When disabled, affiliate account APIs return `payouts_enabled: false`, zero payout balance, empty payout history, and block payout requests.
+- When disabled, the React affiliate dashboard hides payout balance, request form, and payout history.
+- When disabled, the AdminLTE Affiliate Payouts menu item is hidden.
 - Payable balance is calculated from approved rewards with `amount_cents > 0`, `currency = USD`, and no payout assigned.
-- Affiliates can request a payout from `/api/account/affiliate/payouts`.
+- If payouts are enabled later, affiliates can request a payout from `/api/account/affiliate/payouts`.
 - A payout request links the eligible rewards to the payout and removes them from the available balance.
 - Admins can approve, move to processing, mark paid, reject, or cancel payout requests.
 - Marking a payout paid marks linked rewards as `paid` and writes reward audit records.
 - Rejecting or cancelling a payout releases linked rewards back to the payable balance.
-- Payout history is visible to affiliates through the account affiliate API and dashboard.
+- Payout history is visible to affiliates through the account affiliate API and dashboard only when payouts are enabled.
 
 Implemented table:
 
@@ -386,9 +390,7 @@ Dashboard MVP content:
 - Pending and issued rewards.
 - Membership credit days, expiration date, and redemption status.
 - Redeemable membership credits can be applied to the existing internal/free DJ Plus subscription feature.
-- Payable payout balance.
-- Payout request form.
-- Payout history and statuses.
+- Payout features remain hidden while `AFFILIATE_PAYOUTS_ENABLED=false`.
 - Recent referral activity.
 
 This should follow the existing account patterns used by dashboard, billing, notifications, badges, featured ads, and profile pages.
@@ -426,6 +428,7 @@ Implemented configurable settings:
 - Membership credit duration: `AFFILIATE_MEMBERSHIP_CREDIT_DAYS`.
 - Membership credit expiration: `AFFILIATE_MEMBERSHIP_CREDIT_EXPIRES_AFTER_MONTHS`.
 - Expiring-soon notification window: `AFFILIATE_MEMBERSHIP_CREDIT_EXPIRING_SOON_DAYS`.
+- Payout availability: `AFFILIATE_PAYOUTS_ENABLED`, disabled by default.
 
 Admin visibility:
 
@@ -497,7 +500,7 @@ Implemented admin capabilities:
 - View rewards with search, status filtering, reward stats, issuance details, and audit counts.
 - Move rewards through `pending`, `approved`, `issued`, `paid`, `cancelled`, and `voided`.
 - Record reward status transitions in `affiliate_reward_audits` with the acting admin.
-- View payout requests with search, status filtering, payable balance, requested totals, and paid totals.
+- View payout requests with search, status filtering, payable balance, requested totals, and paid totals when payout mode is enabled.
 - Move payouts through `requested`, `approved`, `processing`, `paid`, `rejected`, and `cancelled`.
 - Record payout references, rejection reasons, notes, and linked reward payment audits.
 
@@ -592,9 +595,9 @@ Recommended controller touchpoints:
 - Start with non-cash rewards such as featured-ad credits or XP.
 - Add notifications when referrals qualify or rewards are issued.
 
-## Phase 5: Payouts and Advanced Reporting
+## Phase 5: Optional Payouts and Advanced Reporting
 
-- Add date-range reports, campaign exports, payout exports, and advanced leaderboards.
+- If BlendBeats later activates cash rewards, enable payout mode, add date-range reports, campaign exports, payout exports, and advanced leaderboards.
 
 ## Notes
 

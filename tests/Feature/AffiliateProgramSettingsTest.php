@@ -24,6 +24,7 @@ class AffiliateProgramSettingsTest extends TestCase
             'affiliate.membership_credit.tier' => 'dj_pro',
             'affiliate.membership_credit.duration_days' => 45,
             'affiliate.membership_credit.expires_after_months' => 6,
+            'affiliate.payouts.enabled' => true,
             'affiliate.notifications.expiring_soon_days' => 10,
         ]);
 
@@ -36,6 +37,7 @@ class AffiliateProgramSettingsTest extends TestCase
             'membership_credit_days' => 45,
             'membership_credit_expiration_months' => 6,
             'expiring_soon_notification_days' => 10,
+            'payouts_enabled' => true,
         ], $settings->toArray());
     }
 
