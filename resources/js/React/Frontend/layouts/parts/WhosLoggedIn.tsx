@@ -1,5 +1,19 @@
-import { Bell, BookOpen, ChevronDown, LayoutDashboard, ListMusic, LogIn, LogOut, Music2, Radio, Settings, User, UserPlus } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import {
+  Bell,
+  BookOpen,
+  ChevronDown,
+  CreditCard,
+  LayoutDashboard,
+  ListMusic,
+  LogIn,
+  LogOut,
+  Music2,
+  Radio,
+  Settings,
+  User,
+  UserPlus,
+} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -9,6 +23,17 @@ interface WhosLoggedInProps {
   onNavigate?: () => void;
   variant?: 'desktop' | 'mobile';
 }
+
+type MenuItem = {
+  label: string;
+  to: string;
+  icon: React.ElementType;
+  show?: boolean;
+};
+
+type MenuSection = {
+  items: MenuItem[];
+};
 
 function UserAvatar({ user, className }: { user: AuthUser; className: string }) {
   const avatarUrl = user.avatar_url || user.custom_avatar_url || user.gravatar_url || user.generated_avatar_url;
@@ -29,7 +54,37 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const isMobile = variant === 'mobile';
-  const djProfileLabel = user?.dj_profile ? 'Go To DJ Profile' : 'Start DJ Career';
+
+  const menuSections = useMemo<MenuSection[]>(() => {
+    if (!user) return [];
+
+    const hasDjProfile = Boolean(user.dj_profile);
+
+    return [
+      {
+        items: [
+          { label: 'Dashboard', to: '/account', icon: LayoutDashboard },
+          { label: 'Wallet', to: '/account/wallet', icon: CreditCard },
+        ],
+      },
+      {
+        items: [
+          { label: 'Start DJ Career', to: '/dj/start', icon: Radio, show: !hasDjProfile },
+          { label: 'DJ Profile', to: '/dj/edit', icon: Radio, show: hasDjProfile },
+          { label: 'DJ Portfolio', to: '/dj/portfolio', icon: Music2 },
+          { label: 'My Playlist', to: '/account/playlist', icon: ListMusic },
+        ],
+      },
+      {
+        items: [
+          { label: 'Profile', to: '/account/profile', icon: User },
+          { label: 'Notifications', to: '/account/notifications', icon: Bell },
+          { label: 'Settings', to: '/account/settings', icon: Settings },
+          { label: 'Documentation', to: '/account/docs', icon: BookOpen },
+        ],
+      },
+    ];
+  }, [user]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -42,10 +97,14 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [isOpen]);
 
-  const handleLogout = async () => {
-    await logout();
+  const closeMenu = () => {
     setIsOpen(false);
     onNavigate?.();
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    closeMenu();
   };
 
   if (isLoading) {
@@ -77,6 +136,60 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
     );
   }
 
+  const renderMenuSections = (mobile = false) => (
+    <>
+      {menuSections.map((section, sectionIndex) => {
+        const visibleItems = section.items.filter((item) => item.show !== false);
+
+        if (!visibleItems.length) return null;
+
+        return (
+          <div
+            key={sectionIndex}
+            className={sectionIndex > 0 ? 'border-t border-[#202020] pt-1' : undefined}
+          >
+            {visibleItems.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={mobile ? closeMenu : () => setIsOpen(false)}
+                  className={
+                    mobile
+                      ? 'flex h-9 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary'
+                      : 'flex h-8 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary'
+                  }
+                  role="menuitem"
+                >
+                  <Icon size={14} />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        );
+      })}
+
+      <div className="border-t border-[#202020] pt-1">
+        <button
+          type="button"
+          onClick={() => void handleLogout()}
+          className={
+            mobile
+              ? 'flex h-9 w-full items-center gap-2 px-2 text-left text-sm text-[#dddddd] hover:text-primary'
+              : 'flex h-8 w-full items-center gap-2 px-3 text-left text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary'
+          }
+          role="menuitem"
+        >
+          <LogOut size={14} />
+          Logout
+        </button>
+      </div>
+    </>
+  );
+
   if (isMobile) {
     return (
       <div className="mt-3 border border-[#2a2a2a] bg-[#111111] p-3">
@@ -87,82 +200,8 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
             <p className="truncate text-xs text-[#888888]">{user.email}</p>
           </div>
         </div>
-        <div className="grid gap-2">
-          <Link
-            to="/account"
-            onClick={onNavigate}
-            className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
-          >
-            <LayoutDashboard size={15} />
-            Account
-          </Link>
-          <Link
-            to={user?.dj_profile ? '/dj/edit' : '/dj/start'}
-            onClick={onNavigate}
-            className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
-          >
-            <Radio size={15} />
-            {djProfileLabel}
-          </Link>
-          <Link
-            to="/dj/portfolio"
-            onClick={onNavigate}
-            className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
-          >
-            <Music2 size={15} />
-            DJ Portfolio
-          </Link>
-          <Link
-            to="/account/playlist"
-            onClick={onNavigate}
-            className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
-          >
-            <ListMusic size={15} />
-            My Playlist
-          </Link>
-          <Link
-            to="/account/profile"
-            onClick={onNavigate}
-            className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
-          >
-            <User size={15} />
-            Profile
-          </Link>
-          <Link
-            to="/account/notifications"
-            onClick={onNavigate}
-            className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
-          >
-            <span className="relative">
-              <Bell size={15} />
-            </span>
-            Notifications
-          </Link>
-          <Link
-            to="/account/docs"
-            onClick={onNavigate}
-            className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
-          >
-            <BookOpen size={15} />
-            Documentation
-          </Link>
-          <Link
-            to="/account/settings"
-            onClick={onNavigate}
-            className="inline-flex h-10 items-center gap-2 px-2 text-sm text-[#dddddd] hover:text-primary"
-          >
-            <Settings size={15} />
-            Settings
-          </Link>
-          <button
-            type="button"
-            onClick={() => void handleLogout()}
-            className="inline-flex h-10 items-center gap-2 px-2 text-left text-sm text-[#dddddd] hover:text-primary"
-          >
-            <LogOut size={15} />
-            Logout
-          </button>
-        </div>
+
+        <div className="grid gap-1">{renderMenuSections(true)}</div>
       </div>
     );
   }
@@ -182,97 +221,19 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-12 w-56 border border-[#2a2a2a] bg-[#0d0d0d] p-2 shadow-xl shadow-black/40" role="menu">
-          <div className="flex items-center gap-3 border-b border-[#202020] px-3 py-2">
-            <UserAvatar user={user} className="h-10 w-10 shrink-0 text-sm" />
+        <div
+          className="absolute right-0 top-12 w-56 border border-[#2a2a2a] bg-[#0d0d0d] p-2 shadow-xl shadow-black/40"
+          role="menu"
+        >
+          <div className="mb-1 flex items-center gap-3 border-b border-[#202020] px-3 py-2">
+            <UserAvatar user={user} className="h-9 w-9 shrink-0 text-sm" />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-white">{user.name}</p>
               <p className="truncate text-xs text-[#888888]">{user.email}</p>
             </div>
           </div>
-          <Link
-            to="/account"
-            onClick={() => setIsOpen(false)}
-            className="mt-2 flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
-            role="menuitem"
-          >
-            <LayoutDashboard size={15} />
-            Account
-          </Link>
-          <Link
-            to={user?.dj_profile ? '/dj/edit' : '/dj/start'}
-            onClick={() => setIsOpen(false)}
-            className="flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
-            role="menuitem"
-          >
-            <Radio size={15} />
-            {djProfileLabel}
-          </Link>
-          <Link
-            to="/dj/portfolio"
-            onClick={() => setIsOpen(false)}
-            className="flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
-            role="menuitem"
-          >
-            <Music2 size={15} />
-            DJ Portfolio
-          </Link>
-          <Link
-            to="/account/playlist"
-            onClick={() => setIsOpen(false)}
-            className="flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
-            role="menuitem"
-          >
-            <ListMusic size={15} />
-            My Playlist
-          </Link>
-          <Link
-            to="/account/profile"
-            onClick={() => setIsOpen(false)}
-            className="flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
-            role="menuitem"
-          >
-            <User size={15} />
-            Profile
-          </Link>
-          <Link
-            to="/account/notifications"
-            onClick={() => setIsOpen(false)}
-            className="flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
-            role="menuitem"
-          >
-            <span className="relative">
-              <Bell size={15} />
-            </span>
-            Notifications
-          </Link>
-          <Link
-            to="/account/docs"
-            onClick={() => setIsOpen(false)}
-            className="flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
-            role="menuitem"
-          >
-            <BookOpen size={15} />
-            Documentation
-          </Link>
-          <Link
-            to="/account/settings"
-            onClick={() => setIsOpen(false)}
-            className="flex h-10 items-center gap-2 px-3 text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
-            role="menuitem"
-          >
-            <Settings size={15} />
-            Settings
-          </Link>
-          <button
-            type="button"
-            onClick={() => void handleLogout()}
-            className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-[#dddddd] hover:bg-[#171717] hover:text-primary"
-            role="menuitem"
-          >
-            <LogOut size={15} />
-            Logout
-          </button>
+
+          <div className="grid gap-1">{renderMenuSections()}</div>
         </div>
       )}
     </div>
