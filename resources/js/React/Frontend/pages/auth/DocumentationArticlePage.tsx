@@ -8,10 +8,14 @@ import {
   getDocumentationArticle,
   getDocumentationCategory,
   getRelatedDocumentationArticles,
+  type DocumentationArticleStatus,
 } from '@/lib/documentation';
 
-import AccountLoadingState from './AccountLoadingState';
-import { DocumentationStatusBadge } from './documentation-components';
+const statusClasses: Record<DocumentationArticleStatus, string> = {
+  active: 'border-primary/40 bg-primary/10 text-primary',
+  foundation: 'border-[#FFB800]/50 bg-[#FFB800]/10 text-[#FFB800]',
+  future: 'border-[#555555] bg-[#181818] text-[#bbbbbb]',
+};
 
 function ActionLink({ href }: { href: string }) {
   const className = 'mt-6 inline-flex h-11 w-full items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase text-white transition-colors hover:bg-[#d91515]';
@@ -40,7 +44,13 @@ export default function DocumentationArticlePage() {
   const article = getDocumentationArticle(slug);
 
   if (isLoading) {
-    return <AccountLoadingState />;
+    return (
+      <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a] px-4 py-20">
+        <div className="container mx-auto max-w-6xl">
+          <div className="h-48 animate-pulse bg-[#141414]" />
+        </div>
+      </main>
+    );
   }
 
   if (!user) return <Navigate to="/login" replace />;
@@ -73,7 +83,9 @@ export default function DocumentationArticlePage() {
               <span className="inline-flex h-8 items-center border border-[#333333] px-3 text-[10px] font-bold uppercase text-[#aaaaaa]">
                 {category?.title ?? 'Documentation'}
               </span>
-              <DocumentationStatusBadge status={article.status} />
+              <span className={`inline-flex h-8 items-center border px-3 text-[10px] font-bold uppercase ${statusClasses[article.status]}`}>
+                {documentationStatusLabel(article.status)}
+              </span>
             </div>
 
             <h1

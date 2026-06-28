@@ -26,7 +26,7 @@ type SectionPageProps = {
   stats: Stat[];
 };
 
-const iconMap = [Trophy, Disc3, ShoppingBag, SlidersHorizontal, Mic2, Headphones];
+const iconMap = [Trophy, Mic2, Headphones, Disc3, SlidersHorizontal, ShoppingBag];
 
 export default function SectionPage({
   eyebrow,
@@ -56,15 +56,18 @@ export default function SectionPage({
               <p className={`${accentClass} mb-3 text-xs font-bold uppercase tracking-widest`} style={{ fontFamily: 'var(--font-heading)' }}>
                 {eyebrow}
               </p>
+
               <h1
                 className="max-w-4xl uppercase leading-none"
                 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(3rem, 9vw, 7.5rem)' }}
               >
                 {title}
               </h1>
+
               <p className="mt-6 max-w-2xl text-base leading-7 text-[#c8c8c8] md:text-lg">
                 {description}
               </p>
+
               <Link
                 to={ctaHref}
                 className={`mt-8 inline-flex items-center gap-3 px-7 py-4 text-xs font-bold uppercase tracking-widest transition-opacity hover:opacity-90 ${accentBg}`}
@@ -77,7 +80,7 @@ export default function SectionPage({
 
             <div className="grid grid-cols-2 border border-[#2a2a2a] bg-[#111111]">
               {stats.map((stat) => (
-                <div key={stat.label} className="border-b border-r border-[#2a2a2a] p-5 last:border-r-0 md:p-6">
+                <div key={stat.label} className="border-b border-r border-[#2a2a2a] p-5 md:p-6">
                   <p className={`${accentClass} text-3xl font-black md:text-5xl`} style={{ fontFamily: 'var(--font-heading)' }}>
                     {stat.value}
                   </p>
@@ -92,6 +95,15 @@ export default function SectionPage({
 
         <section className="py-14 md:py-20">
           <div className="container mx-auto px-4">
+            <div className="mb-8 max-w-2xl">
+              <p className={`${accentClass} text-xs font-bold uppercase tracking-widest`} style={{ fontFamily: 'var(--font-heading)' }}>
+                Battle system preview
+              </p>
+              <h2 className="mt-3 text-3xl uppercase md:text-5xl" style={{ fontFamily: 'var(--font-heading)' }}>
+                What DJs will be able to do
+              </h2>
+            </div>
+
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               {features.map((feature, index) => {
                 const Icon = iconMap[index % iconMap.length];
@@ -104,9 +116,11 @@ export default function SectionPage({
                         {feature.meta}
                       </span>
                     </div>
-                    <h2 className="text-xl uppercase" style={{ fontFamily: 'var(--font-heading)', letterSpacing: '0.03em' }}>
+
+                    <h3 className="text-xl uppercase" style={{ fontFamily: 'var(--font-heading)', letterSpacing: '0.03em' }}>
                       {feature.title}
-                    </h2>
+                    </h3>
+
                     <p className="mt-3 text-sm leading-6 text-[#aaaaaa]">{feature.body}</p>
                   </article>
                 );

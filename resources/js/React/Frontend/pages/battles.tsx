@@ -3,21 +3,33 @@ import SectionPage from './_section-page';
 export default function BattlesPage() {
   return (
     <SectionPage
-      eyebrow="Live arena"
-      title="Battles"
-      description="Vote on head-to-head DJ matchups, follow live score swings, and track who owns each sound clash."
-      ctaLabel="Enter battle"
+      eyebrow="Coming soon"
+      title="DJ Battle Arena"
+      description="Challenge another DJ, record your set, upload your entry, let the community vote, and see who takes the win."
+      ctaLabel="Battles coming soon"
       ctaHref="/battles"
       features={[
-        { title: 'Active Matchups', meta: 'Live', body: 'Featured battles stay visible with vote counts, genre tags, and clear winner momentum.' },
-        { title: 'Upcoming Brackets', meta: 'Soon', body: 'Tournament rounds can be staged here as the platform adds scheduled competitions.' },
-        { title: 'Battle Rules', meta: 'Fair play', body: 'A dedicated page gives competitors and fans one place to understand how voting works.' },
+        {
+          title: 'Challenge DJs',
+          meta: 'Head-to-head',
+          body: 'DJs will be able to challenge other battle-ready public profiles and start a one-on-one matchup.',
+        },
+        {
+          title: 'Record & Upload',
+          meta: 'Timed entries',
+          body: 'Each DJ will record a timed battle entry directly in the browser and submit one locked performance.',
+        },
+        {
+          title: 'Community Voting',
+          meta: 'Fair scoring',
+          body: 'Authenticated listeners will vote across battle categories, with one vote per user per battle.',
+        },
       ]}
       stats={[
-        { value: '3', label: 'Featured battles' },
-        { value: '7.9K', label: 'Votes tracked' },
-        { value: '5', label: 'Genres' },
-        { value: '24/7', label: 'Arena access' },
+        { value: '1v1', label: 'DJ battles' },
+        { value: '4', label: 'Score categories' },
+        { value: '1', label: 'Entry per DJ' },
+        { value: 'Soon', label: 'Arena launch' },
       ]}
     />
   );

@@ -1,5 +1,5 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { ArrowLeft, BookOpen, FileText, Search, Tags } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, FileText, Search, Tags } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 
@@ -7,12 +7,52 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import {
   documentationCategories,
   documentationStats,
+  documentationStatusLabel,
   getArticlesForCategory,
+  getDocumentationCategory,
   searchDocumentation,
+  type DocumentationArticle,
+  type DocumentationArticleStatus,
 } from '@/lib/documentation';
 
-import AccountLoadingState from './AccountLoadingState';
-import { DocumentationArticleCard } from './documentation-components';
+const statusClasses: Record<DocumentationArticleStatus, string> = {
+  active: 'border-primary/40 bg-primary/10 text-primary',
+  foundation: 'border-[#FFB800]/50 bg-[#FFB800]/10 text-[#FFB800]',
+  future: 'border-[#555555] bg-[#181818] text-[#bbbbbb]',
+};
+
+function ArticleCard({ article }: { article: DocumentationArticle }) {
+  const category = getDocumentationCategory(article.category);
+
+  return (
+    <Link
+      to={`/account/docs/${article.slug}`}
+      className="grid min-h-56 border border-[#2a2a2a] bg-[#111111] p-5 transition-colors hover:border-primary"
+    >
+      <div>
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <span className="inline-flex h-8 items-center border border-[#333333] px-3 text-[10px] font-bold uppercase text-[#aaaaaa]">
+            {category?.title ?? 'Documentation'}
+          </span>
+          <span className={`inline-flex h-8 items-center border px-3 text-[10px] font-bold uppercase ${statusClasses[article.status]}`}>
+            {documentationStatusLabel(article.status)}
+          </span>
+        </div>
+        <h3 className="text-2xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+          {article.title}
+        </h3>
+        <p className="mt-3 text-sm leading-6 text-[#999999]">{article.summary}</p>
+      </div>
+      <span
+        className="mt-6 inline-flex h-11 items-center justify-center gap-2 border border-[#333333] px-4 text-xs font-bold uppercase text-[#dddddd]"
+        style={{ fontFamily: 'var(--font-heading)' }}
+      >
+        Open
+        <ArrowRight size={15} />
+      </span>
+    </Link>
+  );
+}
 
 export default function DocumentationCenterPage() {
   const { user, isLoading } = useAuth();
@@ -28,7 +68,13 @@ export default function DocumentationCenterPage() {
   }, [query, selectedCategory]);
 
   if (isLoading) {
-    return <AccountLoadingState />;
+    return (
+      <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a] px-4 py-20">
+        <div className="container mx-auto max-w-6xl">
+          <div className="h-48 animate-pulse bg-[#141414]" />
+        </div>
+      </main>
+    );
   }
 
   if (!user) return <Navigate to="/login" replace />;
@@ -141,7 +187,7 @@ export default function DocumentationCenterPage() {
             {isDefaultIndex && (
               <div className="mb-8 grid gap-4 md:grid-cols-2">
                 {featuredArticles.map((article) => (
-                  <DocumentationArticleCard key={article.slug} article={article} />
+                  <ArticleCard key={article.slug} article={article} />
                 ))}
               </div>
             )}
@@ -157,7 +203,7 @@ export default function DocumentationCenterPage() {
             {listedArticles.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {listedArticles.map((article) => (
-                  <DocumentationArticleCard key={article.slug} article={article} />
+                  <ArticleCard key={article.slug} article={article} />
                 ))}
               </div>
             ) : (

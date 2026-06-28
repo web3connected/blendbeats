@@ -17,8 +17,6 @@ import { Link, Navigate } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 
-import AccountLoadingState from './AccountLoadingState';
-
 const settingsCards = [
   {
     title: 'Profile',
@@ -80,7 +78,13 @@ export default function SettingsPage() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <AccountLoadingState />;
+    return (
+      <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a] px-4 py-20">
+        <div className="container mx-auto max-w-6xl">
+          <div className="h-48 animate-pulse bg-[#141414]" />
+        </div>
+      </main>
+    );
   }
 
   if (!user) return <Navigate to="/login" replace />;
