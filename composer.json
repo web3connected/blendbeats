@@ -1,10 +1,18 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "blendbeat/blendbeat",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
-    "license": "MIT",
+    "description": "BlendBeat - AI-powered DJ battles, music community, and creator economy platform.",
+    "keywords": [
+        "blendbeat",
+        "dj",
+        "music",
+        "battle",
+        "audio",
+        "community",
+        "laravel"
+    ],
+    "license": "proprietary",
     "require": {
         "php": "^8.3",
         "jeroennoten/laravel-adminlte": "^3.16",
