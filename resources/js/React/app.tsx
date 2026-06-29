@@ -25,8 +25,11 @@ import SupportDocPage from './Frontend/pages/auth/SupportDocPage';
 import SupportPage from './Frontend/pages/auth/SupportPage';
 import UserDashboardPage from './Frontend/pages/auth/UserDashboardPage';
 import UserPlaylistPage from './Frontend/pages/auth/UserPlaylistPage';
+import WalletPage from './Frontend/pages/auth/WalletPage';
 import AffiliateProgramPage from './Frontend/pages/affiliate';
 import BattlesPage from './Frontend/pages/battles';
+import BattleRecordingPage from './Frontend/pages/battles/BattleRecordingPage';
+import BattleShowPage from './Frontend/pages/battles/BattleShowPage';
 import DjPortfolioPage from './Frontend/pages/dj/DjPortfolioPage';
 import DjScratchesPage from './Frontend/pages/dj/DjScratchesPage';
 import PublicDjProfilePage from './Frontend/pages/dj/PublicDjProfilePage';
@@ -59,6 +62,8 @@ createRoot(rootElement).render(
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/battles" element={<BattlesPage />} />
+                <Route path="/battles/:uuid" element={<BattleShowPage />} />
+                <Route path="/battles/:uuid/record" element={<BattleRecordingPage />} />
                 <Route path="/mixes" element={<MixesPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/affiliate" element={<AffiliateProgramPage />} />
@@ -85,6 +90,7 @@ createRoot(rootElement).render(
                 <Route path="/account" element={<UserDashboardPage />} />
                 <Route path="/account/affiliate" element={<AffiliateProgramPage />} />
                 <Route path="/account/badges" element={<BadgesPage />} />
+                <Route path="/account/wallet" element={<WalletPage />} />
                 <Route path="/account/playlist" element={<UserPlaylistPage />} />
                 <Route path="/account/profile" element={<AccountPage />} />
                 <Route path="/account/billing" element={<BillingPaymentsPage />} />

@@ -15,6 +15,7 @@ class NotificationController extends Controller
         'uploads',
         'mixes',
         'dj_lounge',
+        'battles',
         'featured_ads',
         'billing',
         'affiliate',

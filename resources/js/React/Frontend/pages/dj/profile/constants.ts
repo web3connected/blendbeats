@@ -1,10 +1,10 @@
-import { Link as LinkIcon, Mail, Music2, UserRound } from 'lucide-react';
+import { Link as LinkIcon, Swords, Music2, UserRound } from 'lucide-react';
 
 export const steps = [
   { label: 'Identity', icon: UserRound },
   { label: 'Sound', icon: Music2 },
   { label: 'Links', icon: LinkIcon },
-  { label: 'Booking', icon: Mail },
+  { label: 'Battle', icon: Swords },
 ] as const;
 
 export const djTypes = [
@@ -45,6 +45,7 @@ export const initialDjProfileForm = {
   twitch: '',
   spotify: '',
   availableForBookings: false,
+  battleEnabled: false,
   bookingEmail: '',
   visibility: 'public',
 };

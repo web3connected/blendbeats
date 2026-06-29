@@ -29,11 +29,13 @@ class DjProfileSetupTest extends TestCase
                 'country' => 'US',
                 'website' => 'https://example.com',
                 'available_for_bookings' => true,
+                'battle_enabled' => true,
                 'booking_email' => 'bookings@example.com',
                 'visibility' => 'public',
             ])
             ->assertOk()
             ->assertJsonPath('dj_profile.dj_name', 'DJ Frontend')
+            ->assertJsonPath('dj_profile.battle_enabled', true)
             ->assertJsonPath('dj_profile.primary_genre', 'Hip-Hop')
             ->assertJsonPath('dj_profile.secondary_genres.0', 'House');
 
@@ -46,6 +48,7 @@ class DjProfileSetupTest extends TestCase
         $this->assertDatabaseHas('dj_profiles', [
             'user_id' => $user->id,
             'handle' => 'dj-frontend',
+            'battle_enabled' => true,
             'profile_status' => 'active',
         ]);
     }

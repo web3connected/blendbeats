@@ -19,6 +19,7 @@ export type DjProfileFormState = {
   twitch: string;
   spotify: string;
   availableForBookings: boolean;
+  battleEnabled: boolean;
   bookingEmail: string;
   visibility: string;
 };

@@ -36,6 +36,7 @@ const validationStepByField: Record<string, number> = {
   twitch: 2,
   spotify: 2,
   available_for_bookings: 3,
+  battle_enabled: 3,
   booking_email: 3,
   visibility: 3,
 };
@@ -133,6 +134,7 @@ function formFromProfile(profile: DjProfileResponse): DjProfileFormState {
     twitch: profile.twitch ?? '',
     spotify: profile.spotify ?? '',
     availableForBookings: Boolean(profile.available_for_bookings),
+    battleEnabled: Boolean(profile.battle_enabled),
     bookingEmail: profile.booking_email ?? '',
     visibility: profile.visibility ?? 'public',
   };
@@ -316,6 +318,7 @@ export default function StartDjCareerPage() {
     twitch: formForSave.twitch.trim(),
     spotify: formForSave.spotify.trim(),
     available_for_bookings: formForSave.availableForBookings,
+    battle_enabled: formForSave.battleEnabled,
     booking_email: formForSave.bookingEmail.trim(),
     visibility: formForSave.visibility,
   });

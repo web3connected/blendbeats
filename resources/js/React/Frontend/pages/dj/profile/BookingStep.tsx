@@ -1,4 +1,4 @@
-import { Globe, Mail, Shield } from 'lucide-react';
+import { Globe, Mail, Shield, Swords } from 'lucide-react';
 
 import { visibilityOptions } from './constants';
 import { Field, SelectField } from './FormControls';
@@ -32,6 +32,23 @@ export function BookingStep({
           </span>
         </span>
       </label>
+      <label className="flex items-start gap-3 border border-[#333333] bg-[#080808] p-4">
+        <input
+          type="checkbox"
+          checked={form.battleEnabled}
+          onChange={(event) => updateField('battleEnabled', event.target.checked)}
+          className="mt-1 h-4 w-4 accent-primary"
+        />
+        <span>
+          <span className="flex items-center gap-2 text-sm font-semibold text-white">
+            <Swords size={15} className="text-primary" />
+            Battle Ready
+          </span>
+          <span className="mt-1 block text-xs leading-5 text-[#888888]">
+            Public active profiles can receive DJ battle challenges.
+          </span>
+        </span>
+      </label>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Booking Email"
@@ -50,7 +67,7 @@ export function BookingStep({
       <div className="grid gap-3 border border-[#333333] bg-[#080808] p-4 text-sm text-[#888888]">
         <div className="flex items-center gap-2">
           <Shield size={16} className="text-primary" />
-          <span>Future-ready defaults: draft status, unverified profile, booking and battle flags.</span>
+          <span>Future-ready defaults: draft status, unverified profile, and creator availability flags.</span>
         </div>
         <div className="flex items-center gap-2">
           <Globe size={16} className="text-primary" />

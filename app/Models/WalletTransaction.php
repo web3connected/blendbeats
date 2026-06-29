@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Str;
 
 class WalletTransaction extends Model
 {
@@ -41,6 +42,13 @@ class WalletTransaction extends Model
         'failed_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (WalletTransaction $transaction): void {
+            $transaction->uuid ??= (string) Str::uuid();
+        });
+    }
 
     public function wallet(): BelongsTo
     {

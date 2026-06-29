@@ -16,6 +16,7 @@ export type DjHubDj = {
   headline: string | null;
   bio: string | null;
   avatar_url: string | null;
+  verification_status: string;
   primary_genre: string | null;
   secondary_genres: string[];
   dj_type: string | null;
@@ -24,6 +25,7 @@ export type DjHubDj = {
   state: string | null;
   country: string | null;
   open_for_bookings: boolean;
+  battle_enabled: boolean;
   followers_count: number;
   is_following: boolean;
   engagement_score: number;
@@ -42,6 +44,19 @@ export type DjHubDj = {
     dj_rank: string;
     badges: DjHubBadge[];
   };
+  ranking: {
+    global_rank: number | null;
+    division: string | null;
+    rating: number | null;
+  };
+  battle_stats: {
+    battles: number;
+    wins: number;
+    losses: number;
+    win_rate: number;
+    active_battles: number;
+  };
+  published_at: string | null;
   portfolio_media?: Array<{
     id: number;
     title: string;

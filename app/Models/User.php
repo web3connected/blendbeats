@@ -110,4 +110,19 @@ class User extends Authenticatable
     {
         return $this->hasOne(AffiliateReferral::class, 'referred_user_id');
     }
+
+    public function wallet(): HasOne
+    {
+        return $this->hasOne(Wallet::class);
+    }
+
+    public function walletTransactions(): HasMany
+    {
+        return $this->hasMany(WalletTransaction::class);
+    }
+
+    public function createdDjBattles(): HasMany
+    {
+        return $this->hasMany(DjBattle::class, 'created_by_user_id');
+    }
 }

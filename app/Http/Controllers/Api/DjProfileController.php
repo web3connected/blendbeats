@@ -77,6 +77,7 @@ class DjProfileController extends Controller
             'twitch' => ['nullable', 'url', 'max:255'],
             'spotify' => ['nullable', 'url', 'max:255'],
             'available_for_bookings' => ['boolean'],
+            'battle_enabled' => ['boolean'],
             'booking_email' => ['nullable', 'email', 'max:255'],
             'visibility' => [$isFinalSave ? 'required' : 'nullable', Rule::in(['public', 'followers', 'private'])],
         ]);
@@ -96,6 +97,7 @@ class DjProfileController extends Controller
                     'state' => $attributes['state'] ?? null,
                     'country' => $attributes['country'] ?? null,
                     'booking_enabled' => (bool) ($attributes['available_for_bookings'] ?? false),
+                    'battle_enabled' => (bool) ($attributes['battle_enabled'] ?? false),
                     'profile_status' => ($isFinalSave || $isActiveProfile) ? 'active' : 'draft',
                     'visibility' => $attributes['visibility'] ?? 'private',
                     'published_at' => ($isFinalSave || $isActiveProfile) ? ($existingProfile?->published_at ?? now()) : null,
@@ -227,6 +229,7 @@ class DjProfileController extends Controller
             'twitch' => $socialLinks->get('twitch'),
             'spotify' => $socialLinks->get('spotify'),
             'available_for_bookings' => (bool) $profile->bookingSetting?->available_for_bookings,
+            'battle_enabled' => (bool) $profile->battle_enabled,
             'booking_email' => $profile->bookingSetting?->booking_email,
             'profile_status' => $profile->profile_status,
             'visibility' => $profile->visibility,

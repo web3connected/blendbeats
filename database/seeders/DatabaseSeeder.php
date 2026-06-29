@@ -22,5 +22,9 @@ class DatabaseSeeder extends Seeder
             CommerceProductSeeder::class,
             NewsAutomationRuleSeeder::class,
         ]);
+
+        if (filter_var(env('SEED_BATTLE_DEMO_USERS', false), FILTER_VALIDATE_BOOL)) {
+            $this->call(BattleDemoSeeder::class);
+        }
     }
 }

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Wallet extends Model
 {
@@ -26,6 +27,13 @@ class Wallet extends Model
         'lifetime_spent' => 'integer',
         'lifetime_withdrawn' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Wallet $wallet): void {
+            $wallet->uuid ??= (string) Str::uuid();
+        });
+    }
 
     public function user(): BelongsTo
     {

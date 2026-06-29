@@ -19,6 +19,7 @@ export interface AuthUser {
     id: number;
     dj_name: string;
     handle: string;
+    battle_enabled?: boolean;
     profile_status: string;
     visibility: string;
   } | null;

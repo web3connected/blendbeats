@@ -94,7 +94,10 @@ class DjHubApiTest extends TestCase
             ->assertJsonPath('dj.gamification.dj_level', 1)
             ->assertJsonPath('dj.gamification.dj_xp', 0)
             ->assertJsonPath('dj.gamification.dj_rank', 'New DJ')
-            ->assertJsonPath('dj.gamification.badges', []);
+            ->assertJsonPath('dj.gamification.badges', [])
+            ->assertJsonPath('dj.ranking.global_rank', null)
+            ->assertJsonPath('dj.battle_stats.battles', 0)
+            ->assertJsonPath('dj.battle_stats.win_rate', 0);
 
         UserGamificationStat::query()->create([
             'user_id' => $user->id,

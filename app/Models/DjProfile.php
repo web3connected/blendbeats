@@ -112,4 +112,19 @@ class DjProfile extends Model
     {
         return $this->hasMany(DjFeaturedStatus::class);
     }
+
+    public function challengedBattles(): HasMany
+    {
+        return $this->hasMany(DjBattle::class, 'challenger_dj_profile_id');
+    }
+
+    public function receivedBattleChallenges(): HasMany
+    {
+        return $this->hasMany(DjBattle::class, 'opponent_dj_profile_id');
+    }
+
+    public function battleEntries(): HasMany
+    {
+        return $this->hasMany(DjBattleEntry::class);
+    }
 }

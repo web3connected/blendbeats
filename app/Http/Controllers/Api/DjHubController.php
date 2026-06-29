@@ -181,6 +181,7 @@ class DjHubController extends Controller
             'headline' => $profile->profile_headline ?? null,
             'bio' => $profile->bio ?? null,
             'avatar_url' => $this->avatarUrl($profile),
+            'verification_status' => $profile->verification_status ?? 'unverified',
             'primary_genre' => $primaryGenre,
             'secondary_genres' => $secondaryGenres,
             'dj_type' => $profile->dj_type ?? null,
@@ -189,6 +190,7 @@ class DjHubController extends Controller
             'state' => $profile->state ?? null,
             'country' => $profile->country ?? null,
             'open_for_bookings' => (bool) ($profile->booking_enabled ?? false),
+            'battle_enabled' => (bool) ($profile->battle_enabled ?? false),
             'followers_count' => (int) ($profile->followers_count ?? 0),
             'is_following' => $this->isFollowing((int) $profile->id),
             'engagement_score' => (int) ($profile->engagement_score ?? 0),
@@ -197,6 +199,13 @@ class DjHubController extends Controller
             'featured_statuses' => $this->featuredStatusesFor((int) $profile->id),
             'featured_mix' => $this->featuredMixFor((int) $profile->user_id),
             'gamification' => $this->djGamificationFor((int) $profile->user_id),
+            'ranking' => [
+                'global_rank' => null,
+                'division' => null,
+                'rating' => null,
+            ],
+            'battle_stats' => $this->battleStatsFor((int) $profile->id),
+            'published_at' => $profile->published_at ? (string) $profile->published_at : null,
         ];
 
         if ($includeDetails) {
@@ -250,6 +259,53 @@ class DjHubController extends Controller
             ->value('slot_number');
 
         return $slot ? (int) $slot : null;
+    }
+
+    private function battleStatsFor(int $profileId): array
+    {
+        if (! Schema::hasTable('dj_battles')) {
+            return [
+                'battles' => 0,
+                'wins' => 0,
+                'losses' => 0,
+                'win_rate' => 0,
+                'active_battles' => 0,
+            ];
+        }
+
+        $participantQuery = fn (Builder $query) => $query
+            ->where('challenger_dj_profile_id', $profileId)
+            ->orWhere('opponent_dj_profile_id', $profileId);
+
+        $completedBattles = DB::table('dj_battles')
+            ->where('status', 'completed')
+            ->where($participantQuery)
+            ->count();
+
+        $wins = DB::table('dj_battles')
+            ->where('status', 'completed')
+            ->where('winner_dj_profile_id', $profileId)
+            ->count();
+
+        $losses = DB::table('dj_battles')
+            ->where('status', 'completed')
+            ->whereNotNull('winner_dj_profile_id')
+            ->where('winner_dj_profile_id', '!=', $profileId)
+            ->where($participantQuery)
+            ->count();
+
+        $activeBattles = DB::table('dj_battles')
+            ->whereIn('status', ['pending', 'accepted', 'recording', 'voting'])
+            ->where($participantQuery)
+            ->count();
+
+        return [
+            'battles' => (int) $completedBattles,
+            'wins' => (int) $wins,
+            'losses' => (int) $losses,
+            'win_rate' => $completedBattles > 0 ? (int) round(($wins / $completedBattles) * 100) : 0,
+            'active_battles' => (int) $activeBattles,
+        ];
     }
 
     private function isFollowing(int $profileId): bool

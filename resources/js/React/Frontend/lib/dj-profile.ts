@@ -23,6 +23,7 @@ export type DjProfilePayload = {
   twitch?: string;
   spotify?: string;
   available_for_bookings: boolean;
+  battle_enabled: boolean;
   booking_email?: string;
   visibility: string;
 };

@@ -10,6 +10,7 @@ use App\Services\AffiliateReferralAttributionService;
 use App\Services\AffiliateReferralTrackingService;
 use App\Services\GamificationService;
 use App\Services\UserAdCreditService;
+use App\Services\WalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -39,6 +40,7 @@ class UserAuthController extends Controller
             ...$attributes,
             'media_storage_tier' => config('billing.subscription.free_tier', 'free'),
         ]);
+        app(WalletService::class)->walletFor($user);
         $affiliateReferral = $attribution->attributeSignup($user, $referralContext, $request);
 
         if ($referralContext) {
@@ -324,12 +326,13 @@ class UserAuthController extends Controller
 
         $profile = DB::table('dj_profiles')
             ->where('user_id', $user->id)
-            ->first(['id', 'dj_name', 'handle', 'profile_status', 'visibility']);
+            ->first(['id', 'dj_name', 'handle', 'battle_enabled', 'profile_status', 'visibility']);
 
         return $profile ? [
             'id' => $profile->id,
             'dj_name' => $profile->dj_name,
             'handle' => $profile->handle,
+            'battle_enabled' => (bool) $profile->battle_enabled,
             'profile_status' => $profile->profile_status,
             'visibility' => $profile->visibility,
         ] : null;
