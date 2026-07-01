@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\BattleEscrow;
 use App\Models\DjBattle;
 use App\Models\DjProfile;
 use App\Models\User;
+use App\Models\WalletTransaction;
 use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -104,12 +106,26 @@ class DjBattleApiTest extends TestCase
             ->assertJsonPath('battle.status', 'accepted')
             ->assertJsonPath('battle.readiness.challenger_ready', false)
             ->assertJsonPath('battle.readiness.opponent_ready', false)
+            ->assertJsonPath('battle.escrow.status', BattleEscrow::STATUS_PENDING)
+            ->assertJsonPath('battle.escrow.escrow_mode', BattleEscrow::MODE_DEMO)
             ->assertJsonCount(2, 'battle.entries');
 
         $this->assertDatabaseHas('dj_battles', [
             'uuid' => $battleUuid,
             'status' => DjBattle::STATUS_ACCEPTED,
             'stake_amount' => 30,
+        ]);
+        $battle = DjBattle::query()
+            ->where('uuid', $battleUuid)
+            ->firstOrFail();
+
+        $this->assertDatabaseHas('battle_escrows', [
+            'battle_id' => $battle->id,
+            'status' => BattleEscrow::STATUS_PENDING,
+            'escrow_mode' => BattleEscrow::MODE_DEMO,
+            'stake_amount' => 30,
+            'challenger_user_id' => $challenger->id,
+            'opponent_user_id' => $opponent->id,
         ]);
         $this->assertDatabaseHas('dj_battle_events', [
             'actor_user_id' => $opponent->id,
@@ -308,6 +324,7 @@ class DjBattleApiTest extends TestCase
             ->assertJsonPath('battle.status', DjBattle::STATUS_RECORDING)
             ->assertJsonPath('battle.readiness.both_ready', true)
             ->assertJsonPath('battle.sample_pack_status', DjBattle::SAMPLE_PACK_BYPASSED)
+            ->assertJsonPath('battle.escrow.status', BattleEscrow::STATUS_RECORDING)
             ->assertJsonPath('battle.fan_reward_pool_amount', 6)
             ->assertJsonPath('battle.prize_pool_amount', 54);
 
@@ -329,8 +346,23 @@ class DjBattleApiTest extends TestCase
         $this->assertSame(30, $opponentWallet->locked_balance);
 
         $this->assertDatabaseCount('wallet_transactions', 4);
+        $battle = DjBattle::query()
+            ->where('uuid', $battleUuid)
+            ->firstOrFail();
+        $escrow = BattleEscrow::query()
+            ->where('battle_id', $battle->id)
+            ->firstOrFail();
+
+        $this->assertSame(BattleEscrow::STATUS_RECORDING, $escrow->status);
+        $this->assertSame(30, $escrow->stake_amount);
+        $this->assertSame(6, $escrow->fan_reward_pool_amount);
+        $this->assertSame(54, $escrow->prize_pool_amount);
+        $this->assertNotNull($escrow->challenger_lock_transaction_id);
+        $this->assertNotNull($escrow->opponent_lock_transaction_id);
         $this->assertDatabaseHas('wallet_transactions', [
             'user_id' => $challenger->id,
+            'battle_escrow_id' => $escrow->id,
+            'settlement_group_uuid' => $escrow->uuid,
             'type' => WalletService::TYPE_BATTLE_STAKE_LOCKED,
             'direction' => 'lock',
             'status' => 'locked',
@@ -338,6 +370,8 @@ class DjBattleApiTest extends TestCase
         ]);
         $this->assertDatabaseHas('wallet_transactions', [
             'user_id' => $opponent->id,
+            'battle_escrow_id' => $escrow->id,
+            'settlement_group_uuid' => $escrow->uuid,
             'type' => WalletService::TYPE_BATTLE_STAKE_LOCKED,
             'direction' => 'lock',
             'status' => 'locked',
@@ -385,6 +419,78 @@ class DjBattleApiTest extends TestCase
         $this->assertDatabaseHas('dj_battle_events', [
             'event_type' => 'battle_started',
             'to_status' => DjBattle::STATUS_RECORDING,
+        ]);
+    }
+
+    public function test_cancelled_recording_battle_refunds_locked_stakes_with_escrow_reversals(): void
+    {
+        $challenger = User::factory()->create();
+        $opponent = User::factory()->create();
+        $this->battleReadyProfile($challenger);
+        $opponentProfile = $this->battleReadyProfile($opponent);
+        $wallets = app(WalletService::class);
+
+        $wallets->credit($challenger, 100, 'token_purchase');
+        $wallets->credit($opponent, 100, 'token_purchase');
+
+        $battleUuid = $this->actingAs($challenger)
+            ->postJson('/api/battles', [
+                'opponent_dj_profile_id' => $opponentProfile->id,
+                'battle_type' => 'open_format',
+                'title' => 'Cancel Refund',
+                'stake_amount' => 25,
+            ])
+            ->assertCreated()
+            ->json('battle.uuid');
+
+        $this->actingAs($opponent)->postJson("/api/battles/{$battleUuid}/accept")->assertOk();
+        $this->actingAs($challenger)->postJson("/api/battles/{$battleUuid}/ready")->assertOk();
+        $this->actingAs($opponent)
+            ->postJson("/api/battles/{$battleUuid}/ready")
+            ->assertOk()
+            ->assertJsonPath('battle.status', DjBattle::STATUS_RECORDING);
+
+        $battle = DjBattle::query()
+            ->where('uuid', $battleUuid)
+            ->firstOrFail();
+        $escrow = BattleEscrow::query()
+            ->where('battle_id', $battle->id)
+            ->firstOrFail();
+
+        $this->actingAs($challenger)
+            ->postJson("/api/battles/{$battleUuid}/cancel")
+            ->assertOk()
+            ->assertJsonPath('battle.status', DjBattle::STATUS_CANCELLED)
+            ->assertJsonPath('battle.escrow.status', BattleEscrow::STATUS_CANCELLED);
+
+        $challengerWallet = $challenger->wallet()->firstOrFail();
+        $opponentWallet = $opponent->wallet()->firstOrFail();
+
+        $this->assertSame(100, $challengerWallet->available_balance);
+        $this->assertSame(0, $challengerWallet->locked_balance);
+        $this->assertSame(100, $opponentWallet->available_balance);
+        $this->assertSame(0, $opponentWallet->locked_balance);
+
+        $escrow->refresh();
+        $this->assertSame(BattleEscrow::STATUS_CANCELLED, $escrow->status);
+        $this->assertNotNull($escrow->refunded_at);
+        $this->assertNotNull($escrow->cancelled_at);
+
+        $this->assertDatabaseHas('wallet_transactions', [
+            'user_id' => $challenger->id,
+            'battle_escrow_id' => $escrow->id,
+            'reverses_transaction_id' => $escrow->challenger_lock_transaction_id,
+            'type' => WalletService::TYPE_BATTLE_REFUND,
+            'direction' => 'unlock',
+            'amount' => 25,
+        ]);
+        $this->assertDatabaseHas('wallet_transactions', [
+            'user_id' => $opponent->id,
+            'battle_escrow_id' => $escrow->id,
+            'reverses_transaction_id' => $escrow->opponent_lock_transaction_id,
+            'type' => WalletService::TYPE_BATTLE_REFUND,
+            'direction' => 'unlock',
+            'amount' => 25,
         ]);
     }
 
@@ -574,6 +680,7 @@ class DjBattleApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('battle.status', DjBattle::STATUS_COMPLETED)
             ->assertJsonPath('battle.winner.id', $challenger->djProfile->id)
+            ->assertJsonPath('battle.escrow.status', BattleEscrow::STATUS_SETTLED)
             ->assertJsonPath('battle.result.total_votes', 1)
             ->assertJsonPath('battle.result.is_draw', false);
 
@@ -587,24 +694,50 @@ class DjBattleApiTest extends TestCase
         $this->assertSame(0, $opponentWallet->locked_balance);
         $this->assertSame(6, $fanWallet->available_balance);
 
+        $battle = DjBattle::query()
+            ->where('uuid', $battleUuid)
+            ->firstOrFail();
+        $escrow = BattleEscrow::query()
+            ->where('battle_id', $battle->id)
+            ->firstOrFail();
+
+        $this->assertSame(BattleEscrow::STATUS_SETTLED, $escrow->status);
+        $this->assertSame(1, $escrow->settlement_attempts);
+        $this->assertSame($challenger->id, $escrow->winner_user_id);
+        $this->assertNotNull($escrow->released_at);
+        $this->assertNotNull($escrow->settled_at);
+
         $this->assertDatabaseHas('wallet_transactions', [
             'user_id' => $challenger->id,
+            'battle_escrow_id' => $escrow->id,
+            'settlement_group_uuid' => $escrow->uuid,
             'type' => WalletService::TYPE_BATTLE_WINNER_REWARD,
             'direction' => 'credit',
             'amount' => 54,
         ]);
         $this->assertDatabaseHas('wallet_transactions', [
             'user_id' => $fan->id,
+            'battle_escrow_id' => $escrow->id,
+            'settlement_group_uuid' => $escrow->uuid,
             'type' => WalletService::TYPE_FAN_REWARD,
             'direction' => 'credit',
             'amount' => 6,
         ]);
         $this->assertDatabaseHas('wallet_transactions', [
             'user_id' => $opponent->id,
+            'battle_escrow_id' => $escrow->id,
+            'reverses_transaction_id' => $escrow->opponent_lock_transaction_id,
+            'settlement_group_uuid' => $escrow->uuid,
             'type' => WalletService::TYPE_BATTLE_STAKE_RELEASED,
             'direction' => 'debit',
             'amount' => 30,
         ]);
+        $winnerReward = WalletTransaction::query()
+            ->where('battle_escrow_id', $escrow->id)
+            ->where('type', WalletService::TYPE_BATTLE_WINNER_REWARD)
+            ->firstOrFail();
+
+        $this->assertSame($winnerReward->id, $escrow->winner_reward_transaction_id);
         $this->assertDatabaseHas('dj_battle_events', [
             'event_type' => 'fan_rewards_distributed',
         ]);

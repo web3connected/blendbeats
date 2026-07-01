@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BattleEscrow;
 use App\Models\DjBattle;
 use App\Models\DjBattleEntry;
 use App\Models\DjProfile;
@@ -365,6 +366,7 @@ class DjBattleController extends Controller
             'challenge_message' => $battle->challenge_message,
             'fan_reward_pool_amount' => (int) $battle->fan_reward_pool_amount,
             'prize_pool_amount' => (int) $battle->prize_pool_amount,
+            'escrow' => $battle->battleEscrow ? $this->escrowPayload($battle->battleEscrow) : null,
             'vote_count' => $battle->votes()->whereNotNull('submitted_at')->count(),
             'viewer_vote' => $this->viewerVotePayload($battle),
             'challenger' => $this->profilePayload($battle->challenger),
@@ -399,6 +401,30 @@ class DjBattleController extends Controller
             'declined_at' => optional($battle->declined_at)->toISOString(),
             'cancelled_at' => optional($battle->cancelled_at)->toISOString(),
             'created_at' => optional($battle->created_at)->toISOString(),
+        ];
+    }
+
+    private function escrowPayload(BattleEscrow $escrow): array
+    {
+        return [
+            'uuid' => $escrow->uuid,
+            'status' => $escrow->status,
+            'escrow_mode' => $escrow->escrow_mode,
+            'currency_type' => $escrow->currency_type,
+            'stake_amount' => (int) $escrow->stake_amount,
+            'fan_reward_pool_amount' => (int) $escrow->fan_reward_pool_amount,
+            'prize_pool_amount' => (int) $escrow->prize_pool_amount,
+            'requires_admin_review' => (bool) $escrow->requires_admin_review,
+            'settlement_attempts' => (int) $escrow->settlement_attempts,
+            'last_settlement_error' => $escrow->last_settlement_error,
+            'expires_at' => optional($escrow->expires_at)->toISOString(),
+            'locked_at' => optional($escrow->locked_at)->toISOString(),
+            'released_at' => optional($escrow->released_at)->toISOString(),
+            'refunded_at' => optional($escrow->refunded_at)->toISOString(),
+            'cancelled_at' => optional($escrow->cancelled_at)->toISOString(),
+            'disputed_at' => optional($escrow->disputed_at)->toISOString(),
+            'settled_at' => optional($escrow->settled_at)->toISOString(),
+            'resolved_at' => optional($escrow->resolved_at)->toISOString(),
         ];
     }
 
@@ -552,6 +578,7 @@ class DjBattleController extends Controller
             'entries.mediaFile',
             'entries.djProfile',
             'result',
+            'battleEscrow',
         ];
     }
 }

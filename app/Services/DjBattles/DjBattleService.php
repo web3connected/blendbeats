@@ -2,12 +2,14 @@
 
 namespace App\Services\DjBattles;
 
+use App\Models\BattleEscrow;
 use App\Models\DjBattle;
 use App\Models\DjBattleEntry;
 use App\Models\DjProfile;
 use App\Models\DjBattleVote;
 use App\Models\MediaFile;
 use App\Models\User;
+use App\Models\WalletTransaction;
 use App\Notifications\BattleEventNotification;
 use App\Services\MediaManagerService;
 use App\Services\WalletService;
@@ -138,6 +140,7 @@ class DjBattleService
                 'ready_due_at' => now()->addHours(self::READY_WINDOW_HOURS),
             ])->save();
 
+            $this->ensureBattleEscrow($battle);
             $this->ensureEntryPlaceholders($battle);
             $this->recordEvent($battle, $actor, 'challenge_accepted', $fromStatus, DjBattle::STATUS_ACCEPTED);
             $this->notify($battle->challenger->user, $battle, 'challenge_accepted');
@@ -188,15 +191,17 @@ class DjBattleService
             }
 
             $fromStatus = $battle->status;
+            $escrow = $this->battleEscrowFor($battle);
 
-            $this->unlockStakeIfLocked($battle->challenger->user, $battle, 'challenger', $actor);
-            $this->unlockStakeIfLocked($battle->opponent->user, $battle, 'opponent', $actor);
+            $this->unlockStakeIfLocked($battle->challenger->user, $battle, 'challenger', $actor, $escrow);
+            $this->unlockStakeIfLocked($battle->opponent->user, $battle, 'opponent', $actor, $escrow);
 
             $battle->forceFill([
                 'status' => DjBattle::STATUS_CANCELLED,
                 'cancelled_at' => now(),
             ])->save();
 
+            $this->markEscrowCancelled($escrow, $battle);
             $this->recordEvent($battle, $actor, 'battle_cancelled', $fromStatus, DjBattle::STATUS_CANCELLED);
             $this->notify($this->otherParticipantUser($actor, $battle), $battle, 'battle_cancelled');
 
@@ -681,20 +686,33 @@ class DjBattleService
         $this->ensureSamplePackReadyOrBypassed($battle, $actor);
         $battle->refresh();
 
-        $this->lockStake($battle->challenger->user, $battle, 'challenger', $actor);
-        $this->lockStake($battle->opponent->user, $battle, 'opponent', $actor);
+        $escrow = $this->ensureBattleEscrow($battle);
+        $challengerLock = $this->lockStake($battle->challenger->user, $battle, 'challenger', $actor, $escrow);
+        $opponentLock = $this->lockStake($battle->opponent->user, $battle, 'opponent', $actor, $escrow);
 
         $totalPot = (int) $battle->stake_amount * 2;
         $fanRewardPool = intdiv($totalPot, 10);
         $prizePool = $totalPot - $fanRewardPool;
         $recordingStartedAt = now();
+        $recordingEndsAt = $recordingStartedAt->copy()->addHours(self::RECORDING_WINDOW_HOURS);
 
         $battle->forceFill([
             'status' => DjBattle::STATUS_RECORDING,
             'recording_started_at' => $recordingStartedAt,
-            'recording_ends_at' => $recordingStartedAt->copy()->addHours(self::RECORDING_WINDOW_HOURS),
+            'recording_ends_at' => $recordingEndsAt,
             'fan_reward_pool_amount' => $fanRewardPool,
             'prize_pool_amount' => $prizePool,
+        ])->save();
+
+        $escrow->forceFill([
+            'status' => BattleEscrow::STATUS_RECORDING,
+            'challenger_lock_transaction_id' => $challengerLock?->id,
+            'opponent_lock_transaction_id' => $opponentLock?->id,
+            'fan_reward_pool_amount' => $fanRewardPool,
+            'prize_pool_amount' => $prizePool,
+            'locked_at' => (int) $battle->stake_amount > 0 ? ($escrow->locked_at ?? now()) : null,
+            'expires_at' => $recordingEndsAt,
+            'last_settlement_error' => null,
         ])->save();
 
         $this->recordEvent($battle, $actor, 'battle_started', DjBattle::STATUS_ACCEPTED, DjBattle::STATUS_RECORDING, [
@@ -710,60 +728,112 @@ class DjBattleService
 
     private function settleBattleWallets(DjBattle $battle, ?int $winnerProfileId): void
     {
+        $escrow = $this->ensureBattleEscrow($battle);
+        $escrow->forceFill([
+            'status' => BattleEscrow::STATUS_SETTLING,
+            'settlement_attempts' => (int) $escrow->settlement_attempts + 1,
+            'last_settlement_error' => null,
+        ])->save();
+
+        $winnerReward = null;
+
         if ((int) $battle->stake_amount > 0) {
             if (! $winnerProfileId) {
-                $this->unlockStakeIfLocked($battle->challenger->user, $battle, 'challenger', $battle->challenger->user);
-                $this->unlockStakeIfLocked($battle->opponent->user, $battle, 'opponent', $battle->opponent->user);
+                $this->unlockStakeIfLocked($battle->challenger->user, $battle, 'challenger', $battle->challenger->user, $escrow);
+                $this->unlockStakeIfLocked($battle->opponent->user, $battle, 'opponent', $battle->opponent->user, $escrow);
             } else {
-                $this->spendLockedStakeIfLocked($battle->challenger->user, $battle, 'challenger');
-                $this->spendLockedStakeIfLocked($battle->opponent->user, $battle, 'opponent');
-                $this->creditWinnerReward($battle, $winnerProfileId);
+                $this->spendLockedStakeIfLocked($battle->challenger->user, $battle, 'challenger', $escrow);
+                $this->spendLockedStakeIfLocked($battle->opponent->user, $battle, 'opponent', $escrow);
+                $winnerReward = $this->creditWinnerReward($battle, $winnerProfileId, $escrow);
             }
         }
 
-        $this->creditFanRewards($battle);
+        $this->creditFanRewards($battle, $escrow);
+
+        $winnerUserId = null;
+
+        if ($winnerProfileId) {
+            $winner = (int) $battle->challenger_dj_profile_id === $winnerProfileId
+                ? $battle->challenger
+                : $battle->opponent;
+            $winnerUserId = $winner?->user_id;
+        }
+
+        $escrow->forceFill([
+            'status' => $winnerProfileId ? BattleEscrow::STATUS_SETTLED : BattleEscrow::STATUS_REFUNDED,
+            'winner_user_id' => $winnerUserId,
+            'winner_reward_transaction_id' => $winnerReward?->id,
+            'released_at' => $winnerProfileId ? now() : null,
+            'refunded_at' => $winnerProfileId ? $escrow->refunded_at : now(),
+            'settled_at' => now(),
+            'expires_at' => null,
+            'last_settlement_error' => null,
+        ])->save();
     }
 
-    private function spendLockedStakeIfLocked(User $walletOwner, DjBattle $battle, string $role): void
+    private function spendLockedStakeIfLocked(User $walletOwner, DjBattle $battle, string $role, ?BattleEscrow $escrow = null): ?WalletTransaction
     {
         $stakeAmount = (int) $battle->stake_amount;
 
         if ($stakeAmount <= 0) {
-            return;
+            return null;
         }
 
         $wallet = $walletOwner->wallet()->first();
 
         if (! $wallet || ! $wallet->hasLockedBalance($stakeAmount)) {
-            return;
+            $message = "Battle {$role} stake lock is missing.";
+
+            if ($escrow && ! $escrow->isDemoMode()) {
+                $this->flagEscrowForAdminReview($escrow, $message);
+
+                throw new RuntimeException($message);
+            }
+
+            if ($escrow) {
+                $this->appendEscrowWarning($escrow, $message);
+            }
+
+            return null;
         }
 
-        $this->wallets->spendLocked($walletOwner, $stakeAmount, WalletService::TYPE_BATTLE_STAKE_RELEASED, [
+        $lockTransaction = $escrow ? $this->lockTransactionForRole($escrow, $role) : null;
+
+        return $this->wallets->spendLocked($walletOwner, $stakeAmount, WalletService::TYPE_BATTLE_STAKE_RELEASED, [
             'related' => $battle,
+            'battle_escrow_id' => $escrow?->id,
+            'reverses_transaction_id' => $lockTransaction?->id,
+            'settlement_group_uuid' => $escrow?->uuid,
+            'idempotency_key' => "battle:{$battle->uuid}:stake-release:{$role}",
             'description' => "Battle stake released for {$battle->title}.",
             'metadata' => [
                 'battle_uuid' => $battle->uuid,
+                'battle_escrow_uuid' => $escrow?->uuid,
                 'battle_role' => $role,
                 'battle_type' => $battle->battle_type,
             ],
         ]);
     }
 
-    private function creditWinnerReward(DjBattle $battle, int $winnerProfileId): void
+    private function creditWinnerReward(DjBattle $battle, int $winnerProfileId, ?BattleEscrow $escrow = null): ?WalletTransaction
     {
         if (! (bool) config('wallet.allow_winner_payout_simulation', true) || (int) $battle->prize_pool_amount <= 0) {
-            return;
+            return null;
         }
 
         $winner = (int) $battle->challenger_dj_profile_id === $winnerProfileId
             ? $battle->challenger
             : $battle->opponent;
 
-        $this->wallets->credit($winner->user, (int) $battle->prize_pool_amount, WalletService::TYPE_BATTLE_WINNER_REWARD, [
+        return $this->wallets->credit($winner->user, (int) $battle->prize_pool_amount, WalletService::TYPE_BATTLE_WINNER_REWARD, [
             'related' => $battle,
+            'battle_escrow_id' => $escrow?->id,
+            'settlement_group_uuid' => $escrow?->uuid,
+            'idempotency_key' => "battle:{$battle->uuid}:winner-reward",
             'description' => "Battle winner test-token reward for {$battle->title}.",
             'metadata' => [
                 'battle_uuid' => $battle->uuid,
+                'battle_escrow_uuid' => $escrow?->uuid,
                 'winner_dj_profile_id' => $winnerProfileId,
                 'prize_pool_amount' => (int) $battle->prize_pool_amount,
                 'demo_mode' => true,
@@ -771,7 +841,7 @@ class DjBattleService
         ]);
     }
 
-    private function creditFanRewards(DjBattle $battle): void
+    private function creditFanRewards(DjBattle $battle, ?BattleEscrow $escrow = null): void
     {
         if (! (bool) config('wallet.allow_fan_reward_simulation', true) || (int) $battle->fan_reward_pool_amount <= 0) {
             return;
@@ -812,9 +882,13 @@ class DjBattleService
 
             $this->wallets->credit($vote->user, $share, WalletService::TYPE_FAN_REWARD, [
                 'related' => $battle,
+                'battle_escrow_id' => $escrow?->id,
+                'settlement_group_uuid' => $escrow?->uuid,
+                'idempotency_key' => "battle:{$battle->uuid}:fan-reward:vote:{$vote->id}",
                 'description' => "Fan reward test tokens for voting in {$battle->title}.",
                 'metadata' => [
                     'battle_uuid' => $battle->uuid,
+                    'battle_escrow_uuid' => $escrow?->uuid,
                     'vote_id' => $vote->id,
                     'eligible_voter_count' => $eligibleVotes->count(),
                     'unclaimed_remainder' => $unclaimed,
@@ -1040,11 +1114,18 @@ class DjBattleService
 
         $fromStatus = $battle->status;
         $votingStartedAt = now();
+        $votingEndsAt = $votingStartedAt->copy()->addHours((int) $battle->voting_duration_hours);
 
         $battle->forceFill([
             'status' => DjBattle::STATUS_VOTING,
             'voting_started_at' => $votingStartedAt,
-            'voting_ends_at' => $votingStartedAt->copy()->addHours((int) $battle->voting_duration_hours),
+            'voting_ends_at' => $votingEndsAt,
+        ])->save();
+
+        $escrow = $this->ensureBattleEscrow($battle);
+        $escrow->forceFill([
+            'status' => BattleEscrow::STATUS_VOTING,
+            'expires_at' => $votingEndsAt,
         ])->save();
 
         $this->recordEvent($battle, $actor, 'voting_opened', $fromStatus, DjBattle::STATUS_VOTING, [
@@ -1263,19 +1344,153 @@ class DjBattleService
             ->exists();
     }
 
-    private function lockStake(User $walletOwner, DjBattle $battle, string $role, User $actor): void
+    private function ensureBattleEscrow(DjBattle $battle): BattleEscrow
     {
-        if ((int) $battle->stake_amount <= 0) {
+        $battle->loadMissing(['challenger.user', 'opponent.user']);
+
+        $attributes = [
+            'escrow_mode' => $this->escrowModeForBattle($battle),
+            'currency_type' => $battle->currency ?: 'TOKENS',
+            'stake_amount' => (int) $battle->stake_amount,
+            'challenger_user_id' => $battle->challenger?->user_id,
+            'opponent_user_id' => $battle->opponent?->user_id,
+            'expires_at' => $this->escrowExpiresAtForBattle($battle),
+            'metadata' => [
+                'battle_uuid' => $battle->uuid,
+                'battle_type' => $battle->battle_type,
+                'created_from' => 'dj_battle_service',
+            ],
+        ];
+
+        $escrow = BattleEscrow::query()
+            ->where('battle_id', $battle->id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $escrow) {
+            return BattleEscrow::query()->create([
+                'battle_id' => $battle->id,
+                'status' => BattleEscrow::STATUS_PENDING,
+                ...$attributes,
+            ]);
+        }
+
+        $metadata = [
+            ...($escrow->metadata ?? []),
+            ...$attributes['metadata'],
+        ];
+
+        $escrow->forceFill([
+            ...$attributes,
+            'metadata' => $metadata,
+        ])->save();
+
+        return $escrow;
+    }
+
+    private function battleEscrowFor(DjBattle $battle): ?BattleEscrow
+    {
+        return BattleEscrow::query()
+            ->where('battle_id', $battle->id)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    private function escrowModeForBattle(DjBattle $battle): string
+    {
+        if ((bool) config('wallet.beta_token_demo_mode', true)) {
+            return BattleEscrow::MODE_DEMO;
+        }
+
+        return strtoupper((string) $battle->currency) === 'TOKENS'
+            ? BattleEscrow::MODE_TOKEN
+            : BattleEscrow::MODE_REAL_MONEY;
+    }
+
+    private function escrowExpiresAtForBattle(DjBattle $battle): mixed
+    {
+        return match ($battle->status) {
+            DjBattle::STATUS_ACCEPTED => $battle->ready_due_at,
+            DjBattle::STATUS_RECORDING => $battle->recording_ends_at,
+            DjBattle::STATUS_VOTING => $battle->voting_ends_at,
+            default => $battle->expires_at,
+        };
+    }
+
+    private function lockTransactionForRole(BattleEscrow $escrow, string $role): ?WalletTransaction
+    {
+        $column = $role === 'challenger'
+            ? 'challenger_lock_transaction_id'
+            : 'opponent_lock_transaction_id';
+        $transactionId = $escrow->{$column};
+
+        if (! $transactionId) {
+            return null;
+        }
+
+        return WalletTransaction::query()->find($transactionId);
+    }
+
+    private function markEscrowCancelled(?BattleEscrow $escrow, DjBattle $battle): void
+    {
+        if (! $escrow) {
             return;
         }
 
+        $hadLockedStake = (bool) ($escrow->challenger_lock_transaction_id || $escrow->opponent_lock_transaction_id);
+
+        $escrow->forceFill([
+            'status' => BattleEscrow::STATUS_CANCELLED,
+            'cancelled_at' => $battle->cancelled_at ?? now(),
+            'refunded_at' => $hadLockedStake ? ($escrow->refunded_at ?? now()) : $escrow->refunded_at,
+            'expires_at' => null,
+        ])->save();
+    }
+
+    private function flagEscrowForAdminReview(BattleEscrow $escrow, string $message): void
+    {
+        $escrow->forceFill([
+            'status' => BattleEscrow::STATUS_DISPUTED,
+            'requires_admin_review' => true,
+            'last_settlement_error' => $message,
+            'disputed_at' => now(),
+        ])->save();
+    }
+
+    private function appendEscrowWarning(BattleEscrow $escrow, string $message): void
+    {
+        $metadata = $escrow->metadata ?? [];
+        $warnings = $metadata['warnings'] ?? [];
+        $warnings[] = [
+            'message' => $message,
+            'recorded_at' => now()->toISOString(),
+        ];
+
+        $escrow->forceFill([
+            'metadata' => [
+                ...$metadata,
+                'warnings' => $warnings,
+            ],
+        ])->save();
+    }
+
+    private function lockStake(User $walletOwner, DjBattle $battle, string $role, User $actor, ?BattleEscrow $escrow = null): ?WalletTransaction
+    {
+        if ((int) $battle->stake_amount <= 0) {
+            return null;
+        }
+
         try {
-            $this->wallets->lock($walletOwner, (int) $battle->stake_amount, WalletService::TYPE_BATTLE_STAKE_LOCKED, [
+            return $this->wallets->lock($walletOwner, (int) $battle->stake_amount, WalletService::TYPE_BATTLE_STAKE_LOCKED, [
                 'related' => $battle,
+                'battle_escrow_id' => $escrow?->id,
+                'settlement_group_uuid' => $escrow?->uuid,
+                'idempotency_key' => "battle:{$battle->uuid}:stake-lock:{$role}",
                 'description' => "Battle stake locked for {$battle->title}.",
                 'created_by_user_id' => $actor->id,
                 'metadata' => [
                     'battle_uuid' => $battle->uuid,
+                    'battle_escrow_uuid' => $escrow?->uuid,
                     'battle_role' => $role,
                     'battle_type' => $battle->battle_type,
                 ],
@@ -1287,19 +1502,26 @@ class DjBattleService
         }
     }
 
-    private function unlockStake(User $walletOwner, DjBattle $battle, string $role, User $actor): void
+    private function unlockStake(User $walletOwner, DjBattle $battle, string $role, User $actor, ?BattleEscrow $escrow = null): ?WalletTransaction
     {
         if ((int) $battle->stake_amount <= 0) {
-            return;
+            return null;
         }
 
         try {
-            $this->wallets->unlock($walletOwner, (int) $battle->stake_amount, WalletService::TYPE_BATTLE_REFUND, [
+            $lockTransaction = $escrow ? $this->lockTransactionForRole($escrow, $role) : null;
+
+            return $this->wallets->unlock($walletOwner, (int) $battle->stake_amount, WalletService::TYPE_BATTLE_REFUND, [
                 'related' => $battle,
+                'battle_escrow_id' => $escrow?->id,
+                'reverses_transaction_id' => $lockTransaction?->id,
+                'settlement_group_uuid' => $escrow?->uuid,
+                'idempotency_key' => "battle:{$battle->uuid}:stake-refund:{$role}",
                 'description' => "Battle stake returned for {$battle->title}.",
                 'created_by_user_id' => $actor->id,
                 'metadata' => [
                     'battle_uuid' => $battle->uuid,
+                    'battle_escrow_uuid' => $escrow?->uuid,
                     'battle_role' => $role,
                     'battle_type' => $battle->battle_type,
                 ],
@@ -1311,19 +1533,19 @@ class DjBattleService
         }
     }
 
-    private function unlockStakeIfLocked(User $walletOwner, DjBattle $battle, string $role, User $actor): void
+    private function unlockStakeIfLocked(User $walletOwner, DjBattle $battle, string $role, User $actor, ?BattleEscrow $escrow = null): ?WalletTransaction
     {
         if ((int) $battle->stake_amount <= 0) {
-            return;
+            return null;
         }
 
         $wallet = $walletOwner->wallet()->first();
 
         if (! $wallet || ! $wallet->hasLockedBalance((int) $battle->stake_amount)) {
-            return;
+            return null;
         }
 
-        $this->unlockStake($walletOwner, $battle, $role, $actor);
+        return $this->unlockStake($walletOwner, $battle, $role, $actor, $escrow);
     }
 
     private function ensureEntryPlaceholders(DjBattle $battle): void
@@ -1428,6 +1650,7 @@ class DjBattleService
             'entries.mediaFile',
             'entries.djProfile',
             'result',
+            'battleEscrow',
         ];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Str;
 
@@ -23,6 +24,10 @@ class WalletTransaction extends Model
         'locked_balance_after',
         'related_type',
         'related_id',
+        'battle_escrow_id',
+        'reverses_transaction_id',
+        'settlement_group_uuid',
+        'idempotency_key',
         'description',
         'metadata',
         'created_by_user_id',
@@ -38,6 +43,8 @@ class WalletTransaction extends Model
         'balance_after' => 'integer',
         'locked_balance_before' => 'integer',
         'locked_balance_after' => 'integer',
+        'battle_escrow_id' => 'integer',
+        'reverses_transaction_id' => 'integer',
         'metadata' => 'array',
         'completed_at' => 'datetime',
         'failed_at' => 'datetime',
@@ -74,6 +81,21 @@ class WalletTransaction extends Model
     public function related(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    public function battleEscrow(): BelongsTo
+    {
+        return $this->belongsTo(BattleEscrow::class, 'battle_escrow_id');
+    }
+
+    public function reverses(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reverses_transaction_id');
+    }
+
+    public function reversedBy(): HasMany
+    {
+        return $this->hasMany(self::class, 'reverses_transaction_id');
     }
 
     public function isCompleted(): bool

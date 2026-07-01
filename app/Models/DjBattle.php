@@ -170,6 +170,11 @@ class DjBattle extends Model
         return $this->hasOne(DjBattleResult::class, 'battle_id');
     }
 
+    public function battleEscrow(): HasOne
+    {
+        return $this->hasOne(BattleEscrow::class, 'battle_id');
+    }
+
     public function events(): HasMany
     {
         return $this->hasMany(DjBattleEvent::class, 'battle_id');
