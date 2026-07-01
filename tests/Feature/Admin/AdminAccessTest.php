@@ -131,7 +131,8 @@ class AdminAccessTest extends TestCase
         $this->actingAs($admin, 'admin')
             ->get('/admin')
             ->assertOk()
-            ->assertSee('Administration foundation');
+            ->assertSee('Platform control room')
+            ->assertSee('Admin Alerts');
     }
 
     public function test_public_home_remains_separate_from_admin_guard(): void
