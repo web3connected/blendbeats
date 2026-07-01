@@ -64,6 +64,10 @@ function useClockTick(): number {
   return tick;
 }
 
+function shouldRefreshBattle(status: string | null | undefined): boolean {
+  return ['pending', 'paused', 'accepted', 'recording', 'voting'].includes(status ?? '');
+}
+
 function formatTokens(value: number): string {
   return new Intl.NumberFormat('en-US').format(value);
 }
@@ -655,6 +659,35 @@ export default function BattleShowPage() {
       cancelled = true;
     };
   }, [uuid, user?.id]);
+
+  useEffect(() => {
+    if (!uuid || !shouldRefreshBattle(battle?.status)) return;
+
+    let cancelled = false;
+
+    const refreshBattle = () => {
+      getBattle(uuid)
+        .then((record) => {
+          if (!cancelled) setBattle(record);
+        })
+        .catch(() => {
+          // Keep the current battle visible if a background refresh misses.
+        });
+    };
+
+    const timer = window.setInterval(refreshBattle, 15000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshBattle();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [uuid, battle?.status]);
 
   const refreshAccountState = async () => {
     if (!user) return;
