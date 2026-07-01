@@ -200,6 +200,7 @@ function BattleActionPanel({
   const isOpponent = viewerProfileId === battle.opponent.id;
   const isParticipant = isChallenger || isOpponent;
   const walletLoaded = !isParticipant || wallet !== null;
+  const demoModeEnabled = Boolean(wallet?.demo_mode?.enabled);
   const availableBalance = wallet?.wallet.available_balance ?? 0;
   const walletActive = walletLoaded && wallet?.wallet.status === 'active';
   const alreadyActive = accountBattles.some((record) => (
@@ -208,15 +209,17 @@ function BattleActionPanel({
   const hasFunds = availableBalance >= battle.stake_amount;
   const alreadyReady = isChallenger ? battle.readiness.challenger_ready : battle.readiness.opponent_ready;
   const samplePackStatus = battle.sample_pack_status || 'pending';
-  const samplePackStatusLabel = samplePackStatus
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+  const samplePackStatusLabel = demoModeEnabled && samplePackStatus === 'pending'
+    ? 'Demo Bypass'
+    : samplePackStatus
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   const hasProfile = Boolean(viewerProfile);
   const profileActive = viewerProfile?.profile_status === 'active';
   const profilePublic = viewerProfile?.visibility === 'public';
   const battleReadyEnabled = Boolean(viewerProfile?.battle_enabled);
-  const samplePackReady = ['ready', 'bypassed'].includes(samplePackStatus);
+  const samplePackReady = ['ready', 'bypassed'].includes(samplePackStatus) || demoModeEnabled;
   const readinessRequirements = [
     {
       label: 'DJ profile',
@@ -269,7 +272,9 @@ function BattleActionPanel({
         ? 'Bypassed for testing'
         : samplePackStatus === 'ready'
           ? 'Ready'
-          : 'Pending sample pack or bypass',
+          : demoModeEnabled
+            ? 'Demo bypass enabled'
+            : 'Pending sample pack or bypass',
       passed: samplePackReady,
     },
   ];
@@ -445,11 +450,13 @@ function BattleActionPanel({
                   ? 'AI sample generation is bypassed for this testing battle.'
                   : samplePackStatus === 'ready'
                     ? 'The official battle sample pack is ready.'
-                    : 'AI samples are pending. Use the testing bypass to continue this battle flow.'}
+                    : demoModeEnabled
+                      ? 'Demo mode will bypass the sample pack when both DJs are ready.'
+                      : 'AI samples are pending. Use the testing bypass to continue this battle flow.'}
               </p>
             </div>
             <span className={`inline-flex h-8 items-center border px-3 text-[10px] font-bold uppercase tracking-widest ${
-              samplePackStatus === 'bypassed'
+              samplePackStatus === 'bypassed' || (demoModeEnabled && samplePackStatus === 'pending')
                 ? 'border-primary/50 text-primary'
                 : samplePackStatus === 'ready'
                   ? 'border-emerald-500/50 text-emerald-300'
@@ -459,7 +466,7 @@ function BattleActionPanel({
             </span>
           </div>
 
-          {samplePackStatus === 'pending' && actionButton(
+          {samplePackStatus === 'pending' && !demoModeEnabled && actionButton(
             'sample-bypass',
             'Bypass Samples',
             () => bypassBattleSamplePack(battle.uuid),

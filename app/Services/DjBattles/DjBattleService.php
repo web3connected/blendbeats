@@ -778,7 +778,8 @@ class DjBattleService
     private function canBypassSamplePack(): bool
     {
         return app()->environment(['local', 'testing'])
-            || (bool) config('battles.sample_pack_bypass', false);
+            || (bool) config('battles.sample_pack_bypass', false)
+            || (bool) config('wallet.beta_token_demo_mode', true);
     }
 
     private function applySamplePackBypass(DjBattle $battle, User $actor, string $reason): void

@@ -27,8 +27,13 @@ export type WalletTransaction = {
   completed_at: string | null;
 };
 
+export type WalletDemoMode = {
+  enabled: boolean;
+};
+
 export type WalletResponse = {
   wallet: WalletSummary;
+  demo_mode?: WalletDemoMode;
   transactions: WalletTransaction[];
 };
 

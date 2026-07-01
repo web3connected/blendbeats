@@ -17,6 +17,9 @@ class WalletController extends Controller
 
         return response()->json([
             'wallet' => $this->walletPayload($wallet),
+            'demo_mode' => [
+                'enabled' => (bool) config('wallet.beta_token_demo_mode', true),
+            ],
             'transactions' => $wallet->transactions()
                 ->latest()
                 ->limit(8)
