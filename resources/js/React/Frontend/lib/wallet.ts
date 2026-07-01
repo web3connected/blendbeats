@@ -23,17 +23,22 @@ export type WalletTransaction = {
   locked_balance_after: number;
   description: string | null;
   metadata: Record<string, unknown>;
+  created_by_admin_id: number | null;
   created_at: string | null;
   completed_at: string | null;
 };
 
 export type WalletDemoMode = {
   enabled: boolean;
+  token_label: string;
+  default_beta_tokens: number;
+  withdrawals_enabled: boolean;
+  withdrawals_disabled_message: string;
 };
 
 export type WalletResponse = {
   wallet: WalletSummary;
-  demo_mode?: WalletDemoMode;
+  demo_mode: WalletDemoMode;
   transactions: WalletTransaction[];
 };
 

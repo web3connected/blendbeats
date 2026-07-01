@@ -6,7 +6,7 @@ import HappeningNowSection from '@/components/panels/HappeningNowSection';
 import ShopPreviewSection from '@/components/panels/ShopPreviewSection';
 import CTASection from '@/components/panels/CTASection';
 import TopDJsLeaderboardTeaser from '@/components/panels/TopDJsLeaderboardTeaser';
-import { homeBattles, homeMixes, homeSeo } from '@/config/home';
+import { homeSeo } from '@/config/home';
 
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -22,10 +22,10 @@ export default function HomePage() {
       <LiveBattlesSection />
 
       {/* ── HAPPENING NOW ───────────────────────────────────────────────── */}
-      <HappeningNowSection battles={homeBattles} />
+      <HappeningNowSection />
 
       {/* ── TOP RATED MIXES ───────────────────────────────────────────────── */}
-      <TopRatedMixes mixes={homeMixes} />
+      <TopRatedMixes />
 
       {/* ── SHOP THE CULTURE ─────────────────────────────────────────────── */}
       <ShopPreviewSection />

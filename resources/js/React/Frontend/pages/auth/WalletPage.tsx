@@ -34,6 +34,15 @@ function directionTone(direction: string): string {
 }
 
 function signedAmount(transaction: WalletTransaction): string {
+  if (transaction.direction === 'adjustment') {
+    const before = transaction.balance_before + transaction.locked_balance_before;
+    const after = transaction.balance_after + transaction.locked_balance_after;
+    const delta = after - before;
+    const sign = delta > 0 ? '+' : delta < 0 ? '-' : '';
+
+    return `${sign}${formatTokens(Math.abs(delta))}`;
+  }
+
   const sign = transaction.direction === 'credit' || transaction.direction === 'unlock' ? '+' : '-';
   return `${sign}${formatTokens(transaction.amount)}`;
 }
@@ -71,16 +80,18 @@ export default function WalletPage() {
   }, [user]);
 
   const wallet = data?.wallet;
+  const demoMode = data?.demo_mode;
+  const tokenLabel = demoMode?.token_label ?? 'Tokens';
   const transactions = data?.transactions ?? [];
   const balanceCards = useMemo(() => [
     {
-      label: 'Available',
+      label: `Available ${tokenLabel}`,
       value: wallet ? formatTokens(wallet.available_balance) : '0',
       icon: WalletCards,
       tone: 'text-primary',
     },
     {
-      label: 'Locked',
+      label: `Locked ${tokenLabel}`,
       value: wallet ? formatTokens(wallet.locked_balance) : '0',
       icon: LockKeyhole,
       tone: 'text-[#FFB800]',
@@ -91,7 +102,7 @@ export default function WalletPage() {
       icon: Plus,
       tone: 'text-[#22c55e]',
     },
-  ], [wallet]);
+  ], [tokenLabel, wallet]);
 
   if (isAuthLoading) {
     return (
@@ -127,7 +138,9 @@ export default function WalletPage() {
                   BlendBeat Wallet
                 </h1>
                 <p className="mt-5 max-w-2xl text-base leading-7 text-[#aaaaaa]">
-                  Tokens power battle entries, rewards, promotions, purchases, refunds, and future withdrawals.
+                  {demoMode?.enabled
+                    ? 'These are test tokens for beta battles. They cannot be withdrawn or converted to real money.'
+                    : 'Tokens power battle entries, rewards, promotions, purchases, refunds, and future withdrawals.'}
                 </p>
               </div>
 
@@ -135,11 +148,15 @@ export default function WalletPage() {
                 <div className="mb-5 flex h-12 w-12 items-center justify-center bg-primary text-white">
                   <ShieldCheck size={20} />
                 </div>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-[#FFB800]">Total Balance</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-[#FFB800]">
+                  {demoMode?.enabled ? 'Demo Balance' : 'Total Balance'}
+                </p>
                 <p className="mt-2 text-5xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
                   {wallet ? formatTokens(wallet.total_balance) : '0'}
                 </p>
-                <p className="mt-2 text-sm text-[#888888]">Status: {wallet ? formatLabel(wallet.status) : 'Loading'}</p>
+                <p className="mt-2 text-sm text-[#888888]">
+                  {tokenLabel} / Status: {wallet ? formatLabel(wallet.status) : 'Loading'}
+                </p>
               </div>
             </div>
           </div>
@@ -161,6 +178,15 @@ export default function WalletPage() {
 
             {!isWalletLoading && !error && (
               <>
+                {demoMode?.enabled && (
+                  <div className="mb-6 border border-primary/50 bg-primary/10 p-5">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Beta Demo Mode Active</p>
+                    <p className="mt-2 text-sm leading-6 text-[#eeeeee]">
+                      {demoMode.withdrawals_disabled_message}
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid gap-4 md:grid-cols-3">
                   {balanceCards.map((card) => {
                     const Icon = card.icon;
@@ -198,7 +224,7 @@ export default function WalletPage() {
                           No Transactions Yet
                         </h3>
                         <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#888888]">
-                          Battle locks, rewards, purchases, refunds, and deposits will appear here.
+                          Battle locks, rewards, admin grants, refunds, and beta reward simulations will appear here.
                         </p>
                       </div>
                     ) : (
@@ -234,10 +260,12 @@ export default function WalletPage() {
                   <aside className="border border-[#2a2a2a] bg-[#111111] p-5">
                     <p className="text-[11px] font-bold uppercase tracking-widest text-[#FFB800]">Battle Ready</p>
                     <h2 className="mt-3 text-3xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-                      Wallet Escrow Foundation
+                      {demoMode?.enabled ? 'Beta Token Demo Mode' : 'Wallet Escrow Foundation'}
                     </h2>
                     <p className="mt-4 text-sm leading-6 text-[#aaaaaa]">
-                      Battle stakes will lock from available balance, stay visible here, then release as rewards or refunds after results.
+                      {demoMode?.enabled
+                        ? 'Test-token stakes lock from your demo balance, then settle as beta winner rewards, fan rewards, or refunds.'
+                        : 'Battle stakes will lock from available balance, stay visible here, then release as rewards or refunds after results.'}
                     </p>
                     <Link
                       to="/battles"

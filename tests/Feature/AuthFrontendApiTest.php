@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\UserGamificationStat;
+use App\Services\WalletService;
 use Database\Seeders\GamificationActionSeeder;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,6 +46,17 @@ class AuthFrontendApiTest extends TestCase
             'discount_type' => 'percent',
             'discount_value' => 100,
             'status' => 'active',
+        ]);
+        $this->assertDatabaseHas('wallets', [
+            'user_id' => $user->id,
+            'available_balance' => 500,
+            'locked_balance' => 0,
+        ]);
+        $this->assertDatabaseHas('wallet_transactions', [
+            'user_id' => $user->id,
+            'type' => WalletService::TYPE_BETA_GRANT,
+            'amount' => 500,
+            'description' => 'Beta signup test token grant.',
         ]);
     }
 

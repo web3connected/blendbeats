@@ -31,7 +31,8 @@ class DocumentationManagementTest extends TestCase
             ->assertSee('Getting Started')
             ->assertSee('Affiliate Program')
             ->assertSee('/account/docs/platform-overview')
-            ->assertSee('/account/docs/affiliate-program');
+            ->assertSee('/account/docs/affiliate-program')
+            ->assertSee('/account/docs/dj-battle-system');
     }
 
     public function test_documentation_management_requires_documentation_permission(): void

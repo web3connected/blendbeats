@@ -40,7 +40,9 @@ class UserAuthController extends Controller
             ...$attributes,
             'media_storage_tier' => config('billing.subscription.free_tier', 'free'),
         ]);
-        app(WalletService::class)->walletFor($user);
+        $wallets = app(WalletService::class);
+        $wallets->walletFor($user);
+        $wallets->grantSignupBetaTokens($user);
         $affiliateReferral = $attribution->attributeSignup($user, $referralContext, $request);
 
         if ($referralContext) {

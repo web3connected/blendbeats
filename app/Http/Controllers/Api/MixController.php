@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MediaFile;
 use App\Models\Mix;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class MixController extends Controller
 {
@@ -16,8 +18,12 @@ class MixController extends Controller
     {
         $this->syncPublicPortfolioMediaToMixes();
 
+        $filters = $request->validate([
+            'sort' => ['nullable', Rule::in(['latest', 'top', 'plays'])],
+        ]);
         $perPage = min(max($request->integer('per_page', 15), 1), 15);
         $page = max($request->integer('page', 1), 1);
+        $sort = $filters['sort'] ?? 'latest';
 
         $publicMixes = Mix::query()
             ->public()
@@ -28,7 +34,7 @@ class MixController extends Controller
         $paginatedMixes = Mix::query()
             ->public()
             ->with('user:id,name')
-            ->latestPublished()
+            ->tap(fn (Builder $query) => $this->applySort($query, $sort))
             ->paginate($perPage, ['*'], 'page', $page);
 
         $featuredMixes = $publicMixes
@@ -51,6 +57,31 @@ class MixController extends Controller
                 'has_more_pages' => $paginatedMixes->hasMorePages(),
             ],
         ]);
+    }
+
+    private function applySort(Builder $query, string $sort): void
+    {
+        if ($sort === 'top') {
+            $query
+                ->orderByRaw('CASE WHEN rating_count > 0 THEN 1 ELSE 0 END DESC')
+                ->orderByDesc('rating_average')
+                ->orderByDesc('rating_count')
+                ->orderByDesc('play_count')
+                ->latestPublished();
+
+            return;
+        }
+
+        if ($sort === 'plays') {
+            $query
+                ->orderByDesc('play_count')
+                ->orderByDesc('rating_average')
+                ->latestPublished();
+
+            return;
+        }
+
+        $query->latestPublished();
     }
 
     public function play(Mix $mix): JsonResponse

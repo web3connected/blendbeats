@@ -7,6 +7,7 @@ Route::prefix('battles')
     ->name('api.battles.')
     ->group(function (): void {
         Route::get('/', [DjBattleController::class, 'index'])->name('index');
+        Route::get('leaderboards', [DjBattleController::class, 'leaderboards'])->name('leaderboards');
         Route::get('{battle}', [DjBattleController::class, 'show'])->name('show');
 
         Route::middleware('public.auth')->group(function (): void {
@@ -20,6 +21,7 @@ Route::prefix('battles')
             Route::post('{battle}/sample-pack/bypass', [DjBattleController::class, 'bypassSamplePack'])->name('sample-pack.bypass');
             Route::post('{battle}/entries', [DjBattleController::class, 'submitEntry'])->name('entries.store');
             Route::post('{battle}/entries/test-duplicate', [DjBattleController::class, 'duplicateEntryForTesting'])->name('entries.test-duplicate');
+            Route::post('{battle}/votes', [DjBattleController::class, 'submitVote'])->name('votes.store');
         });
     });
 

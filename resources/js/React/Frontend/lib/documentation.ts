@@ -294,7 +294,7 @@ export const documentationArticles: DocumentationArticle[] = [
         body: 'Lounge activity uses your account identity and avatar. DJs with public profiles can connect community activity back to creator identity.',
       },
     ],
-    relatedSlugs: ['profile-management', 'playlists', 'badges-and-battles'],
+    relatedSlugs: ['profile-management', 'dj-battle-system', 'playlists'],
   },
   {
     slug: 'dj-scratches',
@@ -315,7 +315,7 @@ export const documentationArticles: DocumentationArticle[] = [
         body: 'Scratches sits beside public DJ profiles, portfolio uploads, mixes, DJ Lounge, battles, and badges as part of the creator feature set.',
       },
     ],
-    relatedSlugs: ['dj-portfolio-and-mixes', 'dj-lounge', 'badges-and-battles'],
+    relatedSlugs: ['dj-battle-system', 'dj-portfolio-and-mixes', 'dj-lounge'],
   },
   {
     slug: 'dj-portfolio-and-mixes',
@@ -432,7 +432,7 @@ export const documentationArticles: DocumentationArticle[] = [
         body: 'Admins manage BlendNews posts, categories, sources, tags, events, and automation-assisted draft intake through the admin area.',
       },
     ],
-    relatedSlugs: ['platform-overview', 'badges-and-battles', 'playlists'],
+    relatedSlugs: ['platform-overview', 'dj-battle-system', 'playlists'],
   },
   {
     slug: 'playlists',
@@ -453,7 +453,96 @@ export const documentationArticles: DocumentationArticle[] = [
         body: 'Playlists connect listener behavior back to public mixes, DJ profiles, and future recommendation features.',
       },
     ],
-    relatedSlugs: ['dj-portfolio-and-mixes', 'dj-lounge', 'badges-and-battles'],
+    relatedSlugs: ['dj-battle-system', 'dj-portfolio-and-mixes', 'dj-lounge'],
+  },
+  {
+    slug: 'dj-battle-system',
+    title: 'DJ Battle System',
+    category: 'community',
+    summary: 'Understand DJ discovery, challenge invitations, ready checks, wallet stakes, battle recording, fan voting, rewards, and leaderboards.',
+    status: 'active',
+    updatedAt: '2026-06-29',
+    manageHref: '/battles',
+    keywords: [
+      'battles',
+      'dj battles',
+      'challenge',
+      'battle ready',
+      'wallet',
+      'stakes',
+      'recording',
+      'fan voting',
+      'leaderboards',
+      'rewards',
+    ],
+    sections: [
+      {
+        title: 'Battle Hub',
+        body: 'The DJ Battlegrounds page is the discovery hub for finding battle-ready DJs. It shows public DJ cards with names, handles, availability, basic battle stats, badges, and a Battle Ready action that opens the challenge flow.',
+        bullets: [
+          'Use search and filters to find DJs by genre, country, skill level, verification, and availability.',
+          'Use Vote On Battles to find battles currently open for fan voting.',
+          'Use Leaderboards to compare DJs by overall battle score or by individual judging category.',
+        ],
+      },
+      {
+        title: 'Create Challenge',
+        body: 'Starting a battle creates a challenge invitation instead of starting the battle immediately. The challenger selects a battle length, token stake, standard rules, and an optional message. The invited DJ has 24 hours to accept or decline.',
+        bullets: [
+          'Pending challenges can pause if the invited DJ does not respond in time.',
+          'The challenger can return to active battles from the Battle Hub banner.',
+          'A DJ can accept a challenge before having enough tokens, but cannot become ready until requirements are met.',
+        ],
+      },
+      {
+        title: 'Ready Check And Wallet Stakes',
+        body: 'After acceptance, both DJs enter the ready phase. Each DJ must press I am Ready before the battle starts. The ready checklist explains missing requirements so a disabled button is understandable.',
+        bullets: [
+          'Each DJ must have enough available BlendBeat Tokens for the selected stake.',
+          'Each DJ must be public, active, battle-ready, and not already in another active battle.',
+          'When both DJs are ready, both stakes are locked in their wallets, 10 percent of the total pot becomes the fan reward pool, and the rest becomes the winner prize pool.',
+        ],
+      },
+      {
+        title: 'Recording Phase',
+        body: 'Once both DJs are ready, the battle moves into recording. The recording page checks camera and microphone access, supports a short countdown before capture, and allows limited re-record attempts for testing and performance correction.',
+        bullets: [
+          'The current recording window is 24 hours after the battle starts.',
+          'Each DJ submits their own entry independently.',
+          'A DJ cannot view the other submission during recording.',
+          'Testing tools can duplicate the first entry into the missing slot while the AI sample pack workflow is still bypassed.',
+        ],
+      },
+      {
+        title: 'Fan Voting',
+        body: 'When both recordings are submitted, the battle enters fan voting. Fans watch one DJ performance at a time, score that DJ immediately, then repeat the flow for the second DJ before reviewing and submitting a locked vote.',
+        bullets: [
+          'Competing DJs cannot vote in their own battle.',
+          'Each fan can submit one completed vote per battle.',
+          'The scorecard has ten required categories, each scored from 1 to 10.',
+          'Submitted fans become eligible for the fan reward pool when the battle concludes.',
+        ],
+      },
+      {
+        title: 'Scorecards And Leaderboards',
+        body: 'Battle scorecards power both battle results and the DJ Battle Leaderboards. Overall rankings use average total score, while category rankings use the matching scorecard category such as scratching ability, mixing ability, creativity, or sample integration.',
+        bullets: [
+          'Only completed battles with submitted scorecards count toward official leaderboard data.',
+          'DJs below the minimum completed battle requirement can appear as new competitors.',
+          'Leaderboards can filter by period, active DJs, and verified DJs as the competitive system grows.',
+        ],
+      },
+      {
+        title: 'Completion And Rewards',
+        body: 'When the voting window ends, the system calculates average fan scores, determines the winner or draw, settles locked stakes, credits simulated winner rewards, and distributes eligible fan rewards from the fan reward pool.',
+        bullets: [
+          'Draws unlock stakes instead of paying a winner prize.',
+          'Winner and fan reward payouts use the wallet economy simulation settings while the beta token economy is active.',
+          'Completed battle results remain available for battle history and leaderboard calculations.',
+        ],
+      },
+    ],
+    relatedSlugs: ['badges-and-battles', 'credits-rewards', 'dj-portfolio-and-mixes'],
   },
   {
     slug: 'badges-and-battles',
@@ -471,10 +560,10 @@ export const documentationArticles: DocumentationArticle[] = [
       },
       {
         title: 'Battles',
-        body: 'Battles let users explore DJ matchups, vote on live battles, and follow the DJs gaining attention.',
+        body: 'Battles let users explore DJ matchups, create challenges, complete ready checks, record entries, vote on live battles, and follow the DJs gaining attention.',
       },
     ],
-    relatedSlugs: ['dj-lounge', 'playlists', 'dj-scratches'],
+    relatedSlugs: ['dj-battle-system', 'dj-lounge', 'playlists'],
   },
   {
     slug: 'common-questions',

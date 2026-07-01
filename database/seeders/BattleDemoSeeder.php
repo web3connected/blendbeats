@@ -177,11 +177,14 @@ class BattleDemoSeeder extends Seeder
     {
         $wallet = $wallets->walletFor($user);
 
-        if ($wallet->transactions()->where('type', 'demo_seed_tokens')->exists()) {
+        if ($wallet->transactions()
+            ->where('type', WalletService::TYPE_BETA_GRANT)
+            ->where('description', 'Demo testing token balance.')
+            ->exists()) {
             return;
         }
 
-        $wallets->credit($user, $tokens, 'demo_seed_tokens', [
+        $wallets->credit($user, $tokens, WalletService::TYPE_BETA_GRANT, [
             'description' => 'Demo testing token balance.',
             'metadata' => [
                 'source' => 'battle_demo_seeder',

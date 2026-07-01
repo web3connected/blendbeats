@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Services\WalletService;
 use Database\Seeders\BattleTestingWalletSeeder;
 use Database\Seeders\BattleDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,7 +33,8 @@ class BattleDemoSeederTest extends TestCase
             'visibility' => 'public',
         ]);
         $this->assertDatabaseHas('wallet_transactions', [
-            'type' => 'demo_seed_tokens',
+            'type' => WalletService::TYPE_BETA_GRANT,
+            'description' => 'Demo testing token balance.',
             'direction' => 'credit',
             'status' => 'completed',
         ]);
@@ -60,6 +62,7 @@ class BattleDemoSeederTest extends TestCase
         $this->assertDatabaseCount('dj_battles', 6);
         $this->assertSame(14, WalletTransaction::query()
             ->where('type', BattleTestingWalletSeeder::TRANSACTION_TYPE)
+            ->where('description', 'Randomized demo wallet balance for battle testing.')
             ->count());
         $this->assertSame(14, User::query()
             ->where(fn ($query) => $query

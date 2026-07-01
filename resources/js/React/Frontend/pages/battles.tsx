@@ -1,6 +1,7 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowRight,
+  BarChart3,
   Filter,
   Flame,
   Headphones,
@@ -623,6 +624,24 @@ export default function BattlesPage() {
                 <h1 className="text-4xl uppercase leading-none text-white md:text-5xl" style={{ fontFamily: 'var(--font-heading)' }}>
                   Search DJs
                 </h1>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link
+                    to="/battles/voting"
+                    className="inline-flex h-10 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
+                    style={{ fontFamily: 'var(--font-heading)' }}
+                  >
+                    <Trophy size={15} />
+                    Vote On Battles
+                  </Link>
+                  <Link
+                    to="/battles/leaderboards"
+                    className="inline-flex h-10 items-center justify-center gap-2 border border-[#444444] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                    style={{ fontFamily: 'var(--font-heading)' }}
+                  >
+                    <BarChart3 size={15} />
+                    Leaderboards
+                  </Link>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 border border-[#2a2a2a] bg-[#111111] sm:grid-cols-3">

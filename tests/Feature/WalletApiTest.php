@@ -28,6 +28,9 @@ class WalletApiTest extends TestCase
             ->assertJsonPath('wallet.locked_balance', 0)
             ->assertJsonPath('wallet.total_balance', 0)
             ->assertJsonPath('wallet.status', 'active')
+            ->assertJsonPath('demo_mode.enabled', true)
+            ->assertJsonPath('demo_mode.token_label', 'Test Tokens')
+            ->assertJsonPath('demo_mode.withdrawals_enabled', false)
             ->assertJsonCount(0, 'transactions');
 
         $this->assertDatabaseHas('wallets', [

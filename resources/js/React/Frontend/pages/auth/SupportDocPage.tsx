@@ -8,6 +8,8 @@ const legacyDocRoutes: Record<string, string> = {
   'upload-mixes': 'dj-portfolio-and-mixes',
   'payment-methods': 'purchases-downloads',
   'ad-performance': 'featured-ads-promotions',
+  battles: 'dj-battle-system',
+  'battle-system': 'dj-battle-system',
 };
 
 export default function SupportDocPage() {

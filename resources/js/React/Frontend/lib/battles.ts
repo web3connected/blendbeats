@@ -24,6 +24,19 @@ export type BattleEntry = {
   submitted_at: string | null;
 };
 
+export type BattleViewerVote = {
+  id: number;
+  reward_eligible: boolean;
+  submitted_at: string | null;
+  prediction_dj_profile_id: number | null;
+  scores: Array<{
+    dj_profile_id: number;
+    entry_id: number;
+    total_score: number;
+    category_scores: Record<string, number>;
+  }>;
+};
+
 export type BattleRecord = {
   uuid: string;
   status: string;
@@ -44,6 +57,8 @@ export type BattleRecord = {
   challenge_message: string | null;
   fan_reward_pool_amount: number;
   prize_pool_amount: number;
+  vote_count: number;
+  viewer_vote: BattleViewerVote | null;
   challenger: BattleProfile;
   opponent: BattleProfile;
   winner: BattleProfile | null;
@@ -98,9 +113,91 @@ export type BattleEntrySubmitPayload = {
   filename?: string;
 };
 
+export type BattleVoteScores = {
+  sample_integration: number;
+  scratching_ability: number;
+  mixing_ability: number;
+  blending: number;
+  creativity: number;
+  technical_execution: number;
+  music_selection: number;
+  battle_composition: number;
+  entertainment_value: number;
+  overall_performance: number;
+};
+
+export type BattleVoteSubmitPayload = {
+  watch_order: number[];
+  scores: Array<{
+    dj_profile_id: number;
+    scores: BattleVoteScores;
+  }>;
+};
+
+export type BattleLeaderboardCategory =
+  | 'overall'
+  | 'sample_integration'
+  | 'scratching_ability'
+  | 'mixing_ability'
+  | 'blending'
+  | 'creativity'
+  | 'technical_execution'
+  | 'music_selection'
+  | 'battle_composition'
+  | 'entertainment_value'
+  | 'overall_performance';
+
+export type BattleLeaderboardPeriod = 'all_time' | 'week' | 'month' | 'season';
+
+export type BattleLeaderboardCategoryOption = {
+  value: BattleLeaderboardCategory;
+  label: string;
+  max_score: number;
+};
+
+export type BattleLeaderboardRow = {
+  dj_id: number;
+  dj_name: string;
+  handle: string;
+  headline: string | null;
+  avatar_url: string | null;
+  rank: number;
+  qualified: boolean;
+  selected_category: BattleLeaderboardCategory;
+  selected_category_label: string;
+  selected_category_score: number;
+  selected_category_max_score: number;
+  completed_battles_count: number;
+  scored_battles_count: number;
+  score_count: number;
+  wins: number;
+  losses: number;
+  average_total_score: number;
+  last_battle_date: string | null;
+};
+
+export type BattleLeaderboardResponse = {
+  category: BattleLeaderboardCategory;
+  category_label: string;
+  categories: BattleLeaderboardCategoryOption[];
+  period: BattleLeaderboardPeriod;
+  minimum_battles: number;
+  leaderboard: BattleLeaderboardRow[];
+  new_competitors: BattleLeaderboardRow[];
+};
+
 export type BattleQuery = {
   status?: 'accepted' | 'recording' | 'voting' | 'completed';
   battle_type?: BattleCreatePayload['battle_type'];
+  limit?: number;
+};
+
+export type BattleLeaderboardQuery = {
+  category?: BattleLeaderboardCategory;
+  period?: BattleLeaderboardPeriod;
+  verified?: boolean;
+  active?: boolean;
+  min_battles?: number;
   limit?: number;
 };
 
@@ -143,6 +240,20 @@ export async function getBattles(query: BattleQuery = {}): Promise<BattleRecord[
 export async function getBattle(uuid: string): Promise<BattleRecord> {
   const response = await apiClient.get<{ battle: BattleRecord }>(`/battles/${uuid}`);
   return response.data.battle;
+}
+
+export async function getBattleLeaderboard(query: BattleLeaderboardQuery = {}): Promise<BattleLeaderboardResponse> {
+  const response = await apiClient.get<BattleLeaderboardResponse>('/battles/leaderboards', {
+    params: {
+      category: query.category,
+      period: query.period,
+      verified: query.verified ? 1 : undefined,
+      active: query.active ? 1 : undefined,
+      min_battles: query.min_battles,
+      limit: query.limit,
+    },
+  });
+  return response.data;
 }
 
 export async function getAccountBattles(): Promise<BattleRecord[]> {
@@ -218,6 +329,15 @@ export async function submitBattleEntry(uuid: string, payload: BattleEntrySubmit
 export async function duplicateBattleEntryForTesting(uuid: string): Promise<BattleRecord> {
   try {
     const response = await apiClient.post<{ battle: BattleRecord }>(`/battles/${uuid}/entries/test-duplicate`);
+    return response.data.battle;
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+export async function submitBattleVote(uuid: string, payload: BattleVoteSubmitPayload): Promise<BattleRecord> {
+  try {
+    const response = await apiClient.post<{ battle: BattleRecord }>(`/battles/${uuid}/votes`, payload);
     return response.data.battle;
   } catch (error) {
     throw normalizeError(error);

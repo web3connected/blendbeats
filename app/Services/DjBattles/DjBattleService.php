@@ -5,6 +5,7 @@ namespace App\Services\DjBattles;
 use App\Models\DjBattle;
 use App\Models\DjBattleEntry;
 use App\Models\DjProfile;
+use App\Models\DjBattleVote;
 use App\Models\MediaFile;
 use App\Models\User;
 use App\Notifications\BattleEventNotification;
@@ -30,6 +31,19 @@ class DjBattleService
     private const STANDARD_RULES = "Both DJs receive the same AI-generated sample pack.\nAll required samples must be used.\nMaximum recording length: 3 minutes.\nRecording takes place inside the BlendBeat recorder.\nFan voting determines the winner.";
 
     private const SAMPLE_PACK_TESTING_BYPASS_REASON = 'AI sample generation is not ready for battle testing.';
+
+    public const VOTE_SCORE_CATEGORIES = [
+        'sample_integration',
+        'scratching_ability',
+        'mixing_ability',
+        'blending',
+        'creativity',
+        'technical_execution',
+        'music_selection',
+        'battle_composition',
+        'entertainment_value',
+        'overall_performance',
+    ];
 
     private const STARTED_ACTIVE_STATUSES = [
         DjBattle::STATUS_RECORDING,
@@ -479,11 +493,160 @@ class DjBattleService
         });
     }
 
+    /**
+     * @param  array{
+     *     watch_order?: array<int, int>,
+     *     scores: array<int, array{dj_profile_id: int, scores: array<string, int>}>
+     * }  $payload
+     */
+    public function submitFanVote(User $actor, DjBattle $battle, array $payload): DjBattle
+    {
+        return DB::transaction(function () use ($actor, $battle, $payload): DjBattle {
+            $battle = $this->lockedBattle($battle);
+            $this->assertStatus($battle, [DjBattle::STATUS_VOTING], 'This battle is not open for voting.');
+            $this->assertVotingWindowOpen($battle);
+            $this->assertFanCanVote($actor, $battle);
+
+            if ($battle->votes()->where('user_id', $actor->id)->exists()) {
+                throw ValidationException::withMessages([
+                    'vote' => ['You have already voted in this battle.'],
+                ]);
+            }
+
+            $scoresByProfile = collect($payload['scores'])
+                ->keyBy(fn (array $score): int => (int) $score['dj_profile_id']);
+            $requiredProfileIds = collect([$battle->challenger_dj_profile_id, $battle->opponent_dj_profile_id]);
+
+            if ($scoresByProfile->keys()->sort()->values()->all() !== $requiredProfileIds->sort()->values()->all()) {
+                throw ValidationException::withMessages([
+                    'scores' => ['Submit one complete scorecard for each competing DJ.'],
+                ]);
+            }
+
+            $entries = $battle->entries()
+                ->whereIn('dj_profile_id', $requiredProfileIds)
+                ->where('status', DjBattleEntry::STATUS_SUBMITTED)
+                ->get()
+                ->keyBy('dj_profile_id');
+
+            if ($entries->count() !== 2) {
+                throw ValidationException::withMessages([
+                    'battle' => ['Both battle entries must be submitted before voting.'],
+                ]);
+            }
+
+            $scoreTotals = [];
+            $winnerProfileId = null;
+            $highestScore = -1;
+            $isDraw = false;
+
+            foreach ($scoresByProfile as $profileId => $scorecard) {
+                $categoryScores = $this->validatedVoteScores($scorecard['scores'] ?? []);
+                $totalScore = array_sum($categoryScores);
+                $scoreTotals[$profileId] = $totalScore;
+
+                if ($totalScore > $highestScore) {
+                    $highestScore = $totalScore;
+                    $winnerProfileId = (int) $profileId;
+                    $isDraw = false;
+                } elseif ($totalScore === $highestScore) {
+                    $isDraw = true;
+                }
+            }
+
+            $vote = DjBattleVote::query()->create([
+                'battle_id' => $battle->id,
+                'user_id' => $actor->id,
+                'prediction_dj_profile_id' => $isDraw ? null : $winnerProfileId,
+                'vote_weight' => 1,
+                'reward_eligible' => true,
+                'watched_challenger_at' => now(),
+                'watched_opponent_at' => now(),
+                'submitted_at' => now(),
+                'metadata' => [
+                    'watch_order' => array_values($payload['watch_order'] ?? []),
+                    'score_totals' => $scoreTotals,
+                    'winner_profile_id' => $isDraw ? null : $winnerProfileId,
+                    'is_draw' => $isDraw,
+                    'score_version' => 'fan-vote-v1',
+                ],
+            ]);
+
+            foreach ($scoresByProfile as $profileId => $scorecard) {
+                $categoryScores = $this->validatedVoteScores($scorecard['scores'] ?? []);
+                $entry = $entries->get((int) $profileId);
+
+                $vote->scores()->create([
+                    'battle_id' => $battle->id,
+                    'entry_id' => $entry->id,
+                    'dj_profile_id' => (int) $profileId,
+                    'sample_integration_score' => $categoryScores['sample_integration'],
+                    'scratching_score' => $categoryScores['scratching_ability'],
+                    'mixing_score' => $categoryScores['mixing_ability'],
+                    'blending_score' => $categoryScores['blending'],
+                    'creativity_score' => $categoryScores['creativity'],
+                    'technical_execution_score' => $categoryScores['technical_execution'],
+                    'track_selection_score' => $categoryScores['music_selection'],
+                    'battle_composition_score' => $categoryScores['battle_composition'],
+                    'entertainment_value_score' => $categoryScores['entertainment_value'],
+                    'overall_performance_score' => $categoryScores['overall_performance'],
+                    'total_score' => array_sum($categoryScores),
+                    'metadata' => [
+                        'category_scores' => $categoryScores,
+                    ],
+                ]);
+            }
+
+            $this->updateVotingResultSnapshot($battle);
+            $this->recordEvent($battle, $actor, 'fan_vote_submitted', $battle->status, $battle->status, [
+                'vote_id' => $vote->id,
+                'reward_eligible' => true,
+                'winner_profile_id' => $isDraw ? null : $winnerProfileId,
+            ]);
+
+            return $this->battleWithRelations($battle);
+        });
+    }
+
     public function pauseExpiredChallenge(DjBattle $battle): DjBattle
     {
         return DB::transaction(function () use ($battle): DjBattle {
             $battle = $this->lockedBattle($battle);
             $this->pauseExpiredChallengeIfNeeded($battle);
+
+            return $this->battleWithRelations($battle);
+        });
+    }
+
+    public function completeExpiredVoting(DjBattle $battle): DjBattle
+    {
+        return DB::transaction(function () use ($battle): DjBattle {
+            $battle = $this->lockedBattle($battle);
+
+            if ($battle->status !== DjBattle::STATUS_VOTING || ! $battle->voting_ends_at || $battle->voting_ends_at->isFuture()) {
+                return $this->battleWithRelations($battle);
+            }
+
+            $fromStatus = $battle->status;
+            $this->updateVotingResultSnapshot($battle);
+            $battle = $battle->refresh()->load(['challenger.user', 'opponent.user', 'votes.user', 'result']);
+            $winnerProfileId = $battle->result?->is_draw ? null : $battle->result?->winner_dj_profile_id;
+
+            $this->settleBattleWallets($battle, $winnerProfileId);
+
+            $battle->forceFill([
+                'status' => DjBattle::STATUS_COMPLETED,
+                'winner_dj_profile_id' => $winnerProfileId,
+                'completed_at' => now(),
+            ])->save();
+
+            $this->recordEvent($battle, null, 'battle_completed', $fromStatus, DjBattle::STATUS_COMPLETED, [
+                'winner_dj_profile_id' => $winnerProfileId,
+                'total_votes' => (int) ($battle->result?->total_votes ?? 0),
+                'is_draw' => (bool) ($battle->result?->is_draw ?? true),
+            ]);
+            $this->notify($battle->challenger->user, $battle, 'battle_completed');
+            $this->notify($battle->opponent->user, $battle, 'battle_completed');
 
             return $this->battleWithRelations($battle);
         });
@@ -545,6 +708,128 @@ class DjBattleService
         $this->notify($battle->opponent->user, $battle, 'battle_started');
     }
 
+    private function settleBattleWallets(DjBattle $battle, ?int $winnerProfileId): void
+    {
+        if ((int) $battle->stake_amount > 0) {
+            if (! $winnerProfileId) {
+                $this->unlockStakeIfLocked($battle->challenger->user, $battle, 'challenger', $battle->challenger->user);
+                $this->unlockStakeIfLocked($battle->opponent->user, $battle, 'opponent', $battle->opponent->user);
+            } else {
+                $this->spendLockedStakeIfLocked($battle->challenger->user, $battle, 'challenger');
+                $this->spendLockedStakeIfLocked($battle->opponent->user, $battle, 'opponent');
+                $this->creditWinnerReward($battle, $winnerProfileId);
+            }
+        }
+
+        $this->creditFanRewards($battle);
+    }
+
+    private function spendLockedStakeIfLocked(User $walletOwner, DjBattle $battle, string $role): void
+    {
+        $stakeAmount = (int) $battle->stake_amount;
+
+        if ($stakeAmount <= 0) {
+            return;
+        }
+
+        $wallet = $walletOwner->wallet()->first();
+
+        if (! $wallet || ! $wallet->hasLockedBalance($stakeAmount)) {
+            return;
+        }
+
+        $this->wallets->spendLocked($walletOwner, $stakeAmount, WalletService::TYPE_BATTLE_STAKE_RELEASED, [
+            'related' => $battle,
+            'description' => "Battle stake released for {$battle->title}.",
+            'metadata' => [
+                'battle_uuid' => $battle->uuid,
+                'battle_role' => $role,
+                'battle_type' => $battle->battle_type,
+            ],
+        ]);
+    }
+
+    private function creditWinnerReward(DjBattle $battle, int $winnerProfileId): void
+    {
+        if (! (bool) config('wallet.allow_winner_payout_simulation', true) || (int) $battle->prize_pool_amount <= 0) {
+            return;
+        }
+
+        $winner = (int) $battle->challenger_dj_profile_id === $winnerProfileId
+            ? $battle->challenger
+            : $battle->opponent;
+
+        $this->wallets->credit($winner->user, (int) $battle->prize_pool_amount, WalletService::TYPE_BATTLE_WINNER_REWARD, [
+            'related' => $battle,
+            'description' => "Battle winner test-token reward for {$battle->title}.",
+            'metadata' => [
+                'battle_uuid' => $battle->uuid,
+                'winner_dj_profile_id' => $winnerProfileId,
+                'prize_pool_amount' => (int) $battle->prize_pool_amount,
+                'demo_mode' => true,
+            ],
+        ]);
+    }
+
+    private function creditFanRewards(DjBattle $battle): void
+    {
+        if (! (bool) config('wallet.allow_fan_reward_simulation', true) || (int) $battle->fan_reward_pool_amount <= 0) {
+            return;
+        }
+
+        $eligibleVotes = $battle->votes()
+            ->with('user')
+            ->where('reward_eligible', true)
+            ->whereNotNull('submitted_at')
+            ->get();
+
+        if ($eligibleVotes->isEmpty()) {
+            $this->recordEvent($battle, null, 'fan_rewards_skipped', $battle->status, $battle->status, [
+                'reason' => 'no_eligible_voters',
+                'fan_reward_pool_amount' => (int) $battle->fan_reward_pool_amount,
+            ]);
+
+            return;
+        }
+
+        $share = intdiv((int) $battle->fan_reward_pool_amount, $eligibleVotes->count());
+        $unclaimed = (int) $battle->fan_reward_pool_amount - ($share * $eligibleVotes->count());
+
+        if ($share <= 0) {
+            $this->recordEvent($battle, null, 'fan_rewards_skipped', $battle->status, $battle->status, [
+                'reason' => 'share_rounded_to_zero',
+                'eligible_voter_count' => $eligibleVotes->count(),
+                'fan_reward_pool_amount' => (int) $battle->fan_reward_pool_amount,
+            ]);
+
+            return;
+        }
+
+        foreach ($eligibleVotes as $vote) {
+            if (! $vote->user) {
+                continue;
+            }
+
+            $this->wallets->credit($vote->user, $share, WalletService::TYPE_FAN_REWARD, [
+                'related' => $battle,
+                'description' => "Fan reward test tokens for voting in {$battle->title}.",
+                'metadata' => [
+                    'battle_uuid' => $battle->uuid,
+                    'vote_id' => $vote->id,
+                    'eligible_voter_count' => $eligibleVotes->count(),
+                    'unclaimed_remainder' => $unclaimed,
+                    'demo_mode' => true,
+                ],
+            ]);
+        }
+
+        $this->recordEvent($battle, null, 'fan_rewards_distributed', $battle->status, $battle->status, [
+            'eligible_voter_count' => $eligibleVotes->count(),
+            'reward_per_voter' => $share,
+            'unclaimed_remainder' => $unclaimed,
+        ]);
+    }
+
     private function assertRecordingWindowOpen(DjBattle $battle): void
     {
         if (! $battle->recording_ends_at || $battle->recording_ends_at->isFuture()) {
@@ -554,6 +839,115 @@ class DjBattleService
         throw ValidationException::withMessages([
             'entry' => ['The recording window has expired for this battle.'],
         ]);
+    }
+
+    private function assertVotingWindowOpen(DjBattle $battle): void
+    {
+        if (! $battle->voting_ends_at || $battle->voting_ends_at->isFuture()) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'vote' => ['The voting window has closed for this battle.'],
+        ]);
+    }
+
+    private function assertFanCanVote(User $actor, DjBattle $battle): void
+    {
+        if (in_array($actor->id, $battle->participantUserIds(), true)) {
+            throw ValidationException::withMessages([
+                'vote' => ['Competing DJs cannot vote in their own battle.'],
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $scores
+     * @return array<string, int>
+     */
+    private function validatedVoteScores(array $scores): array
+    {
+        $validated = [];
+
+        foreach (self::VOTE_SCORE_CATEGORIES as $category) {
+            if (! array_key_exists($category, $scores)) {
+                throw ValidationException::withMessages([
+                    "scores.{$category}" => ['Every score category is required.'],
+                ]);
+            }
+
+            $score = (int) $scores[$category];
+
+            if ($score < 1 || $score > 10) {
+                throw ValidationException::withMessages([
+                    "scores.{$category}" => ['Scores must be between 1 and 10.'],
+                ]);
+            }
+
+            $validated[$category] = $score;
+        }
+
+        return $validated;
+    }
+
+    private function updateVotingResultSnapshot(DjBattle $battle): void
+    {
+        $battle->loadMissing(['votes.scores']);
+        $votes = $battle->votes()
+            ->with('scores')
+            ->whereNotNull('submitted_at')
+            ->get();
+
+        $challengerScores = [];
+        $opponentScores = [];
+
+        foreach ($votes as $vote) {
+            foreach ($vote->scores as $score) {
+                if ((int) $score->dj_profile_id === (int) $battle->challenger_dj_profile_id) {
+                    $challengerScores[] = (float) $score->total_score;
+                }
+
+                if ((int) $score->dj_profile_id === (int) $battle->opponent_dj_profile_id) {
+                    $opponentScores[] = (float) $score->total_score;
+                }
+            }
+        }
+
+        $challengerAverage = count($challengerScores) > 0
+            ? array_sum($challengerScores) / count($challengerScores)
+            : 0;
+        $opponentAverage = count($opponentScores) > 0
+            ? array_sum($opponentScores) / count($opponentScores)
+            : 0;
+        $isDraw = $votes->count() === 0 || abs($challengerAverage - $opponentAverage) < 0.001;
+        $winnerProfileId = null;
+
+        if (! $isDraw) {
+            $winnerProfileId = $challengerAverage > $opponentAverage
+                ? $battle->challenger_dj_profile_id
+                : $battle->opponent_dj_profile_id;
+        }
+
+        $battle->result()->updateOrCreate(
+            ['battle_id' => $battle->id],
+            [
+                'winner_dj_profile_id' => $winnerProfileId,
+                'challenger_score' => $challengerAverage,
+                'opponent_score' => $opponentAverage,
+                'total_votes' => $votes->count(),
+                'total_vote_weight' => $votes->sum('vote_weight'),
+                'is_draw' => $isDraw,
+                'calculation_version' => 'fan-vote-v1',
+                'score_snapshot' => [
+                    'challenger_scores' => $challengerScores,
+                    'opponent_scores' => $opponentScores,
+                    'challenger_average' => $challengerAverage,
+                    'opponent_average' => $opponentAverage,
+                    'winner_dj_profile_id' => $winnerProfileId,
+                ],
+                'calculated_at' => now(),
+            ],
+        );
     }
 
     private function assertTestingEntryDuplicateAllowed(): void
@@ -837,6 +1231,12 @@ class DjBattleService
             return;
         }
 
+        if (! (bool) config('wallet.allow_battle_staking_with_test_tokens', true)) {
+            throw ValidationException::withMessages([
+                'stake_amount' => ['Battle staking with test tokens is disabled.'],
+            ]);
+        }
+
         $wallet = $this->wallets->walletFor($actor);
 
         if (! $wallet->isActive()) {
@@ -870,7 +1270,7 @@ class DjBattleService
         }
 
         try {
-            $this->wallets->lock($walletOwner, (int) $battle->stake_amount, 'battle_entry_lock', [
+            $this->wallets->lock($walletOwner, (int) $battle->stake_amount, WalletService::TYPE_BATTLE_STAKE_LOCKED, [
                 'related' => $battle,
                 'description' => "Battle stake locked for {$battle->title}.",
                 'created_by_user_id' => $actor->id,
@@ -894,7 +1294,7 @@ class DjBattleService
         }
 
         try {
-            $this->wallets->unlock($walletOwner, (int) $battle->stake_amount, 'battle_entry_refund', [
+            $this->wallets->unlock($walletOwner, (int) $battle->stake_amount, WalletService::TYPE_BATTLE_REFUND, [
                 'related' => $battle,
                 'description' => "Battle stake returned for {$battle->title}.",
                 'created_by_user_id' => $actor->id,

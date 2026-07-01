@@ -51,6 +51,13 @@ export type MixesIndexResponse = {
   };
 };
 
+export type MixesIndexSort = 'latest' | 'top' | 'plays';
+
+export type MixesIndexOptions = {
+  perPage?: number;
+  sort?: MixesIndexSort;
+};
+
 async function parseJson<T>(response: Response): Promise<T> {
   const body = await response.json();
 
@@ -61,17 +68,27 @@ async function parseJson<T>(response: Response): Promise<T> {
   return body as T;
 }
 
-export async function getMixesIndex(page = 1): Promise<MixesIndexResponse> {
+export async function getMixesIndex(page = 1, options: MixesIndexOptions = {}): Promise<MixesIndexResponse> {
   const params = new URLSearchParams({
     page: String(page),
-    per_page: '15',
+    per_page: String(options.perPage ?? 15),
   });
+
+  if (options.sort) {
+    params.set('sort', options.sort);
+  }
+
   const response = await fetch(`${API_BASE}/mixes?${params.toString()}`, {
     credentials: 'include',
     headers: { Accept: 'application/json' },
   });
 
   return parseJson<MixesIndexResponse>(response);
+}
+
+export async function getTopMixes(limit = 5): Promise<PublicMix[]> {
+  const response = await getMixesIndex(1, { perPage: limit, sort: 'top' });
+  return response.mixes;
 }
 
 export async function trackMixPlay(slug: string): Promise<number> {

@@ -60,7 +60,7 @@ class DjBattleApiTest extends TestCase
 
         $this->assertDatabaseMissing('wallet_transactions', [
             'user_id' => $challenger->id,
-            'type' => 'battle_entry_lock',
+            'type' => WalletService::TYPE_BATTLE_STAKE_LOCKED,
         ]);
         $this->assertDatabaseHas('dj_battle_events', [
             'actor_user_id' => $challenger->id,
@@ -164,7 +164,7 @@ class DjBattleApiTest extends TestCase
 
         $this->assertDatabaseMissing('wallet_transactions', [
             'user_id' => $challenger->id,
-            'type' => 'battle_entry_refund',
+            'type' => WalletService::TYPE_BATTLE_REFUND,
         ]);
     }
 
@@ -331,14 +331,14 @@ class DjBattleApiTest extends TestCase
         $this->assertDatabaseCount('wallet_transactions', 4);
         $this->assertDatabaseHas('wallet_transactions', [
             'user_id' => $challenger->id,
-            'type' => 'battle_entry_lock',
+            'type' => WalletService::TYPE_BATTLE_STAKE_LOCKED,
             'direction' => 'lock',
             'status' => 'locked',
             'amount' => 30,
         ]);
         $this->assertDatabaseHas('wallet_transactions', [
             'user_id' => $opponent->id,
-            'type' => 'battle_entry_lock',
+            'type' => WalletService::TYPE_BATTLE_STAKE_LOCKED,
             'direction' => 'lock',
             'status' => 'locked',
             'amount' => 30,
@@ -497,6 +497,159 @@ class DjBattleApiTest extends TestCase
         $this->assertDatabaseCount('media_files', 2);
     }
 
+    public function test_fan_can_submit_guided_vote_and_becomes_reward_eligible(): void
+    {
+        [$challenger, $opponent, $battleUuid] = $this->votingBattle();
+        $fan = User::factory()->create();
+        $battle = DjBattle::query()
+            ->where('uuid', $battleUuid)
+            ->firstOrFail();
+
+        $this->actingAs($fan)
+            ->postJson("/api/battles/{$battleUuid}/votes", $this->votePayload($battle))
+            ->assertCreated()
+            ->assertJsonPath('battle.status', DjBattle::STATUS_VOTING)
+            ->assertJsonPath('battle.vote_count', 1)
+            ->assertJsonPath('battle.viewer_vote.reward_eligible', true);
+
+        $this->assertDatabaseHas('dj_battle_votes', [
+            'battle_id' => $battle->id,
+            'user_id' => $fan->id,
+            'reward_eligible' => true,
+        ]);
+        $this->assertDatabaseHas('dj_battle_vote_scores', [
+            'battle_id' => $battle->id,
+            'dj_profile_id' => $challenger->djProfile->id,
+            'sample_integration_score' => 8,
+            'overall_performance_score' => 9,
+            'total_score' => 82,
+        ]);
+        $this->assertDatabaseHas('dj_battle_vote_scores', [
+            'battle_id' => $battle->id,
+            'dj_profile_id' => $opponent->djProfile->id,
+            'sample_integration_score' => 7,
+            'overall_performance_score' => 8,
+            'total_score' => 74,
+        ]);
+        $this->assertDatabaseHas('dj_battle_events', [
+            'event_type' => 'fan_vote_submitted',
+        ]);
+
+        $this->actingAs($fan)
+            ->postJson("/api/battles/{$battleUuid}/votes", $this->votePayload($battle))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('vote');
+    }
+
+    public function test_competing_djs_cannot_vote_in_their_own_battle(): void
+    {
+        [$challenger, , $battleUuid] = $this->votingBattle();
+        $battle = DjBattle::query()
+            ->where('uuid', $battleUuid)
+            ->firstOrFail();
+
+        $this->actingAs($challenger)
+            ->postJson("/api/battles/{$battleUuid}/votes", $this->votePayload($battle))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('vote');
+    }
+
+    public function test_expired_voting_battle_settles_beta_winner_and_fan_rewards(): void
+    {
+        [$challenger, $opponent, $fan, $battleUuid] = $this->stakedVotingBattle();
+        $battle = DjBattle::query()
+            ->where('uuid', $battleUuid)
+            ->firstOrFail();
+
+        $this->actingAs($fan)
+            ->postJson("/api/battles/{$battleUuid}/votes", $this->votePayload($battle))
+            ->assertCreated();
+
+        DjBattle::query()
+            ->where('uuid', $battleUuid)
+            ->update(['voting_ends_at' => now()->subMinute()]);
+
+        $this->actingAs($fan)
+            ->getJson("/api/battles/{$battleUuid}")
+            ->assertOk()
+            ->assertJsonPath('battle.status', DjBattle::STATUS_COMPLETED)
+            ->assertJsonPath('battle.winner.id', $challenger->djProfile->id)
+            ->assertJsonPath('battle.result.total_votes', 1)
+            ->assertJsonPath('battle.result.is_draw', false);
+
+        $challengerWallet = $challenger->wallet()->firstOrFail();
+        $opponentWallet = $opponent->wallet()->firstOrFail();
+        $fanWallet = $fan->wallet()->firstOrFail();
+
+        $this->assertSame(124, $challengerWallet->available_balance);
+        $this->assertSame(0, $challengerWallet->locked_balance);
+        $this->assertSame(70, $opponentWallet->available_balance);
+        $this->assertSame(0, $opponentWallet->locked_balance);
+        $this->assertSame(6, $fanWallet->available_balance);
+
+        $this->assertDatabaseHas('wallet_transactions', [
+            'user_id' => $challenger->id,
+            'type' => WalletService::TYPE_BATTLE_WINNER_REWARD,
+            'direction' => 'credit',
+            'amount' => 54,
+        ]);
+        $this->assertDatabaseHas('wallet_transactions', [
+            'user_id' => $fan->id,
+            'type' => WalletService::TYPE_FAN_REWARD,
+            'direction' => 'credit',
+            'amount' => 6,
+        ]);
+        $this->assertDatabaseHas('wallet_transactions', [
+            'user_id' => $opponent->id,
+            'type' => WalletService::TYPE_BATTLE_STAKE_RELEASED,
+            'direction' => 'debit',
+            'amount' => 30,
+        ]);
+        $this->assertDatabaseHas('dj_battle_events', [
+            'event_type' => 'fan_rewards_distributed',
+        ]);
+        $this->assertDatabaseHas('dj_battle_events', [
+            'event_type' => 'battle_completed',
+            'to_status' => DjBattle::STATUS_COMPLETED,
+        ]);
+    }
+
+    public function test_battle_leaderboard_ranks_completed_scorecards_by_selected_category(): void
+    {
+        [$challenger, $opponent, $fan, $battleUuid] = $this->stakedVotingBattle();
+        $battle = DjBattle::query()
+            ->where('uuid', $battleUuid)
+            ->firstOrFail();
+
+        $this->actingAs($fan)
+            ->postJson("/api/battles/{$battleUuid}/votes", $this->votePayload($battle))
+            ->assertCreated();
+
+        DjBattle::query()
+            ->where('uuid', $battleUuid)
+            ->update(['voting_ends_at' => now()->subMinute()]);
+
+        $this->getJson('/api/battles/leaderboards?category=overall_performance&min_battles=1')
+            ->assertOk()
+            ->assertJsonPath('category', 'overall_performance')
+            ->assertJsonPath('category_label', 'Overall Performance')
+            ->assertJsonPath('minimum_battles', 1)
+            ->assertJsonPath('leaderboard.0.dj_id', $challenger->djProfile->id)
+            ->assertJsonPath('leaderboard.0.rank', 1)
+            ->assertJsonPath('leaderboard.0.selected_category_score', 9)
+            ->assertJsonPath('leaderboard.0.average_total_score', 82)
+            ->assertJsonPath('leaderboard.0.scored_battles_count', 1)
+            ->assertJsonPath('leaderboard.0.wins', 1)
+            ->assertJsonPath('leaderboard.1.dj_id', $opponent->djProfile->id)
+            ->assertJsonPath('leaderboard.1.selected_category_score', 8)
+            ->assertJsonPath('leaderboard.1.losses', 1)
+            ->assertJsonCount(0, 'new_competitors');
+
+        $this->getJson('/api/battles/leaderboards?category=overall&verified=false&active=false')
+            ->assertOk()
+            ->assertJsonPath('category', 'overall');
+    }
+
     public function test_expired_pending_challenge_pauses_and_can_be_extended(): void
     {
         $challenger = User::factory()->create();
@@ -563,6 +716,119 @@ class DjBattleApiTest extends TestCase
             ->assertJsonPath('battle.status', DjBattle::STATUS_RECORDING);
 
         return [$challenger, $opponent, $battleUuid];
+    }
+
+    private function votingBattle(): array
+    {
+        Storage::fake('public');
+
+        [$challenger, $opponent, $battleUuid] = $this->recordingBattle();
+
+        $this->actingAs($challenger)
+            ->post("/api/battles/{$battleUuid}/entries", [
+                'media' => UploadedFile::fake()->create('challenger-entry.webm', 64, 'video/webm'),
+                'title' => 'Challenger Vote Entry',
+                'duration_seconds' => 120,
+                'recorded_in_browser' => true,
+            ], ['Accept' => 'application/json'])
+            ->assertOk();
+
+        $this->actingAs($challenger)
+            ->postJson("/api/battles/{$battleUuid}/entries/test-duplicate")
+            ->assertOk()
+            ->assertJsonPath('battle.status', DjBattle::STATUS_VOTING);
+
+        return [$challenger, $opponent, $battleUuid];
+    }
+
+    private function stakedVotingBattle(): array
+    {
+        Storage::fake('public');
+
+        $challenger = User::factory()->create();
+        $opponent = User::factory()->create();
+        $fan = User::factory()->create();
+        $this->battleReadyProfile($challenger);
+        $opponentProfile = $this->battleReadyProfile($opponent);
+        $wallets = app(WalletService::class);
+
+        $wallets->credit($challenger, 100, 'token_purchase');
+        $wallets->credit($opponent, 100, 'token_purchase');
+
+        $battleUuid = $this->actingAs($challenger)
+            ->postJson('/api/battles', [
+                'opponent_dj_profile_id' => $opponentProfile->id,
+                'battle_type' => 'open_format',
+                'title' => 'Settlement Test',
+                'stake_amount' => 30,
+            ])
+            ->assertCreated()
+            ->json('battle.uuid');
+
+        $this->actingAs($opponent)->postJson("/api/battles/{$battleUuid}/accept")->assertOk();
+        $this->actingAs($challenger)->postJson("/api/battles/{$battleUuid}/ready")->assertOk();
+        $this->actingAs($opponent)
+            ->postJson("/api/battles/{$battleUuid}/ready")
+            ->assertOk()
+            ->assertJsonPath('battle.status', DjBattle::STATUS_RECORDING);
+
+        $this->actingAs($challenger)
+            ->post("/api/battles/{$battleUuid}/entries", [
+                'media' => UploadedFile::fake()->create('settlement-entry.webm', 64, 'video/webm'),
+                'title' => 'Settlement Entry',
+                'duration_seconds' => 120,
+                'recorded_in_browser' => true,
+            ], ['Accept' => 'application/json'])
+            ->assertOk();
+
+        $this->actingAs($challenger)
+            ->postJson("/api/battles/{$battleUuid}/entries/test-duplicate")
+            ->assertOk()
+            ->assertJsonPath('battle.status', DjBattle::STATUS_VOTING);
+
+        return [$challenger, $opponent, $fan, $battleUuid];
+    }
+
+    private function votePayload(DjBattle $battle): array
+    {
+        return [
+            'watch_order' => [
+                $battle->challenger_dj_profile_id,
+                $battle->opponent_dj_profile_id,
+            ],
+            'scores' => [
+                [
+                    'dj_profile_id' => $battle->challenger_dj_profile_id,
+                    'scores' => [
+                        'sample_integration' => 8,
+                        'scratching_ability' => 7,
+                        'mixing_ability' => 8,
+                        'blending' => 8,
+                        'creativity' => 9,
+                        'technical_execution' => 8,
+                        'music_selection' => 8,
+                        'battle_composition' => 9,
+                        'entertainment_value' => 8,
+                        'overall_performance' => 9,
+                    ],
+                ],
+                [
+                    'dj_profile_id' => $battle->opponent_dj_profile_id,
+                    'scores' => [
+                        'sample_integration' => 7,
+                        'scratching_ability' => 7,
+                        'mixing_ability' => 7,
+                        'blending' => 8,
+                        'creativity' => 8,
+                        'technical_execution' => 7,
+                        'music_selection' => 7,
+                        'battle_composition' => 7,
+                        'entertainment_value' => 8,
+                        'overall_performance' => 8,
+                    ],
+                ],
+            ],
+        ];
     }
 
     private function battleReadyProfile(User $user, array $overrides = []): DjProfile

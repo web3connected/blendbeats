@@ -28,8 +28,11 @@ import UserPlaylistPage from './Frontend/pages/auth/UserPlaylistPage';
 import WalletPage from './Frontend/pages/auth/WalletPage';
 import AffiliateProgramPage from './Frontend/pages/affiliate';
 import BattlesPage from './Frontend/pages/battles';
+import BattleLeaderboardPage from './Frontend/pages/battles/BattleLeaderboardPage';
 import BattleRecordingPage from './Frontend/pages/battles/BattleRecordingPage';
 import BattleShowPage from './Frontend/pages/battles/BattleShowPage';
+import BattleVotingListPage from './Frontend/pages/battles/BattleVotingListPage';
+import BattleVotingPage from './Frontend/pages/battles/BattleVotingPage';
 import DjPortfolioPage from './Frontend/pages/dj/DjPortfolioPage';
 import DjScratchesPage from './Frontend/pages/dj/DjScratchesPage';
 import PublicDjProfilePage from './Frontend/pages/dj/PublicDjProfilePage';
@@ -62,8 +65,11 @@ createRoot(rootElement).render(
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/battles" element={<BattlesPage />} />
+                <Route path="/battles/leaderboards" element={<BattleLeaderboardPage />} />
+                <Route path="/battles/voting" element={<BattleVotingListPage />} />
                 <Route path="/battles/:uuid" element={<BattleShowPage />} />
                 <Route path="/battles/:uuid/record" element={<BattleRecordingPage />} />
+                <Route path="/battles/:uuid/vote" element={<BattleVotingPage />} />
                 <Route path="/mixes" element={<MixesPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/affiliate" element={<AffiliateProgramPage />} />

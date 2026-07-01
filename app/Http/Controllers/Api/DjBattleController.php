@@ -9,11 +9,12 @@ use App\Models\DjProfile;
 use App\Services\DjBattles\DjBattleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class DjBattleController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, DjBattleService $battleService): JsonResponse
     {
         $filters = $request->validate([
             'status' => ['nullable', Rule::in([
@@ -25,6 +26,14 @@ class DjBattleController extends Controller
             'battle_type' => ['nullable', Rule::in(['mix', 'scratch', 'open_format', 'theme'])],
             'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
+
+        DjBattle::query()
+            ->where('status', DjBattle::STATUS_VOTING)
+            ->whereNotNull('voting_ends_at')
+            ->where('voting_ends_at', '<=', now())
+            ->limit(50)
+            ->get()
+            ->each(fn (DjBattle $battle): DjBattle => $battleService->completeExpiredVoting($battle));
 
         $battles = DjBattle::query()
             ->with($this->relations())
@@ -42,9 +51,139 @@ class DjBattleController extends Controller
         ]);
     }
 
+    public function leaderboards(Request $request, DjBattleService $battleService): JsonResponse
+    {
+        $categories = $this->leaderboardCategories();
+        $filters = $request->validate([
+            'category' => ['nullable', Rule::in(array_keys($categories))],
+            'period' => ['nullable', Rule::in(['all_time', 'week', 'month', 'season'])],
+            'verified' => ['nullable', Rule::in([true, false, 1, 0, '1', '0', 'true', 'false'])],
+            'active' => ['nullable', Rule::in([true, false, 1, 0, '1', '0', 'true', 'false'])],
+            'min_battles' => ['nullable', 'integer', 'min:1', 'max:25'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+        $category = $filters['category'] ?? 'overall';
+        $categoryConfig = $categories[$category];
+        $minimumBattles = (int) ($filters['min_battles'] ?? 3);
+        $limit = (int) ($filters['limit'] ?? 100);
+        $period = $filters['period'] ?? 'all_time';
+
+        DjBattle::query()
+            ->where('status', DjBattle::STATUS_VOTING)
+            ->whereNotNull('voting_ends_at')
+            ->where('voting_ends_at', '<=', now())
+            ->limit(50)
+            ->get()
+            ->each(fn (DjBattle $battle): DjBattle => $battleService->completeExpiredVoting($battle));
+
+        $scoreRows = DB::table('dj_battle_vote_scores as scores')
+            ->join('dj_battle_votes as votes', 'votes.id', '=', 'scores.vote_id')
+            ->join('dj_battles as battles', 'battles.id', '=', 'scores.battle_id')
+            ->join('dj_profiles as profiles', 'profiles.id', '=', 'scores.dj_profile_id')
+            ->join('users', 'users.id', '=', 'profiles.user_id')
+            ->where('battles.status', DjBattle::STATUS_COMPLETED)
+            ->whereNotNull('votes.submitted_at')
+            ->where('votes.reward_eligible', true)
+            ->when($this->periodStart($period), fn ($query, $start) => $query->where('battles.completed_at', '>=', $start))
+            ->when($this->queryBoolean($request, 'verified'), fn ($query) => $query->where('profiles.verification_status', 'verified'))
+            ->when($this->queryBoolean($request, 'active'), fn ($query) => $query
+                ->where('profiles.battle_enabled', true)
+                ->where('profiles.profile_status', 'active')
+                ->where('profiles.visibility', 'public'))
+            ->groupBy([
+                'profiles.id',
+                'profiles.dj_name',
+                'profiles.handle',
+                'profiles.profile_headline',
+                'profiles.verification_status',
+                'profiles.battle_enabled',
+                'users.avatar',
+                'users.use_gravatar',
+                'users.email',
+            ])
+            ->select([
+                'profiles.id',
+                'profiles.dj_name',
+                'profiles.handle',
+                'profiles.profile_headline',
+                'profiles.verification_status',
+                'profiles.battle_enabled',
+                'users.avatar',
+                'users.use_gravatar',
+                'users.email',
+            ])
+            ->selectRaw("AVG(scores.{$categoryConfig['column']}) as selected_score")
+            ->selectRaw('AVG(scores.total_score) as average_total_score')
+            ->selectRaw('COUNT(scores.id) as score_count')
+            ->selectRaw('COUNT(DISTINCT scores.battle_id) as scored_battles_count')
+            ->selectRaw('MAX(battles.completed_at) as last_battle_date')
+            ->orderByDesc('selected_score')
+            ->orderByDesc('scored_battles_count')
+            ->orderBy('profiles.dj_name')
+            ->limit($limit)
+            ->get();
+
+        $profileIds = $scoreRows->pluck('id')->map(fn ($id): int => (int) $id)->all();
+        $battleStats = $this->leaderboardBattleStats($profileIds, $period);
+        $rank = 1;
+        $newRank = 1;
+        $official = [];
+        $newCompetitors = [];
+
+        foreach ($scoreRows as $row) {
+            $profileId = (int) $row->id;
+            $stats = $battleStats[$profileId] ?? ['completed_battles_count' => 0, 'wins' => 0, 'losses' => 0];
+            $payload = [
+                'dj_id' => $profileId,
+                'dj_name' => $row->dj_name,
+                'handle' => $row->handle,
+                'headline' => $row->profile_headline,
+                'avatar_url' => $this->avatarUrlFromColumns($row),
+                'rank' => null,
+                'qualified' => (int) $row->scored_battles_count >= $minimumBattles,
+                'selected_category' => $category,
+                'selected_category_label' => $categoryConfig['label'],
+                'selected_category_score' => round((float) $row->selected_score, 2),
+                'selected_category_max_score' => (int) $categoryConfig['max_score'],
+                'completed_battles_count' => (int) $stats['completed_battles_count'],
+                'scored_battles_count' => (int) $row->scored_battles_count,
+                'score_count' => (int) $row->score_count,
+                'wins' => (int) $stats['wins'],
+                'losses' => (int) $stats['losses'],
+                'average_total_score' => round((float) $row->average_total_score, 2),
+                'last_battle_date' => optional($row->last_battle_date ? \Illuminate\Support\Carbon::parse($row->last_battle_date) : null)->toISOString(),
+            ];
+
+            if ($payload['qualified']) {
+                $payload['rank'] = $rank++;
+                $official[] = $payload;
+            } else {
+                $payload['rank'] = $newRank++;
+                $newCompetitors[] = $payload;
+            }
+        }
+
+        return response()->json([
+            'category' => $category,
+            'category_label' => $categoryConfig['label'],
+            'categories' => collect($categories)
+                ->map(fn (array $item, string $key): array => [
+                    'value' => $key,
+                    'label' => $item['label'],
+                    'max_score' => (int) $item['max_score'],
+                ])
+                ->values(),
+            'period' => $period,
+            'minimum_battles' => $minimumBattles,
+            'leaderboard' => $official,
+            'new_competitors' => $newCompetitors,
+        ]);
+    }
+
     public function show(Request $request, DjBattle $battle, DjBattleService $battles): JsonResponse
     {
         $battle = $battles->pauseExpiredChallenge($battle);
+        $battle = $battles->completeExpiredVoting($battle);
 
         abort_unless($this->canViewBattle($request, $battle), 404);
 
@@ -151,6 +290,28 @@ class DjBattleController extends Controller
         ]);
     }
 
+    public function submitVote(Request $request, DjBattle $battle, DjBattleService $battles): JsonResponse
+    {
+        $scoreRules = [];
+
+        foreach (DjBattleService::VOTE_SCORE_CATEGORIES as $category) {
+            $scoreRules["scores.*.scores.{$category}"] = ['required', 'integer', 'min:1', 'max:10'];
+        }
+
+        $payload = $request->validate([
+            'watch_order' => ['required', 'array', 'size:2'],
+            'watch_order.*' => ['required', 'integer', 'distinct', 'exists:dj_profiles,id'],
+            'scores' => ['required', 'array', 'size:2'],
+            'scores.*.dj_profile_id' => ['required', 'integer', 'distinct', 'exists:dj_profiles,id'],
+            'scores.*.scores' => ['required', 'array'],
+            ...$scoreRules,
+        ]);
+
+        return response()->json([
+            'battle' => $this->battlePayload($battles->submitFanVote($request->user(), $battle, $payload)),
+        ], 201);
+    }
+
     public function account(Request $request, DjBattleService $battles): JsonResponse
     {
         return response()->json([
@@ -204,6 +365,8 @@ class DjBattleController extends Controller
             'challenge_message' => $battle->challenge_message,
             'fan_reward_pool_amount' => (int) $battle->fan_reward_pool_amount,
             'prize_pool_amount' => (int) $battle->prize_pool_amount,
+            'vote_count' => $battle->votes()->whereNotNull('submitted_at')->count(),
+            'viewer_vote' => $this->viewerVotePayload($battle),
             'challenger' => $this->profilePayload($battle->challenger),
             'opponent' => $this->profilePayload($battle->opponent),
             'winner' => $battle->winner ? $this->profilePayload($battle->winner) : null,
@@ -258,6 +421,79 @@ class DjBattleController extends Controller
         ];
     }
 
+    private function avatarUrlFromColumns(object $row): string
+    {
+        $user = new \App\Models\User([
+            'avatar' => $row->avatar,
+            'use_gravatar' => (bool) $row->use_gravatar,
+            'email' => $row->email,
+        ]);
+
+        return $user->getAvatarUrl();
+    }
+
+    private function leaderboardCategories(): array
+    {
+        return [
+            'overall' => ['label' => 'Overall', 'column' => 'total_score', 'max_score' => 100],
+            'sample_integration' => ['label' => 'Sample Integration', 'column' => 'sample_integration_score', 'max_score' => 10],
+            'scratching_ability' => ['label' => 'Scratching Ability', 'column' => 'scratching_score', 'max_score' => 10],
+            'mixing_ability' => ['label' => 'Mixing Ability', 'column' => 'mixing_score', 'max_score' => 10],
+            'blending' => ['label' => 'Blending', 'column' => 'blending_score', 'max_score' => 10],
+            'creativity' => ['label' => 'Creativity', 'column' => 'creativity_score', 'max_score' => 10],
+            'technical_execution' => ['label' => 'Technical Execution', 'column' => 'technical_execution_score', 'max_score' => 10],
+            'music_selection' => ['label' => 'Music Selection', 'column' => 'track_selection_score', 'max_score' => 10],
+            'battle_composition' => ['label' => 'Battle Composition', 'column' => 'battle_composition_score', 'max_score' => 10],
+            'entertainment_value' => ['label' => 'Entertainment Value', 'column' => 'entertainment_value_score', 'max_score' => 10],
+            'overall_performance' => ['label' => 'Overall Performance', 'column' => 'overall_performance_score', 'max_score' => 10],
+        ];
+    }
+
+    private function periodStart(string $period): ?\Illuminate\Support\Carbon
+    {
+        return match ($period) {
+            'week' => now()->subWeek(),
+            'month' => now()->subMonth(),
+            'season' => now()->startOfYear(),
+            default => null,
+        };
+    }
+
+    private function queryBoolean(Request $request, string $key): bool
+    {
+        return filter_var($request->query($key), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function leaderboardBattleStats(array $profileIds, string $period): array
+    {
+        if ($profileIds === []) {
+            return [];
+        }
+
+        $start = $this->periodStart($period);
+        $stats = [];
+
+        foreach ($profileIds as $profileId) {
+            $base = DjBattle::query()
+                ->where('status', DjBattle::STATUS_COMPLETED)
+                ->when($start, fn ($query) => $query->where('completed_at', '>=', $start))
+                ->where(fn ($query) => $query
+                    ->where('challenger_dj_profile_id', $profileId)
+                    ->orWhere('opponent_dj_profile_id', $profileId));
+
+            $stats[$profileId] = [
+                'completed_battles_count' => (clone $base)->count(),
+                'wins' => (clone $base)->where('winner_dj_profile_id', $profileId)->count(),
+                'losses' => (clone $base)
+                    ->whereNotNull('winner_dj_profile_id')
+                    ->where('winner_dj_profile_id', '!=', $profileId)
+                    ->count(),
+            ];
+        }
+
+        return $stats;
+    }
+
     private function entryPayload(DjBattleEntry $entry): array
     {
         return [
@@ -270,6 +506,40 @@ class DjBattleController extends Controller
             'media_file_id' => $entry->media_file_id,
             'media_url' => $entry->mediaFile?->url,
             'submitted_at' => optional($entry->submitted_at)->toISOString(),
+        ];
+    }
+
+    private function viewerVotePayload(DjBattle $battle): ?array
+    {
+        $user = request()->user();
+
+        if (! $user) {
+            return null;
+        }
+
+        $vote = $battle->votes()
+            ->with('scores')
+            ->where('user_id', $user->id)
+            ->whereNotNull('submitted_at')
+            ->first();
+
+        if (! $vote) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $vote->id,
+            'reward_eligible' => (bool) $vote->reward_eligible,
+            'submitted_at' => optional($vote->submitted_at)->toISOString(),
+            'prediction_dj_profile_id' => $vote->prediction_dj_profile_id,
+            'scores' => $vote->scores
+                ->map(fn ($score): array => [
+                    'dj_profile_id' => (int) $score->dj_profile_id,
+                    'entry_id' => (int) $score->entry_id,
+                    'total_score' => (float) $score->total_score,
+                    'category_scores' => $score->metadata['category_scores'] ?? [],
+                ])
+                ->values(),
         ];
     }
 

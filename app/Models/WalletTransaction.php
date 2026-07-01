@@ -26,6 +26,7 @@ class WalletTransaction extends Model
         'description',
         'metadata',
         'created_by_user_id',
+        'created_by_admin_id',
         'completed_at',
         'failed_at',
         'cancelled_at',
@@ -63,6 +64,11 @@ class WalletTransaction extends Model
     public function createdByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function createdByAdmin(): BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'created_by_admin_id');
     }
 
     public function related(): MorphTo

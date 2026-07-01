@@ -12,6 +12,15 @@ use RuntimeException;
 
 class WalletService
 {
+    public const TYPE_BETA_GRANT = 'beta_grant';
+    public const TYPE_BETA_ADJUSTMENT = 'beta_adjustment';
+    public const TYPE_ADMIN_CORRECTION = 'admin_correction';
+    public const TYPE_BATTLE_STAKE_LOCKED = 'battle_stake_locked';
+    public const TYPE_BATTLE_STAKE_RELEASED = 'battle_stake_released';
+    public const TYPE_BATTLE_REFUND = 'battle_refund';
+    public const TYPE_BATTLE_WINNER_REWARD = 'battle_winner_reward';
+    public const TYPE_FAN_REWARD = 'fan_reward';
+
     public function walletFor(User $user): Wallet
     {
         return DB::transaction(function () use ($user): Wallet {
@@ -34,6 +43,36 @@ class WalletService
                 'status' => 'active',
             ]);
         });
+    }
+
+    public function grantSignupBetaTokens(User $user): ?WalletTransaction
+    {
+        if (! (bool) config('wallet.beta_token_demo_mode', true)) {
+            return null;
+        }
+
+        $amount = (int) config('wallet.default_beta_tokens', 500);
+
+        if ($amount <= 0) {
+            return null;
+        }
+
+        $wallet = $this->walletFor($user);
+
+        if ($wallet->transactions()
+            ->where('type', self::TYPE_BETA_GRANT)
+            ->where('description', 'Beta signup test token grant.')
+            ->exists()) {
+            return null;
+        }
+
+        return $this->credit($user, $amount, self::TYPE_BETA_GRANT, [
+            'description' => 'Beta signup test token grant.',
+            'metadata' => [
+                'source' => 'signup_default',
+                'demo_mode' => true,
+            ],
+        ]);
     }
 
     public function credit(User $user, int $amount, string $type, array $context = []): WalletTransaction
@@ -114,6 +153,105 @@ class WalletService
         });
     }
 
+    public function spendLocked(User $user, int $amount, string $type, array $context = []): WalletTransaction
+    {
+        $this->assertPositiveAmount($amount);
+
+        return DB::transaction(function () use ($user, $amount, $type, $context): WalletTransaction {
+            $wallet = $this->lockedWalletFor($user);
+            $this->assertActiveWallet($wallet);
+
+            if (! $wallet->hasLockedBalance($amount)) {
+                throw new RuntimeException('Wallet locked balance is too low.');
+            }
+
+            $before = $this->snapshot($wallet);
+
+            $wallet->locked_balance -= $amount;
+            $wallet->lifetime_spent += $amount;
+            $wallet->save();
+
+            return $this->record($wallet, $type, 'debit', 'completed', $amount, $before, $context);
+        });
+    }
+
+    public function grantBetaTokens(User $user, int $amount, int $adminId, ?string $notes = null): WalletTransaction
+    {
+        $this->assertAdminGrantsAllowed();
+
+        return $this->credit($user, $amount, self::TYPE_BETA_GRANT, [
+            'description' => $notes ?: 'Admin beta test token grant.',
+            'created_by_admin_id' => $adminId,
+            'metadata' => [
+                'source' => 'admin_manual_grant',
+                'demo_mode' => true,
+            ],
+        ]);
+    }
+
+    public function removeBetaTokens(User $user, int $amount, int $adminId, ?string $notes = null): WalletTransaction
+    {
+        $this->assertAdminGrantsAllowed();
+
+        return $this->debit($user, $amount, self::TYPE_BETA_ADJUSTMENT, [
+            'description' => $notes ?: 'Admin beta test token removal.',
+            'created_by_admin_id' => $adminId,
+            'metadata' => [
+                'source' => 'admin_manual_removal',
+                'demo_mode' => true,
+            ],
+        ]);
+    }
+
+    public function resetBetaBalance(User $user, int $targetAmount, int $adminId, ?string $notes = null): ?WalletTransaction
+    {
+        $this->assertAdminGrantsAllowed();
+
+        if ($targetAmount < 0) {
+            throw new InvalidArgumentException('Wallet reset amount cannot be negative.');
+        }
+
+        return DB::transaction(function () use ($user, $targetAmount, $adminId, $notes): ?WalletTransaction {
+            $wallet = $this->lockedWalletFor($user);
+            $this->assertActiveWallet($wallet);
+
+            if ((int) $wallet->available_balance === $targetAmount && (int) $wallet->locked_balance === 0) {
+                return null;
+            }
+
+            $before = $this->snapshot($wallet);
+            $beforeTotal = $before['available_balance'] + $before['locked_balance'];
+
+            $wallet->available_balance = $targetAmount;
+            $wallet->locked_balance = 0;
+            $wallet->save();
+
+            return $this->record($wallet, self::TYPE_ADMIN_CORRECTION, 'adjustment', 'completed', abs($targetAmount - $beforeTotal), $before, [
+                'description' => $notes ?: 'Admin beta test token balance reset.',
+                'created_by_admin_id' => $adminId,
+                'metadata' => [
+                    'source' => 'admin_balance_reset',
+                    'demo_mode' => true,
+                    'target_available_balance' => $targetAmount,
+                ],
+            ]);
+        });
+    }
+
+    public function setWalletStatus(User $user, string $status): Wallet
+    {
+        if (! in_array($status, ['active', 'suspended'], true)) {
+            throw new InvalidArgumentException('Unsupported wallet status.');
+        }
+
+        return DB::transaction(function () use ($user, $status): Wallet {
+            $wallet = $this->lockedWalletFor($user);
+            $wallet->forceFill(['status' => $status])->save();
+
+            return $wallet;
+        });
+    }
+
     private function lockedWalletFor(User $user): Wallet
     {
         return Wallet::query()
@@ -185,7 +323,16 @@ class WalletService
             'description' => $context['description'] ?? null,
             'metadata' => $context['metadata'] ?? null,
             'created_by_user_id' => $context['created_by_user_id'] ?? null,
+            'created_by_admin_id' => $context['created_by_admin_id'] ?? null,
             'completed_at' => in_array($status, ['completed', 'released'], true) ? now() : null,
         ]);
+    }
+
+    private function assertAdminGrantsAllowed(): void
+    {
+        if (! (bool) config('wallet.beta_token_demo_mode', true)
+            || ! (bool) config('wallet.allow_admin_manual_grants', true)) {
+            throw new RuntimeException('Admin beta token grants are disabled.');
+        }
     }
 }

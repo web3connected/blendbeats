@@ -8,7 +8,7 @@ use Illuminate\Database\Seeder;
 
 class BattleTestingWalletSeeder extends Seeder
 {
-    public const TRANSACTION_TYPE = 'demo_wallet_balance_seed';
+    public const TRANSACTION_TYPE = WalletService::TYPE_BETA_GRANT;
 
     public function run(): void
     {
@@ -21,7 +21,10 @@ class BattleTestingWalletSeeder extends Seeder
             ->each(function (User $user) use ($wallets, $minimum, $maximum): void {
                 $wallet = $wallets->walletFor($user);
 
-                if ($wallet->transactions()->where('type', self::TRANSACTION_TYPE)->exists()) {
+                if ($wallet->transactions()
+                    ->where('type', self::TRANSACTION_TYPE)
+                    ->where('description', 'Randomized demo wallet balance for battle testing.')
+                    ->exists()) {
                     return;
                 }
 

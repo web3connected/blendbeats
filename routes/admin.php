@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AdminCenter\LoungePlaylistController;
 use App\Http\Controllers\Admin\AdminCenter\PaymentProviderController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\BetaTokenController;
 use App\Http\Controllers\Admin\BlendNews\PostController as BlendNewsPostController;
 use App\Http\Controllers\Admin\CommerceCartController;
 use App\Http\Controllers\Admin\CommerceProductController;
@@ -155,6 +156,18 @@ Route::middleware('admin.auth')->group(function (): void {
         ->name('admincenter.affiliatepayouts.status.update');
 
     Route::resource('users', UserController::class);
+    Route::get('admincenter/beta-tokens', [BetaTokenController::class, 'index'])
+        ->name('admincenter.beta-tokens.index');
+    Route::get('admincenter/beta-tokens/{user}', [BetaTokenController::class, 'show'])
+        ->name('admincenter.beta-tokens.show');
+    Route::post('admincenter/beta-tokens/{user}/grant', [BetaTokenController::class, 'grant'])
+        ->name('admincenter.beta-tokens.grant');
+    Route::post('admincenter/beta-tokens/{user}/remove', [BetaTokenController::class, 'remove'])
+        ->name('admincenter.beta-tokens.remove');
+    Route::post('admincenter/beta-tokens/{user}/reset', [BetaTokenController::class, 'reset'])
+        ->name('admincenter.beta-tokens.reset');
+    Route::post('admincenter/beta-tokens/{user}/status', [BetaTokenController::class, 'status'])
+        ->name('admincenter.beta-tokens.status');
     Route::resource('blendnews', BlendNewsPostController::class)
         ->parameters(['blendnews' => 'blendnews'])
         ->except(['show']);

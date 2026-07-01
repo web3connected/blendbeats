@@ -31,6 +31,7 @@ return [
         ['slug' => 'purchases-downloads', 'title' => 'Purchases And Downloads', 'category' => 'marketplace', 'status' => 'foundation', 'route' => '/account/docs/purchases-downloads'],
         ['slug' => 'blendnews', 'title' => 'BlendNews', 'category' => 'community', 'status' => 'active', 'route' => '/account/docs/blendnews'],
         ['slug' => 'playlists', 'title' => 'Playlists', 'category' => 'community', 'status' => 'active', 'route' => '/account/docs/playlists'],
+        ['slug' => 'dj-battle-system', 'title' => 'DJ Battle System', 'category' => 'community', 'status' => 'active', 'route' => '/account/docs/dj-battle-system'],
         ['slug' => 'badges-and-battles', 'title' => 'Badges And Battles', 'category' => 'community', 'status' => 'active', 'route' => '/account/docs/badges-and-battles'],
         ['slug' => 'common-questions', 'title' => 'Common Questions', 'category' => 'faqs', 'status' => 'active', 'route' => '/account/docs/common-questions'],
         ['slug' => 'future-features', 'title' => 'Future Features', 'category' => 'faqs', 'status' => 'future', 'route' => '/account/docs/future-features'],

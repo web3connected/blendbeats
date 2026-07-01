@@ -17,9 +17,7 @@ class WalletController extends Controller
 
         return response()->json([
             'wallet' => $this->walletPayload($wallet),
-            'demo_mode' => [
-                'enabled' => (bool) config('wallet.beta_token_demo_mode', true),
-            ],
+            'demo_mode' => $this->demoModePayload(),
             'transactions' => $wallet->transactions()
                 ->latest()
                 ->limit(8)
@@ -63,6 +61,17 @@ class WalletController extends Controller
         ];
     }
 
+    private function demoModePayload(): array
+    {
+        return [
+            'enabled' => (bool) config('wallet.beta_token_demo_mode', true),
+            'token_label' => (bool) config('wallet.beta_token_demo_mode', true) ? 'Test Tokens' : 'Tokens',
+            'default_beta_tokens' => (int) config('wallet.default_beta_tokens', 500),
+            'withdrawals_enabled' => (bool) config('wallet.withdrawals_enabled', false),
+            'withdrawals_disabled_message' => config('wallet.withdrawals_disabled_message'),
+        ];
+    }
+
     private function transactionPayload(WalletTransaction $transaction): array
     {
         return [
@@ -77,6 +86,7 @@ class WalletController extends Controller
             'locked_balance_after' => (int) $transaction->locked_balance_after,
             'description' => $transaction->description,
             'metadata' => $transaction->metadata ?? [],
+            'created_by_admin_id' => $transaction->created_by_admin_id,
             'created_at' => optional($transaction->created_at)->toISOString(),
             'completed_at' => optional($transaction->completed_at)->toISOString(),
         ];

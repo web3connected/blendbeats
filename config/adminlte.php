@@ -418,6 +418,11 @@ return [
                     'url' => 'admin/users',
                     'icon' => 'fas fa-fw fa-user',
                 ],
+                [
+                    'text' => 'Beta Tokens',
+                    'url' => 'admin/admincenter/beta-tokens',
+                    'icon' => 'fas fa-fw fa-coins',
+                ],
             ],
         ],
         [

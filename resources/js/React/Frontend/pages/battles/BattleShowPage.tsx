@@ -201,6 +201,7 @@ function BattleActionPanel({
   const isParticipant = isChallenger || isOpponent;
   const walletLoaded = !isParticipant || wallet !== null;
   const demoModeEnabled = Boolean(wallet?.demo_mode?.enabled);
+  const tokenLabel = wallet?.demo_mode.token_label ?? 'Tokens';
   const availableBalance = wallet?.wallet.available_balance ?? 0;
   const walletActive = walletLoaded && wallet?.wallet.status === 'active';
   const alreadyActive = accountBattles.some((record) => (
@@ -257,7 +258,7 @@ function BattleActionPanel({
     {
       label: 'Token balance',
       detail: walletLoaded
-        ? `${formatTokens(availableBalance)} available / ${formatTokens(battle.stake_amount)} required`
+        ? `${formatTokens(availableBalance)} ${tokenLabel.toLowerCase()} available / ${formatTokens(battle.stake_amount)} required`
         : 'Checking balance',
       passed: walletLoaded && hasFunds,
     },
@@ -483,7 +484,7 @@ function BattleActionPanel({
             <div className="flex items-center gap-3">
               <WalletCards size={18} className="text-primary" />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Available Tokens</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Available {tokenLabel}</p>
                 <p className="text-xl uppercase text-white" style={{ fontFamily: 'var(--font-heading)' }}>
                   {walletLoaded ? formatTokens(availableBalance) : 'Loading'}
                 </p>
@@ -594,6 +595,32 @@ function BattleActionPanel({
             >
               <Video size={16} />
               Open Recorder
+            </Link>
+          )}
+        </div>
+      )}
+
+      {battle.status === 'voting' && (
+        <div className="grid gap-3 border border-[#242424] bg-[#080808] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">Fan Voting</p>
+              <p className="mt-1 text-sm leading-6 text-[#cccccc]">
+                Fans watch and score each DJ one performance at a time.
+              </p>
+            </div>
+            <span className="inline-flex h-8 items-center border border-[#333333] px-3 text-[10px] font-bold uppercase tracking-widest text-[#dddddd]">
+              {battle.vote_count} Votes
+            </span>
+          </div>
+          {!isParticipant && (
+            <Link
+              to={`/battles/${battle.uuid}/vote`}
+              className="inline-flex h-12 items-center justify-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
+              style={{ fontFamily: 'var(--font-heading)' }}
+            >
+              <Trophy size={16} />
+              Vote Now
             </Link>
           )}
         </div>

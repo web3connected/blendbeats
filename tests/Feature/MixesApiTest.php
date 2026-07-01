@@ -101,6 +101,47 @@ class MixesApiTest extends TestCase
             ->assertJsonPath('mixes.14.title', 'Paged Mix 30');
     }
 
+    public function test_public_mixes_endpoint_can_sort_by_top_rated_mixes(): void
+    {
+        $user = User::factory()->create(['name' => 'DJ Ratings']);
+
+        Mix::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Newest Unrated',
+            'is_public' => true,
+            'published_at' => now(),
+            'play_count' => 500,
+            'rating_average' => 0,
+            'rating_count' => 0,
+        ]);
+
+        Mix::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Solid Four',
+            'is_public' => true,
+            'published_at' => now()->subMinutes(5),
+            'play_count' => 200,
+            'rating_average' => 4,
+            'rating_count' => 20,
+        ]);
+
+        Mix::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Five Star Heat',
+            'is_public' => true,
+            'published_at' => now()->subMinutes(10),
+            'play_count' => 100,
+            'rating_average' => 5,
+            'rating_count' => 2,
+        ]);
+
+        $this->getJson('/api/mixes?sort=top&per_page=3')
+            ->assertOk()
+            ->assertJsonPath('mixes.0.title', 'Five Star Heat')
+            ->assertJsonPath('mixes.1.title', 'Solid Four')
+            ->assertJsonPath('mixes.2.title', 'Newest Unrated');
+    }
+
     public function test_play_endpoint_increments_public_mix_play_count(): void
     {
         $mix = Mix::query()->create([
