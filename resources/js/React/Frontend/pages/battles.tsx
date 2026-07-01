@@ -491,7 +491,7 @@ export default function BattlesPage() {
   const [skillLevel, setSkillLevel] = useState('');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [onlineOnly, setOnlineOnly] = useState(false);
-  const [availableOnly, setAvailableOnly] = useState(true);
+  const [availableOnly, setAvailableOnly] = useState(false);
   const [sort, setSort] = useState<BattleHubSort>('most_active');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -587,7 +587,7 @@ export default function BattlesPage() {
     setSkillLevel('');
     setVerifiedOnly(false);
     setOnlineOnly(false);
-    setAvailableOnly(true);
+    setAvailableOnly(false);
     setSort('most_active');
   };
 
