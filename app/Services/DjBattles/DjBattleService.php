@@ -657,6 +657,24 @@ class DjBattleService
         });
     }
 
+    public function recalculateVotingResult(DjBattle $battle): DjBattle
+    {
+        return DB::transaction(function () use ($battle): DjBattle {
+            $battle = $this->lockedBattle($battle);
+            $this->updateVotingResultSnapshot($battle);
+
+            $battle = $battle->refresh()->load('result');
+
+            if (in_array($battle->status, [DjBattle::STATUS_COMPLETED, DjBattle::STATUS_EXPIRED], true)) {
+                $battle->forceFill([
+                    'winner_dj_profile_id' => $battle->result?->is_draw ? null : $battle->result?->winner_dj_profile_id,
+                ])->save();
+            }
+
+            return $this->battleWithRelations($battle);
+        });
+    }
+
     public function accountBattles(User $user)
     {
         $profile = $user->djProfile()->first();
