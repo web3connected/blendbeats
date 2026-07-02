@@ -641,6 +641,14 @@ export default function BattlesPage() {
                     <BarChart3 size={15} />
                     Leaderboards
                   </Link>
+                  <Link
+                    to="/battles/winners"
+                    className="inline-flex h-10 items-center justify-center gap-2 border border-[#444444] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+                    style={{ fontFamily: 'var(--font-heading)' }}
+                  >
+                    <Medal size={15} />
+                    Battle Winners
+                  </Link>
                 </div>
               </div>
 
