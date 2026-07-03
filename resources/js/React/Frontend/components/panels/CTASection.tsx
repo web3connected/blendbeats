@@ -54,7 +54,7 @@ const CTASection = () => {
             </p>
             <Link
               to="/battles"
-              className="inline-flex items-center gap-3 px-10 py-5 bg-white text-[#0a0a0a] font-black tracking-widest uppercase text-base hover:bg-[#FFB800] transition-colors"
+              className="inline-flex items-center gap-3 bg-primary px-10 py-5 text-base font-black uppercase tracking-widest text-white shadow-lg shadow-primary/25 transition-colors hover:bg-[#c90000]"
               style={{ fontFamily: 'var(--font-heading)' }}
             >
               <Zap size={18} />
