@@ -113,11 +113,11 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
 
   if (!user) {
     return (
-      <div className={isMobile ? 'grid grid-cols-2 gap-2 pt-3' : 'hidden items-center gap-2 md:flex'}>
+      <div className={isMobile ? 'grid grid-cols-2 gap-2 pt-3' : 'hidden items-center gap-1.5 md:flex 2xl:gap-2'}>
         <Link
           to="/login"
           onClick={onNavigate}
-          className="inline-flex h-10 items-center justify-center gap-2 border border-[#444444] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+          className="inline-flex h-10 items-center justify-center gap-1.5 whitespace-nowrap border border-[#444444] px-2.5 text-[11px] font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary lg:px-3 2xl:px-4 2xl:text-xs"
           style={{ fontFamily: 'var(--font-heading)' }}
         >
           <LogIn size={15} />
@@ -126,7 +126,7 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
         <Link
           to="/register"
           onClick={onNavigate}
-          className="inline-flex h-10 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
+          className="inline-flex h-10 items-center justify-center gap-1.5 whitespace-nowrap bg-primary px-2.5 text-[11px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 lg:px-3 2xl:px-4 2xl:text-xs"
           style={{ fontFamily: 'var(--font-heading)' }}
         >
           <UserPlus size={15} />
@@ -211,12 +211,13 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
       <button
         type="button"
         onClick={() => setIsOpen((value) => !value)}
-        className="inline-flex h-10 items-center gap-2 border border-[#333333] bg-[#111111] px-3 text-left transition-colors hover:border-primary"
+        className="inline-flex h-10 items-center gap-1.5 border border-[#333333] bg-[#111111] px-2 text-left transition-colors hover:border-primary lg:px-3"
         aria-expanded={isOpen}
         aria-haspopup="menu"
+        aria-label="Account menu"
       >
         <UserAvatar user={user} className="h-7 w-7 text-xs" />
-        <span className="max-w-28 truncate text-sm font-semibold text-white">{user.name}</span>
+        <span className="hidden max-w-20 truncate text-sm font-semibold text-white lg:inline 2xl:max-w-28">{user.name}</span>
         <ChevronDown size={15} className="text-[#888888]" />
       </button>
 

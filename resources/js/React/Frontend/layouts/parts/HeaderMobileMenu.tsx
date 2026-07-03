@@ -34,7 +34,7 @@ export default function HeaderMobileMenu({ isOpen, onClose }: HeaderMobileMenuPr
   ];
 
   return (
-    <div className="border-t border-[#2a2a2a] bg-[#0a0a0a] py-4 md:hidden">
+    <div className="border-t border-[#2a2a2a] bg-[#0a0a0a] py-4 xl:hidden">
       <nav className="flex flex-col gap-1">
         {navItems.map((item) => (
           <Link

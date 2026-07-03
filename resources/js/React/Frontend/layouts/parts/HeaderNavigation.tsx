@@ -48,12 +48,12 @@ export default function HeaderNavigation() {
   }, [isDjMenuOpen]);
 
   return (
-    <nav className="hidden items-center gap-8 md:flex">
+    <nav className="hidden items-center gap-5 xl:flex 2xl:gap-8">
       {navItems.map((item) => (
         <Link
           key={item.href}
           to={item.href}
-          className={`text-base font-bold tracking-widest transition-colors hover:text-primary ${
+          className={`text-sm font-bold tracking-widest transition-colors hover:text-primary 2xl:text-base ${
             location.pathname === item.href
               ? 'border-b-2 border-primary pb-0.5 text-primary'
               : 'text-[#aaaaaa]'
@@ -66,7 +66,7 @@ export default function HeaderNavigation() {
 
       <a
         href="/news"
-        className={`text-base font-bold tracking-widest transition-colors hover:text-primary ${
+        className={`text-sm font-bold tracking-widest transition-colors hover:text-primary 2xl:text-base ${
           location.pathname.startsWith('/news') ? 'border-b-2 border-primary pb-0.5' : ''
         }`}
         style={{ fontFamily: 'var(--font-heading)' }}
@@ -81,7 +81,7 @@ export default function HeaderNavigation() {
         <button
           type="button"
           onClick={() => setIsDjMenuOpen((current) => !current)}
-          className={`inline-flex items-center gap-1 text-base font-bold tracking-widest transition-colors hover:text-primary ${
+          className={`inline-flex items-center gap-1 text-sm font-bold tracking-widest transition-colors hover:text-primary 2xl:text-base ${
             isDjNavActive ? 'border-b-2 border-primary pb-0.5 text-primary' : 'text-[#aaaaaa]'
           }`}
           style={{ fontFamily: 'var(--font-heading)' }}
