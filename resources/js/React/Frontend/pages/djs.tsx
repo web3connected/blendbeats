@@ -1,5 +1,5 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { CalendarCheck, Headphones, MapPin, Pause, Play, Search, SlidersHorizontal, Star, Users } from 'lucide-react';
+import { CalendarCheck, Headphones, MapPin, Pause, Play, Search, SlidersHorizontal, Star, Trophy, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -123,13 +123,23 @@ function DjCard({ dj }: { dj: DjHubDj }) {
           )}
         </div>
 
-        <Link
-          to={`/djs/${dj.handle}`}
-          className="inline-flex h-11 items-center justify-center border border-[#444444] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
-          style={{ fontFamily: 'var(--font-heading)' }}
-        >
-          View Profile
-        </Link>
+        <div className="grid gap-2">
+          <Link
+            to={`/battles?challenge=${encodeURIComponent(dj.handle)}`}
+            className="inline-flex h-11 items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
+            style={{ fontFamily: 'var(--font-heading)' }}
+          >
+            <Trophy size={15} />
+            Challenge DJ
+          </Link>
+          <Link
+            to={`/djs/${dj.handle}`}
+            className="inline-flex h-11 items-center justify-center border border-[#444444] px-4 text-xs font-bold uppercase tracking-widest text-[#dddddd] transition-colors hover:border-primary hover:text-primary"
+            style={{ fontFamily: 'var(--font-heading)' }}
+          >
+            View Profile
+          </Link>
+        </div>
       </div>
     </article>
   );
@@ -197,7 +207,7 @@ export default function DjsPage() {
 
       <main className="min-h-[calc(100vh-5rem)] bg-[#0a0a0a]">
         <section className="border-b border-[#1a1a1a] px-4 py-14 lg:px-8">
-          <div className="container mx-auto max-w-6xl">
+          <div className="container mx-auto max-w-[1800px]">
             <p
               className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary"
               style={{ fontFamily: 'var(--font-heading)' }}
@@ -227,7 +237,7 @@ export default function DjsPage() {
         </section>
 
         <section className="px-4 py-8 lg:px-8">
-          <div className="container mx-auto grid max-w-6xl gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+          <div className="container mx-auto grid max-w-[1800px] gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
             <aside className="grid h-fit gap-5">
               <GroupAAndBDisplay />
 
@@ -331,8 +341,8 @@ export default function DjsPage() {
               {error && <div className="border border-primary/40 bg-primary/10 p-4 text-sm text-primary">{error}</div>}
 
               {isLoading && (
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                  {Array.from({ length: 6 }).map((_, index) => (
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  {Array.from({ length: 8 }).map((_, index) => (
                     <div key={index} className="h-[480px] animate-pulse border border-[#2a2a2a] bg-[#111111]" />
                   ))}
                 </div>
@@ -351,7 +361,7 @@ export default function DjsPage() {
               )}
 
               {!isLoading && !error && djs.length > 0 && (
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                   {djs.map((dj) => (
                     <DjCard key={dj.id} dj={dj} />
                   ))}

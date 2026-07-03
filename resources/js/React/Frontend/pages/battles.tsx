@@ -17,11 +17,11 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import { createBattle, getAccountBattles, type BattleRecord } from '@/lib/battles';
-import { getDjHubDjs, type DjHubDj, type DjHubFilters } from '@/lib/dj-hub';
+import { getDjHubDj, getDjHubDjs, type DjHubDj, type DjHubFilters } from '@/lib/dj-hub';
 
 type BattleHubSort =
   | 'recommended'
@@ -483,6 +483,8 @@ function CreateBattleChallengeModal({ dj, onClose }: { dj: DjHubDj; onClose: () 
 
 export default function BattlesPage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const challengeHandle = searchParams.get('challenge');
   const [djs, setDjs] = useState<DjHubDj[]>([]);
   const [accountBattles, setAccountBattles] = useState<BattleRecord[]>([]);
   const [filters, setFilters] = useState<DjHubFilters>({ genres: [], dj_types: [] });
@@ -497,6 +499,7 @@ export default function BattlesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [challengeDj, setChallengeDj] = useState<DjHubDj | null>(null);
+  const [handledChallengeHandle, setHandledChallengeHandle] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -543,6 +546,34 @@ export default function BattlesPage() {
       mounted = false;
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!challengeHandle || handledChallengeHandle === challengeHandle) return;
+
+    const loadedDj = djs.find((dj) => dj.handle === challengeHandle);
+
+    if (loadedDj) {
+      setChallengeDj(loadedDj);
+      setHandledChallengeHandle(challengeHandle);
+      return;
+    }
+
+    let cancelled = false;
+
+    getDjHubDj(challengeHandle)
+      .then((dj) => {
+        if (cancelled) return;
+        setChallengeDj(dj);
+        setHandledChallengeHandle(challengeHandle);
+      })
+      .catch(() => {
+        if (!cancelled) setHandledChallengeHandle(challengeHandle);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [challengeHandle, djs, handledChallengeHandle]);
 
   const countries = useMemo(() => uniqueValues(djs.map((dj) => dj.country)), [djs]);
   const skillLevels = useMemo(() => uniqueValues(djs.map((dj) => dj.gamification.dj_rank)), [djs]);
