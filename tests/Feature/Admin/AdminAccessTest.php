@@ -131,8 +131,27 @@ class AdminAccessTest extends TestCase
         $this->actingAs($admin, 'admin')
             ->get('/admin')
             ->assertOk()
-            ->assertSee('Platform control room')
-            ->assertSee('Admin Alerts');
+            ->assertSee('Site Dashboard')
+            ->assertSee('At a Glance')
+            ->assertSee('Open Battle Admin');
+    }
+
+    public function test_authenticated_admin_can_view_battle_admin_dashboard(): void
+    {
+        $admin = Admin::query()->create([
+            'name' => 'Admin User',
+            'email' => 'admin@example.com',
+            'password' => 'password',
+            'role' => 'super-admin',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/battle-admin/dashboard')
+            ->assertOk()
+            ->assertSee('Battle Admin Dashboard')
+            ->assertSee('Battle Alerts')
+            ->assertSee('Top Voted Battles');
     }
 
     public function test_public_home_remains_separate_from_admin_guard(): void

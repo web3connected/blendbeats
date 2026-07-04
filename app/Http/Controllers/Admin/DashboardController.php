@@ -4,21 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
-use App\Models\AffiliateCampaign;
 use App\Models\AffiliatePayout;
-use App\Models\AffiliateReferral;
-use App\Models\AffiliateReferralVisit;
-use App\Models\AffiliateRewardAudit;
-use App\Models\BattleEscrow;
+use App\Models\Comment;
 use App\Models\DjBattle;
-use App\Models\DjBattleVote;
 use App\Models\DjProfile;
+use App\Models\MediaFile;
+use App\Models\Mix;
+use App\Models\Post;
+use App\Models\Product;
+use App\Models\ShoppingCart;
 use App\Models\User;
 use App\Models\Wallet;
-use App\Models\WalletTransaction;
-use App\Services\WalletService;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -26,225 +22,140 @@ class DashboardController extends Controller
     public function __invoke(): View
     {
         $today = now()->startOfDay();
-        $openBattleStatuses = [
-            DjBattle::STATUS_ACCEPTED,
-            DjBattle::STATUS_RECORDING,
+
+        return view('admin.dashboard', [
+            'generatedAt' => now(),
+            'summaryCards' => [
+                $this->summaryCard('Users', User::query()->count(), 'Registered public accounts', 'fas fa-users', 'primary', route('admin.users.index')),
+                $this->summaryCard('DJ Profiles', DjProfile::query()->count(), 'Public and draft DJ profiles', 'fas fa-headphones', 'success', url('/dj-hub')),
+                $this->summaryCard('Published Mixes', Mix::query()->public()->count(), 'Live mixes available on the site', 'fas fa-compact-disc', 'info', url('/mixes')),
+                $this->summaryCard('BlendNews Stories', Post::query()->count(), 'Draft, review, and published posts', 'fas fa-newspaper', 'warning', route('admin.blendnews.index')),
+                $this->summaryCard('Products', Product::query()->count(), 'Commerce catalog items', 'fas fa-shopping-bag', 'secondary', route('admin.products.index')),
+                $this->summaryCard('Open Carts', ShoppingCart::query()->where('status', 'open')->count(), 'Active shopping sessions', 'fas fa-shopping-cart', 'dark', route('admin.carts.index')),
+                $this->summaryCard('Media Files', MediaFile::query()->count(), 'Uploaded media assets', 'fas fa-photo-video', 'purple', null),
+                $this->summaryCard('Admins', Admin::query()->count(), 'Admin center accounts', 'fas fa-user-shield', 'teal', route('admin.admincenter.adminusers.index')),
+            ],
+            'activityCards' => [
+                $this->metric('New Users Today', User::query()->where('created_at', '>=', $today)->count(), 'fas fa-user-plus', 'primary'),
+                $this->metric('New Mixes Today', Mix::query()->where('created_at', '>=', $today)->count(), 'fas fa-music', 'info'),
+                $this->metric('Stories In Review', Post::query()->review()->count(), 'fas fa-edit', 'warning'),
+                $this->metric('Pending Comments', Comment::query()->where('status', Comment::STATUS_PENDING)->count(), 'fas fa-comments', 'danger'),
+            ],
+            'contentSnapshot' => [
+                $this->statusLine('Published stories', Post::query()->published()->count()),
+                $this->statusLine('Draft stories', Post::query()->draft()->count()),
+                $this->statusLine('Featured stories', Post::query()->featured()->count()),
+                $this->statusLine('Breaking stories', Post::query()->breaking()->count()),
+            ],
+            'commerceSnapshot' => [
+                $this->statusLine('Active products', Product::query()->where('status', 'active')->count()),
+                $this->statusLine('Draft products', Product::query()->where('status', 'draft')->count()),
+                $this->statusLine('Open carts', ShoppingCart::query()->where('status', 'open')->count()),
+                $this->statusLine('Pending affiliate payouts', $this->pendingAffiliatePayouts()),
+            ],
+            'communitySnapshot' => [
+                $this->statusLine('Active DJs', DjProfile::query()->where('profile_status', 'active')->count()),
+                $this->statusLine('Battle-ready DJs', DjProfile::query()->where('battle_enabled', true)->count()),
+                $this->statusLine('Verified DJs', DjProfile::query()->where('verification_status', 'verified')->count()),
+                $this->statusLine('Wallets funded', Wallet::query()->where('available_balance', '>', 0)->count()),
+            ],
+            'battleSnapshot' => [
+                $this->statusLine('Pending challenges', DjBattle::query()->where('status', DjBattle::STATUS_PENDING)->count()),
+                $this->statusLine('Recording battles', DjBattle::query()->where('status', DjBattle::STATUS_RECORDING)->count()),
+                $this->statusLine('Voting battles', DjBattle::query()->where('status', DjBattle::STATUS_VOTING)->count()),
+                $this->statusLine('Completed battles', DjBattle::query()->where('status', DjBattle::STATUS_COMPLETED)->count()),
+            ],
+            'recentUsers' => User::query()
+                ->latest()
+                ->limit(5)
+                ->get(['id', 'name', 'email', 'created_at']),
+            'recentPosts' => Post::query()
+                ->with('author:id,name,email')
+                ->latest()
+                ->limit(5)
+                ->get(['id', 'author_id', 'title', 'status', 'published_at', 'created_at']),
+            'recentMixes' => Mix::query()
+                ->with('user:id,name,email')
+                ->latest()
+                ->limit(5)
+                ->get(['id', 'user_id', 'title', 'genre', 'is_public', 'published_at', 'created_at']),
+            'quickActions' => [
+                [
+                    'label' => 'Create News Story',
+                    'description' => 'Draft or publish a BlendNews article.',
+                    'href' => route('admin.blendnews.create'),
+                    'icon' => 'fas fa-plus',
+                    'theme' => 'primary',
+                ],
+                [
+                    'label' => 'Manage Users',
+                    'description' => 'Review public accounts and profiles.',
+                    'href' => route('admin.users.index'),
+                    'icon' => 'fas fa-users',
+                    'theme' => 'info',
+                ],
+                [
+                    'label' => 'Manage Products',
+                    'description' => 'Update merch and marketplace items.',
+                    'href' => route('admin.products.index'),
+                    'icon' => 'fas fa-shopping-bag',
+                    'theme' => 'success',
+                ],
+                [
+                    'label' => 'Battle Admin',
+                    'description' => 'Open the battle operations dashboard.',
+                    'href' => route('admin.battle-admin.dashboard'),
+                    'icon' => 'fas fa-trophy',
+                    'theme' => 'danger',
+                ],
+            ],
+        ]);
+    }
+
+    private function summaryCard(
+        string $label,
+        int|float $value,
+        string $detail,
+        string $icon,
+        string $theme,
+        ?string $href,
+    ): array {
+        return [
+            'label' => $label,
+            'value' => number_format($value, is_float($value) ? 1 : 0),
+            'detail' => $detail,
+            'icon' => $icon,
+            'theme' => $theme,
+            'href' => $href,
         ];
-        $reviewEscrows = BattleEscrow::query()
-            ->where('requires_admin_review', true)
-            ->count();
-        $settlementFailures = BattleEscrow::query()
-            ->whereNotNull('last_settlement_error')
-            ->count();
-        $battlesBelowVoteMinimum = $this->battlesBelowVoteMinimum();
-        $pendingWithdrawals = AffiliatePayout::query()
+    }
+
+    private function metric(string $label, int|float $value, string $icon, string $theme): array
+    {
+        return [
+            'label' => $label,
+            'value' => number_format($value, is_float($value) ? 1 : 0),
+            'icon' => $icon,
+            'theme' => $theme,
+        ];
+    }
+
+    private function statusLine(string $label, int|float $value): array
+    {
+        return [
+            'label' => $label,
+            'value' => number_format($value, is_float($value) ? 1 : 0),
+        ];
+    }
+
+    private function pendingAffiliatePayouts(): int
+    {
+        return AffiliatePayout::query()
             ->whereIn('status', [
                 AffiliatePayout::STATUS_REQUESTED,
                 AffiliatePayout::STATUS_APPROVED,
                 AffiliatePayout::STATUS_PROCESSING,
             ])
             ->count();
-        $suspiciousVoteClusters = $this->suspiciousVoteClusters();
-        $submittedVotes = DjBattleVote::query()
-            ->whereNotNull('submitted_at')
-            ->count();
-        $battleVoteBase = DjBattle::query()
-            ->whereIn('status', [DjBattle::STATUS_VOTING, DjBattle::STATUS_COMPLETED])
-            ->count();
-        $averageVotesPerBattle = $battleVoteBase > 0
-            ? round($submittedVotes / $battleVoteBase, 1)
-            : 0;
-
-        return view('admin.dashboard', [
-            'adminAlerts' => [
-                [
-                    'label' => 'Escrows Require Review',
-                    'value' => $reviewEscrows,
-                    'detail' => 'Escrows waiting for admin review.',
-                    'theme' => $reviewEscrows > 0 ? 'danger' : 'success',
-                    'icon' => 'fas fa-shield-alt',
-                ],
-                [
-                    'label' => 'Settlement Jobs Failed',
-                    'value' => $settlementFailures,
-                    'detail' => 'Escrows with settlement errors.',
-                    'theme' => $settlementFailures > 0 ? 'danger' : 'success',
-                    'icon' => 'fas fa-exclamation-triangle',
-                ],
-                [
-                    'label' => 'Battles Below Vote Minimum',
-                    'value' => $battlesBelowVoteMinimum,
-                    'detail' => 'Voting battles below minimum vote count.',
-                    'theme' => $battlesBelowVoteMinimum > 0 ? 'warning' : 'success',
-                    'icon' => 'fas fa-vote-yea',
-                ],
-                [
-                    'label' => 'Withdrawals Pending Approval',
-                    'value' => $pendingWithdrawals,
-                    'detail' => 'Affiliate payout requests needing movement.',
-                    'theme' => $pendingWithdrawals > 0 ? 'warning' : 'success',
-                    'icon' => 'fas fa-hand-holding-usd',
-                ],
-                [
-                    'label' => 'Suspicious Vote Clusters',
-                    'value' => $suspiciousVoteClusters,
-                    'detail' => 'Users with 5+ votes in the last 24 hours.',
-                    'theme' => $suspiciousVoteClusters > 0 ? 'warning' : 'success',
-                    'icon' => 'fas fa-user-secret',
-                ],
-            ],
-            'sections' => [
-                [
-                    'title' => 'Platform Overview',
-                    'cards' => [
-                        $this->metric('Total Users', User::query()->count(), 'fas fa-users', 'info'),
-                        $this->metric('Active DJs', DjProfile::query()->where('profile_status', 'active')->count(), 'fas fa-headphones', 'success'),
-                        $this->metric('Battle-Enabled DJs', DjProfile::query()->where('battle_enabled', true)->count(), 'fas fa-bolt', 'primary'),
-                    ],
-                ],
-                [
-                    'title' => 'Battle Activity',
-                    'cards' => [
-                        $this->metric('Open Battles', DjBattle::query()->whereIn('status', $openBattleStatuses)->count(), 'fas fa-fire', 'danger'),
-                        $this->metric('Voting Battles', DjBattle::query()->where('status', DjBattle::STATUS_VOTING)->count(), 'fas fa-vote-yea', 'warning'),
-                        $this->metric('Completed Battles', DjBattle::query()->where('status', DjBattle::STATUS_COMPLETED)->count(), 'fas fa-trophy', 'success'),
-                        $this->metric('Pending Challenges', DjBattle::query()->where('status', DjBattle::STATUS_PENDING)->count(), 'fas fa-hourglass-half', 'secondary'),
-                        $this->metric('Disputed Battles', DjBattle::query()->where('status', DjBattle::STATUS_DISPUTED)->count(), 'fas fa-gavel', 'danger'),
-                    ],
-                ],
-                [
-                    'title' => 'Wallet & Token Economy',
-                    'cards' => [
-                        $this->metric('Total Tokens Issued', (int) Wallet::query()->sum('lifetime_earned'), 'fas fa-coins', 'info'),
-                        $this->metric('Total Tokens Locked', (int) Wallet::query()->sum('locked_balance'), 'fas fa-lock', 'warning'),
-                        $this->metric('Total Tokens Spent', (int) Wallet::query()->sum('lifetime_spent'), 'fas fa-receipt', 'primary'),
-                        $this->metric('Total Tokens Withdrawn', (int) Wallet::query()->sum('lifetime_withdrawn'), 'fas fa-money-bill-wave', 'secondary'),
-                        $this->metric('Pending Withdrawals', $pendingWithdrawals, 'fas fa-hand-holding-usd', $pendingWithdrawals > 0 ? 'warning' : 'success'),
-                        $this->metric('Failed Wallet Transactions', $this->failedWalletTransactions(), 'fas fa-times-circle', 'danger'),
-                    ],
-                ],
-                [
-                    'title' => 'Escrow / Settlement Health',
-                    'cards' => [
-                        $this->metric('Escrows Requiring Review', $reviewEscrows, 'fas fa-shield-alt', $reviewEscrows > 0 ? 'danger' : 'success'),
-                        $this->metric('Settlement Failures', $settlementFailures, 'fas fa-exclamation-triangle', $settlementFailures > 0 ? 'danger' : 'success'),
-                        $this->metric('Cancelled Battles', DjBattle::query()->where('status', DjBattle::STATUS_CANCELLED)->count(), 'fas fa-ban', 'secondary'),
-                        $this->metric('Refunded Battles', BattleEscrow::query()->whereNotNull('refunded_at')->count(), 'fas fa-undo-alt', 'info'),
-                    ],
-                ],
-                [
-                    'title' => 'Fan Voting Activity',
-                    'cards' => [
-                        $this->metric('Votes Cast Today', DjBattleVote::query()->whereNotNull('submitted_at')->where('submitted_at', '>=', $today)->count(), 'fas fa-check-square', 'success'),
-                        $this->metric('Average Votes Per Battle', $averageVotesPerBattle, 'fas fa-chart-line', 'info'),
-                        $this->metric('Battles Below Vote Minimum', $battlesBelowVoteMinimum, 'fas fa-battery-quarter', $battlesBelowVoteMinimum > 0 ? 'warning' : 'success'),
-                        $this->metric('Fan Rewards Paid', (int) WalletTransaction::query()->where('type', WalletService::TYPE_FAN_REWARD)->sum('amount'), 'fas fa-gift', 'primary'),
-                    ],
-                ],
-                [
-                    'title' => 'Risk / Admin Review',
-                    'cards' => [
-                        $this->metric('Suspicious Vote Activity', $suspiciousVoteClusters, 'fas fa-user-secret', $suspiciousVoteClusters > 0 ? 'warning' : 'success'),
-                        $this->metric('Duplicate/Flagged Accounts', $this->flaggedAccounts(), 'fas fa-user-lock', 'danger'),
-                        $this->metric('High-Stake Battles', DjBattle::query()->where('stake_amount', '>=', 1000)->count(), 'fas fa-arrow-up', 'warning'),
-                        $this->metric('Admin Actions Today', $this->adminActionsToday($today), 'fas fa-user-cog', 'info'),
-                    ],
-                ],
-            ],
-            'topVotedBattles' => $this->topVotedBattles(),
-            'mostActiveVoters' => $this->mostActiveVoters(),
-            'generatedAt' => now(),
-        ]);
-    }
-
-    private function metric(string $label, int|float|string $value, string $icon, string $theme): array
-    {
-        return [
-            'label' => $label,
-            'value' => is_int($value) || is_float($value) ? number_format($value, is_float($value) ? 1 : 0) : $value,
-            'icon' => $icon,
-            'theme' => $theme,
-        ];
-    }
-
-    private function battlesBelowVoteMinimum(): int
-    {
-        return DjBattle::query()
-            ->where('status', DjBattle::STATUS_VOTING)
-            ->whereRaw('(select count(*) from dj_battle_votes where dj_battle_votes.battle_id = dj_battles.id and dj_battle_votes.submitted_at is not null) < dj_battles.minimum_votes')
-            ->count();
-    }
-
-    private function failedWalletTransactions(): int
-    {
-        return WalletTransaction::query()
-            ->where(fn ($query) => $query
-                ->where('status', 'failed')
-                ->orWhereNotNull('failed_at'))
-            ->count();
-    }
-
-    private function suspiciousVoteClusters(): int
-    {
-        $clusters = DjBattleVote::query()
-            ->select('user_id')
-            ->whereNotNull('submitted_at')
-            ->where('submitted_at', '>=', now()->subDay())
-            ->groupBy('user_id')
-            ->havingRaw('count(*) >= 5');
-
-        return DB::query()
-            ->fromSub($clusters, 'vote_clusters')
-            ->count();
-    }
-
-    private function flaggedAccounts(): int
-    {
-        return AffiliateReferral::query()->where('is_suspicious', true)->count()
-            + AffiliateReferralVisit::query()->where('is_suspicious', true)->count();
-    }
-
-    private function adminActionsToday(Carbon $today): int
-    {
-        return WalletTransaction::query()
-            ->whereNotNull('created_by_admin_id')
-            ->where('created_at', '>=', $today)
-            ->count()
-            + AffiliateRewardAudit::query()
-                ->where('actor_type', Admin::class)
-                ->where('occurred_at', '>=', $today)
-                ->count()
-            + AffiliatePayout::query()
-                ->whereNotNull('processed_by_admin_id')
-                ->where('updated_at', '>=', $today)
-                ->count()
-            + AffiliateCampaign::query()
-                ->whereNotNull('created_by_admin_id')
-                ->where('created_at', '>=', $today)
-                ->count();
-    }
-
-    private function topVotedBattles()
-    {
-        return DjBattle::query()
-            ->withCount(['votes as submitted_votes_count' => fn ($query) => $query->whereNotNull('submitted_at')])
-            ->orderByDesc('submitted_votes_count')
-            ->orderByDesc('created_at')
-            ->limit(5)
-            ->get(['id', 'uuid', 'title', 'status', 'minimum_votes']);
-    }
-
-    private function mostActiveVoters()
-    {
-        return User::query()
-            ->select('users.id', 'users.name', 'users.email')
-            ->join('dj_battle_votes', 'dj_battle_votes.user_id', '=', 'users.id')
-            ->whereNotNull('dj_battle_votes.submitted_at')
-            ->selectRaw('count(*) as submitted_votes_count')
-            ->groupBy('users.id', 'users.name', 'users.email')
-            ->orderByDesc('submitted_votes_count')
-            ->orderBy('users.name')
-            ->limit(5)
-            ->get();
     }
 }

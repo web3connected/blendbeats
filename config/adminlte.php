@@ -337,6 +337,17 @@ return [
             'icon' => 'fas fa-fw fa-tachometer-alt',
         ],
         [
+            'text' => 'Battle Admin',
+            'icon' => 'fas fa-fw fa-trophy',
+            'submenu' => [
+                [
+                    'text' => 'Battle Dashboard',
+                    'url' => 'admin/battle-admin/dashboard',
+                    'icon' => 'fas fa-fw fa-chart-line',
+                ],
+            ],
+        ],
+        [
             'text' => 'Admin Center',
             'icon' => 'fas fa-fw fa-users-cog',
             'submenu' => [

@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AdminCenter\LoungePlaylistController;
 use App\Http\Controllers\Admin\AdminCenter\PaymentProviderController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\BattleDashboardController;
 use App\Http\Controllers\Admin\BetaTokenController;
 use App\Http\Controllers\Admin\BlendNews\PostController as BlendNewsPostController;
 use App\Http\Controllers\Admin\CommerceCartController;
@@ -29,6 +30,7 @@ Route::middleware('guest:admin')->group(function (): void {
 
 Route::middleware('admin.auth')->group(function (): void {
     Route::get('/', DashboardController::class)->name('dashboard');
+    Route::get('battle-admin/dashboard', BattleDashboardController::class)->name('battle-admin.dashboard');
     Route::get('account', ResourcePlaceholderController::class)
         ->defaults('resource', 'account')
         ->name('account');
