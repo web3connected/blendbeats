@@ -8,7 +8,7 @@ export type HomeImageFeature = {
 export const homeSeo = {
   title: 'Blend Battlegrounds - Home',
   description:
-    'Join the ultimate DJ community. Compete in live battles, post your mixes, and shop the gear that moves the culture.',
+    'Where DJs go to war. Join during the July 4 beta launch and get 1,000 coins to test battles, voting, and the wallet system.',
 };
 
 export const homeImageFeatures: HomeImageFeature[] = [

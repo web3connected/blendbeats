@@ -154,7 +154,7 @@ const DJHero = () => {
               >
                 <div className="w-8 h-[2px] bg-primary" />
                 <span className="text-primary text-xs font-bold tracking-[0.25em] uppercase" style={{ fontFamily: 'var(--font-heading)' }}>
-                  The Premier Underground DJ Battle Platform
+                  July 4 Beta Launch Special
                 </span>
               </motion.div>
 
@@ -193,7 +193,7 @@ const DJHero = () => {
               >
                 <div className="w-0.75 self-stretch bg-primary shrink-0 mt-1" />
                 <p className="text-[#aaaaaa] text-base md:text-lg max-w-md leading-relaxed">
-                  Compete head-to-head, post your mixes, get rated by the culture, and shop the gear that moves the crowd.
+                  Where DJs go to war. Join during our beta launch and get 1,000 coins to test battles, voting, and the wallet system.
                 </p>
               </motion.div>
 
@@ -205,20 +205,20 @@ const DJHero = () => {
                 className="flex flex-wrap gap-3 mt-8"
               >
                 <Link
-                  to="/battles"
+                  to="/register"
                   className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-white font-bold tracking-widest uppercase text-sm hover:bg-primary/90 transition-colors"
                   style={{ fontFamily: 'var(--font-heading)', paddingLeft: '2.0rem' }}
                 >
                   <Zap size={16} />
-                  ENTER A BATTLE
+                  CLAIM 1,000 COINS
                 </Link>
                 <Link
-                  to="/mixes"
+                  to="/battles"
                   className="inline-flex items-center gap-2 px-8 py-4 bg-transparent border border-[#444444] text-[#cccccc] font-bold tracking-widest uppercase text-sm hover:border-white hover:text-white transition-colors"
                   style={{ fontFamily: 'var(--font-heading)' }}
                 >
                   <Play size={16} />
-                  POST YOUR MIX
+                  ENTER A BATTLE
                 </Link>
               </motion.div>
             </div>
