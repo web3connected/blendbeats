@@ -6,6 +6,7 @@ import { AuthProvider } from './Frontend/components/auth/AuthProvider';
 import { PlayerProvider } from './Frontend/components/player/PlayerProvider';
 import SiteWrapper from './Frontend/layouts/SiteWrapper';
 import AccountPage from './Frontend/pages/auth/AccountPage';
+import AccountBookingsPage from './Frontend/pages/auth/AccountBookingsPage';
 import BadgesPage from './Frontend/pages/auth/BadgesPage';
 import BillingPaymentsPage from './Frontend/pages/auth/BillingPaymentsPage';
 import DocumentationArticlePage from './Frontend/pages/auth/DocumentationArticlePage';
@@ -85,6 +86,7 @@ createRoot(rootElement).render(
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/djs" element={<DjsPage />} />
                 <Route path="/djs/scratches" element={<DjScratchesPage />} />
+                <Route path="/djs/:handle/book" element={<PublicDjProfilePage />} />
                 <Route path="/djs/:handle" element={<PublicDjProfilePage />} />
                 <Route path="/dj/start" element={<StartDjCareerPage />} />
                 <Route path="/dj/edit" element={<StartDjCareerPage />} />
@@ -98,6 +100,9 @@ createRoot(rootElement).render(
                 <Route path="/account" element={<UserDashboardPage />} />
                 <Route path="/account/affiliate" element={<AffiliateProgramPage />} />
                 <Route path="/account/badges" element={<BadgesPage />} />
+                <Route path="/account/bookings" element={<AccountBookingsPage />} />
+                <Route path="/account/bookings/calendar" element={<AccountBookingsPage />} />
+                <Route path="/account/bookings/:uuid" element={<AccountBookingsPage />} />
                 <Route path="/account/wallet" element={<WalletPage />} />
                 <Route path="/account/playlist" element={<UserPlaylistPage />} />
                 <Route path="/account/profile" element={<AccountPage />} />

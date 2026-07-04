@@ -2,6 +2,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import {
   ArrowRight,
   BookOpen,
+  CalendarCheck,
   CreditCard,
   History,
   ListMusic,
@@ -80,6 +81,13 @@ const dashboardActions = [
     href: '/dj/portfolio',
     icon: Music2,
     accent: 'text-primary',
+  },
+  {
+    title: 'Bookings',
+    description: 'Review DJ booking requests, calendar events, and manual payment status.',
+    href: '/account/bookings',
+    icon: CalendarCheck,
+    accent: 'text-[#22c55e]',
   },
   {
     title: 'Profile',

@@ -82,6 +82,14 @@ class DjProfile extends Model
     }
 
     /**
+     * @return HasMany<DjBookingRequest, $this>
+     */
+    public function bookingRequests(): HasMany
+    {
+        return $this->hasMany(DjBookingRequest::class);
+    }
+
+    /**
      * @return HasMany<DjSocialLink, $this>
      */
     public function socialLinks(): HasMany

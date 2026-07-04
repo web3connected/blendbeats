@@ -125,4 +125,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(DjBattle::class, 'created_by_user_id');
     }
+
+    public function djBookingRequests(): HasMany
+    {
+        return $this->hasMany(DjBookingRequest::class, 'dj_user_id');
+    }
+
+    public function requestedDjBookings(): HasMany
+    {
+        return $this->hasMany(DjBookingRequest::class, 'requested_by_user_id');
+    }
 }

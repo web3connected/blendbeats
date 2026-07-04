@@ -38,6 +38,8 @@ class RoutingBoundaryTest extends TestCase
             'wallet' => ['api.wallet.show'],
             'battles' => ['api.battles.index'],
             'account battles' => ['api.account.battles.index'],
+            'booking requests' => ['api.dj-hub.booking-requests.store'],
+            'account bookings' => ['api.account.bookings.index'],
             'auth' => ['api.auth.login'],
         ];
     }

@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\BlendNews\PostController as BlendNewsPostControll
 use App\Http\Controllers\Admin\CommerceCartController;
 use App\Http\Controllers\Admin\CommerceProductController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DjBookingAdminController;
 use App\Http\Controllers\Admin\ResourcePlaceholderController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
@@ -113,6 +114,8 @@ Route::middleware('admin.auth')->group(function (): void {
     Route::get('admincenter/documentation', DocumentationManagementController::class)
         ->middleware('permission:documentation.view,admin')
         ->name('admincenter.documentation.index');
+    Route::get('admincenter/djbookings', [DjBookingAdminController::class, 'index'])
+        ->name('admincenter.dj-bookings.index');
 
     Route::get('admincenter/affiliates', [AffiliateManagementController::class, 'affiliates'])
         ->middleware('permission:affiliates.view,admin')

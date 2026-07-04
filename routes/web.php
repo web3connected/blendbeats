@@ -29,6 +29,7 @@ Route::prefix('api')
         require __DIR__.'/mixes.php';
         require __DIR__.'/wallet_api.php';
         require __DIR__.'/battles.php';
+        require __DIR__.'/bookings.php';
         require __DIR__.'/commerce.php';
         require __DIR__.'/ads.php';
         require __DIR__.'/counters.php';

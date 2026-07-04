@@ -19,6 +19,7 @@ class NotificationController extends Controller
         'featured_ads',
         'billing',
         'affiliate',
+        'bookings',
         'support',
         'system',
     ];

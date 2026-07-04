@@ -1,6 +1,7 @@
 import {
   Bell,
   BookOpen,
+  CalendarCheck,
   ChevronDown,
   CreditCard,
   LayoutDashboard,
@@ -72,6 +73,7 @@ export default function WhosLoggedIn({ onNavigate, variant = 'desktop' }: WhosLo
           { label: 'Start DJ Career', to: '/dj/start', icon: Radio, show: !hasDjProfile },
           { label: 'DJ Profile', to: '/dj/edit', icon: Radio, show: hasDjProfile },
           { label: 'DJ Portfolio', to: '/dj/portfolio', icon: Music2 },
+          { label: 'Bookings', to: '/account/bookings', icon: CalendarCheck, show: hasDjProfile },
           { label: 'My Playlist', to: '/account/playlist', icon: ListMusic },
         ],
       },

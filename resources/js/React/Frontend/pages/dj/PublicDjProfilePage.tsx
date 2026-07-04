@@ -19,9 +19,10 @@ import {
   Video,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/components/auth/AuthProvider';
+import { BookDjModal } from '@/components/bookings/BookDjModal';
 import { usePlayer } from '@/components/player/PlayerProvider';
 import { useDjFollow } from '@/hooks/useDjFollow';
 import { useCounter } from '@/hooks/useCounter';
@@ -53,11 +54,13 @@ function mediaViewLabel(provider: string | null | undefined) {
 export default function PublicDjProfilePage() {
   const { handle } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
   const [dj, setDj] = useState<DjHubDj | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
   const countedProfileViews = useRef(new Set<string>());
   const { count: countView } = useCounter({
     onCounted: (response) => {
@@ -76,6 +79,12 @@ export default function PublicDjProfilePage() {
       .catch(() => setError('Unable to load this DJ profile.'))
       .finally(() => setIsLoading(false));
   }, [handle]);
+
+  useEffect(() => {
+    if (location.pathname.endsWith('/book')) {
+      setIsBookingOpen(true);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!dj?.handle) return;
@@ -237,6 +246,17 @@ export default function PublicDjProfilePage() {
                         <UserPlus size={15} />
                       )}
                       {follow.isFollowing ? 'Following' : 'Follow DJ'}
+                    </button>
+                  )}
+                  {!isOwnProfile && dj.open_for_bookings && (
+                    <button
+                      type="button"
+                      onClick={() => setIsBookingOpen(true)}
+                      className="inline-flex h-10 items-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
+                      style={{ fontFamily: 'var(--font-heading)' }}
+                    >
+                      <CalendarCheck size={15} />
+                      Book Me
                     </button>
                   )}
                   {dj.location && (
@@ -577,6 +597,19 @@ export default function PublicDjProfilePage() {
           </div>
         </section>
       </main>
+      {dj.open_for_bookings && (
+        <BookDjModal
+          handle={dj.handle}
+          djName={dj.dj_name}
+          isOpen={isBookingOpen}
+          onClose={() => {
+            setIsBookingOpen(false);
+            if (location.pathname.endsWith('/book')) {
+              navigate(`/djs/${dj.handle}`, { replace: true });
+            }
+          }}
+        />
+      )}
     </>
   );
 }

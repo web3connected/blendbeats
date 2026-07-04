@@ -377,6 +377,11 @@ return [
                     'icon' => 'fas fa-fw fa-music',
                 ],
                 [
+                    'text' => 'DJ Bookings',
+                    'url' => 'admin/admincenter/djbookings',
+                    'icon' => 'fas fa-fw fa-calendar-check',
+                ],
+                [
                     'text' => 'Payment Providers',
                     'url' => 'admin/admincenter/paymentproviders',
                     'icon' => 'fas fa-fw fa-credit-card',
