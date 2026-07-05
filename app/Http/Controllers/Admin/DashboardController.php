@@ -102,6 +102,13 @@ class DashboardController extends Controller
                     'theme' => 'success',
                 ],
                 [
+                    'label' => 'Site Analytics',
+                    'description' => 'Review traffic, users, referrers, and admin activity.',
+                    'href' => route('admin.admincenter.site-analytics.index'),
+                    'icon' => 'fas fa-chart-area',
+                    'theme' => 'secondary',
+                ],
+                [
                     'label' => 'Battle Admin',
                     'description' => 'Open the battle operations dashboard.',
                     'href' => route('admin.battle-admin.dashboard'),

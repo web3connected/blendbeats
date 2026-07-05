@@ -367,6 +367,11 @@ return [
                     'icon' => 'fas fa-fw fa-key',
                 ],
                 [
+                    'text' => 'Site Analytics',
+                    'url' => 'admin/admincenter/siteanalytics',
+                    'icon' => 'fas fa-fw fa-chart-area',
+                ],
+                [
                     'text' => 'Featured Slots',
                     'url' => 'admin/admincenter/featuredslots',
                     'icon' => 'fas fa-fw fa-star',

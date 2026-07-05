@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\CommerceProductController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DjBookingAdminController;
 use App\Http\Controllers\Admin\ResourcePlaceholderController;
+use App\Http\Controllers\Admin\SiteAnalyticsController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -114,6 +115,8 @@ Route::middleware('admin.auth')->group(function (): void {
     Route::get('admincenter/documentation', DocumentationManagementController::class)
         ->middleware('permission:documentation.view,admin')
         ->name('admincenter.documentation.index');
+    Route::get('admincenter/siteanalytics', SiteAnalyticsController::class)
+        ->name('admincenter.site-analytics.index');
     Route::get('admincenter/djbookings', [DjBookingAdminController::class, 'index'])
         ->name('admincenter.dj-bookings.index');
 

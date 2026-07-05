@@ -59,4 +59,9 @@ class Admin extends Authenticatable
     {
         return $this->hasMany(UserFeatureActivation::class);
     }
+
+    public function siteActivityEvents(): HasMany
+    {
+        return $this->hasMany(SiteActivityEvent::class);
+    }
 }

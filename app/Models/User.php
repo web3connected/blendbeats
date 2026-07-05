@@ -135,4 +135,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(DjBookingRequest::class, 'requested_by_user_id');
     }
+
+    public function siteActivityEvents(): HasMany
+    {
+        return $this->hasMany(SiteActivityEvent::class);
+    }
 }
