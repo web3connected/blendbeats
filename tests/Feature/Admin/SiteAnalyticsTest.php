@@ -42,6 +42,36 @@ class SiteAnalyticsTest extends TestCase
 
     public function test_admin_can_view_site_analytics_dashboard(): void
     {
+        [$admin] = $this->seedAnalyticsFixture();
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/admincenter/siteanalytics')
+            ->assertOk()
+            ->assertSee('Site Analytics')
+            ->assertSee('Site Traffic')
+            ->assertSee('trafficTrendChart')
+            ->assertSee('topPagesChart')
+            ->assertSee('deviceChart')
+            ->assertSee('google.com');
+    }
+
+    public function test_admin_can_view_user_activity_dashboard(): void
+    {
+        [$admin] = $this->seedAnalyticsFixture();
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/admincenter/useractivity')
+            ->assertOk()
+            ->assertSee('User Activity')
+            ->assertSee('userActivityTrendChart')
+            ->assertSee('topUsersChart')
+            ->assertSee('registrationsChart')
+            ->assertSee('Tracked User')
+            ->assertSee('Analytics Admin');
+    }
+
+    private function seedAnalyticsFixture(): array
+    {
         $admin = Admin::query()->create([
             'name' => 'Analytics Admin',
             'email' => 'analytics-admin@example.com',
@@ -89,14 +119,6 @@ class SiteAnalyticsTest extends TestCase
             'is_ajax' => false,
         ]);
 
-        $this->actingAs($admin, 'admin')
-            ->get('/admin/admincenter/siteanalytics')
-            ->assertOk()
-            ->assertSee('Site Analytics')
-            ->assertSee('Tracked Events')
-            ->assertSee('/battles')
-            ->assertSee('Tracked User')
-            ->assertSee('Analytics Admin')
-            ->assertSee('google.com');
+        return [$admin, $user];
     }
 }

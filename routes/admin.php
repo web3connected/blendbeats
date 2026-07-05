@@ -115,8 +115,10 @@ Route::middleware('admin.auth')->group(function (): void {
     Route::get('admincenter/documentation', DocumentationManagementController::class)
         ->middleware('permission:documentation.view,admin')
         ->name('admincenter.documentation.index');
-    Route::get('admincenter/siteanalytics', SiteAnalyticsController::class)
+    Route::get('admincenter/siteanalytics', [SiteAnalyticsController::class, 'site'])
         ->name('admincenter.site-analytics.index');
+    Route::get('admincenter/useractivity', [SiteAnalyticsController::class, 'users'])
+        ->name('admincenter.user-activity.index');
     Route::get('admincenter/djbookings', [DjBookingAdminController::class, 'index'])
         ->name('admincenter.dj-bookings.index');
 
