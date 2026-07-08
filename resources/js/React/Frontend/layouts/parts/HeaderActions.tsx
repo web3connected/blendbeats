@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Menu, Upload, X } from 'lucide-react';
+import { Menu, Radio, Upload, X } from 'lucide-react';
 
 import HeaderCartDrawer from './HeaderCartDrawer';
 import NotificationHeaderBell from './NotificationHeaderBell';
@@ -17,11 +17,12 @@ export default function HeaderActions({
   return (
     <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2 2xl:gap-3">
       <Link
-        to="/battles"
-        className="hidden h-10 items-center justify-center whitespace-nowrap bg-primary px-3 text-[11px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 md:inline-flex lg:px-4 2xl:px-5 2xl:text-xs"
+        to="/dashboard/live"
+        className="hidden h-10 items-center justify-center gap-2 whitespace-nowrap bg-primary px-3 text-[11px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90 md:inline-flex lg:px-4 2xl:px-5 2xl:text-xs"
         style={{ fontFamily: 'var(--font-heading)' }}
       >
-        ENTER BATTLE
+        <Radio size={15} />
+        Go Live
       </Link>
 
       <Link

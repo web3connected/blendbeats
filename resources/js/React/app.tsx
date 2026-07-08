@@ -44,6 +44,9 @@ import HomePage from './Frontend/pages';
 import { AboutPage, ContactPage, PrivacyPage, TermsPage } from './Frontend/pages/info';
 import MerchPage from './Frontend/pages/merch';
 import MixesPage from './Frontend/pages/mixes';
+import LiveChannelPage from './Frontend/pages/live/LiveChannelPage';
+import LiveDirectoryPage from './Frontend/pages/live/LiveDirectoryPage';
+import LiveStudioPage from './Frontend/pages/live/LiveStudioPage';
 import PricingPage from './Frontend/pages/pricing';
 import DjLoungePage from './Frontend/pages/social/DjLoungePage';
 import SubscriptionCancelPage from './Frontend/pages/subscription-cancel';
@@ -76,6 +79,9 @@ createRoot(rootElement).render(
                 <Route path="/mixes" element={<MixesPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/affiliate" element={<AffiliateProgramPage />} />
+                <Route path="/live" element={<LiveDirectoryPage />} />
+                <Route path="/live/:username" element={<LiveChannelPage />} />
+                <Route path="/dashboard/live" element={<LiveStudioPage />} />
                 <Route path="/subscription" element={<SubscriptionPage />} />
                 <Route path="/subscription/success" element={<SubscriptionSuccessPage />} />
                 <Route path="/subscription/cancel" element={<SubscriptionCancelPage />} />

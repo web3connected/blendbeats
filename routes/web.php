@@ -13,6 +13,7 @@ require __DIR__.'/public.php';
 require __DIR__.'/automation.php';
 require __DIR__.'/news.php';
 require __DIR__.'/wallet.php';
+require __DIR__.'/live.php';
 
 // Internal app endpoints keep their /api URLs but run through the web stack.
 Route::prefix('api')

@@ -5,6 +5,7 @@ import { ChevronDown, Clapperboard, Headphones, Music2, Radio, Users } from 'luc
 import { useAuth } from '@/components/auth/AuthProvider';
 
 const navItems = [
+  { href: '/live', label: 'LIVE' },
   { href: '/battles', label: 'BATTLES' },
   { href: '/mixes', label: 'MIXES' },
   { href: '/pricing', label: 'PRICING' },

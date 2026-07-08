@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Traits\AvatarTrait;
+use App\Services\MembershipTierService;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -84,6 +85,22 @@ class User extends Authenticatable
     public function mediaAccount(): HasOne
     {
         return $this->hasOne(MediaAccount::class);
+    }
+
+    public function liveChannel(): HasOne
+    {
+        return $this->hasOne(LiveChannel::class);
+    }
+
+    public function liveStreams(): HasMany
+    {
+        return $this->hasMany(LiveStream::class);
+    }
+
+    public function canGoLive(): bool
+    {
+        return app(MembershipTierService::class)->canGoLive($this)
+            && $this->djProfile()->exists();
     }
 
     public function featureActivations(): HasMany

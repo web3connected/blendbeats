@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'agora' => [
+        'app_id' => env('AGORA_APP_ID'),
+        'app_certificate' => env('AGORA_APP_CERTIFICATE'),
+        'project_name' => env('AGORA_PROJECT_NAME'),
+        'test_channel' => env('AGORA_TEST_CHANNEL', 'blendbeat-test'),
+        'token_ttl' => env('AGORA_TOKEN_TTL', 3600),
+    ],
+
 ];

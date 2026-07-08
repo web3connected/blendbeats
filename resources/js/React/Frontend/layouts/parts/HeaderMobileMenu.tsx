@@ -10,6 +10,7 @@ type HeaderMobileMenuProps = {
 };
 
 const navItems = [
+  { href: '/live', label: 'LIVE' },
   { href: '/battles', label: 'BATTLES' },
   { href: '/mixes', label: 'MIXES' },
   { href: '/pricing', label: 'PRICING' },
@@ -103,12 +104,13 @@ export default function HeaderMobileMenu({ isOpen, onClose }: HeaderMobileMenuPr
         </Link>
 
         <Link
-          to="/battles"
-          className="mt-3 inline-flex items-center justify-center bg-primary px-5 py-3 text-sm font-bold uppercase tracking-widest text-white"
+          to="/dashboard/live"
+          className="mt-3 inline-flex items-center justify-center gap-2 bg-primary px-5 py-3 text-sm font-bold uppercase tracking-widest text-white"
           style={{ fontFamily: 'var(--font-heading)' }}
           onClick={onClose}
         >
-          ENTER BATTLE
+          <Radio size={15} />
+          Go Live
         </Link>
 
         <WhosLoggedIn variant="mobile" onNavigate={onClose} />
