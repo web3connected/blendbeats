@@ -49,7 +49,7 @@ export const documentationCategories: DocumentationCategory[] = [
   {
     slug: 'dj-features',
     title: 'DJ Features',
-    description: 'DJ Lounge, scratches, profiles, portfolios, uploads, mixes, and creator workflows.',
+    description: 'DJ Lounge, live streaming, scratches, profiles, portfolios, uploads, mixes, and creator workflows.',
   },
   {
     slug: 'marketplace',
@@ -85,7 +85,7 @@ export const documentationArticles: DocumentationArticle[] = [
       },
       {
         title: 'Creator Tools',
-        body: 'DJ tools are grouped around public identity, portfolio media, DJ Lounge participation, scratches, mixes, battles, badges, and future marketplace discovery.',
+        body: 'DJ tools are grouped around public identity, portfolio media, live streaming, DJ Lounge participation, scratches, mixes, battles, badges, and future marketplace discovery.',
       },
       {
         title: 'Commerce And Rewards',
@@ -111,7 +111,7 @@ export const documentationArticles: DocumentationArticle[] = [
       },
       {
         title: 'Choose Your Lane',
-        body: 'Listeners can save playlists, follow community activity, and browse content. DJs can create a public DJ profile, upload media, and use creator tools.',
+        body: 'Listeners can save playlists, follow community activity, watch live DJs, and browse content. DJs can create a public DJ profile, upload media, go live when their plan allows it, and use creator tools.',
       },
       {
         title: 'Check Membership And Rewards',
@@ -211,14 +211,19 @@ export const documentationArticles: DocumentationArticle[] = [
       },
       {
         title: 'Storage And Access',
-        body: 'Membership tiers control storage allowance and can unlock promotional access levels. Free accounts keep core access and starter storage.',
+        body: 'Membership tiers control storage allowance, paid creator access, and live streaming limits. Free accounts keep core access and starter storage.',
+      },
+      {
+        title: 'Live Streaming Limits',
+        body: 'Paid DJ plans control whether a user can go live, how long each stream can run, monthly stream counts, and whether the recording option is available.',
+        bullets: ['Plus can stream for 30 minutes with 20 streams per month.', 'Pro can stream for 60 minutes with 50 streams per month and can request recording.', 'Elite has unlimited stream length and monthly streams for now and can request recording.'],
       },
       {
         title: 'Payment Methods',
         body: 'Payment methods are managed separately from the subscription summary so providers can be enabled, disabled, or expanded over time.',
       },
     ],
-    relatedSlugs: ['credits-rewards', 'purchases-downloads', 'account-management'],
+    relatedSlugs: ['live-streaming', 'credits-rewards', 'account-management'],
   },
   {
     slug: 'credits-rewards',
@@ -340,7 +345,43 @@ export const documentationArticles: DocumentationArticle[] = [
         body: 'Uploaded creator media counts toward account storage, and membership tier controls total available storage.',
       },
     ],
-    relatedSlugs: ['profile-management', 'memberships-subscriptions', 'dj-scratches'],
+    relatedSlugs: ['profile-management', 'memberships-subscriptions', 'live-streaming'],
+  },
+  {
+    slug: 'live-streaming',
+    title: 'Live Streaming',
+    category: 'dj-features',
+    summary: 'Go live from the DJ Live Studio, understand plan limits, recording eligibility, and public audience viewing.',
+    status: 'active',
+    updatedAt: '2026-07-07',
+    manageHref: '/dashboard/live',
+    keywords: ['live streaming', 'go live', 'live studio', 'agora', 'stream limits', 'recording', 'live directory'],
+    sections: [
+      {
+        title: 'Live Studio',
+        body: 'Paid DJs use the Live Studio to start a browser camera and microphone stream through Agora. The header Go Live button opens the studio at /dashboard/live.',
+        bullets: ['The studio starts one active stream at a time.', 'Camera and microphone publish when the stream starts.', 'End Live stops the stream and marks it ended in the account record.'],
+      },
+      {
+        title: 'Who Can Go Live',
+        body: 'Free accounts can watch live streams but cannot start them. Plus, Pro, and Elite DJ accounts can go live when their membership and DJ profile are eligible.',
+        bullets: ['Plus: 30 minutes per stream and 20 streams per month.', 'Pro: 60 minutes per stream and 50 streams per month.', 'Elite: unlimited stream length and unlimited monthly streams for now.'],
+      },
+      {
+        title: 'Watching Live DJs',
+        body: 'The public live directory at /live shows active streams. Viewers can open a DJ channel page to watch the active stream, and offline channels show an offline state.',
+      },
+      {
+        title: 'Recording Option',
+        body: 'Pro and Elite users can choose Save this live stream to my account before starting. The option records eligibility and preference now; Agora Cloud Recording and playback are not enabled yet.',
+        bullets: ['Plus users do not see the recording checkbox.', 'Recording requests are verified on the server.', 'Past video playback, chat, tips, and scheduling are separate future milestones.'],
+      },
+      {
+        title: 'Automatic Time Limits',
+        body: 'Streams with plan time limits show remaining time in the Live Studio. When time expires, the studio tries to end the stream and the backend cleanup command can also mark expired streams ended.',
+      },
+    ],
+    relatedSlugs: ['memberships-subscriptions', 'dj-portfolio-and-mixes', 'dj-battle-system'],
   },
   {
     slug: 'beat-marketplace',
