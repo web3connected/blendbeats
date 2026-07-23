@@ -1,4 +1,5 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
+import { Eye, Heart } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
@@ -22,6 +23,11 @@ export default function LiveChannelPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [presence, setPresence] = useState<LiveViewerPresence>({ count: 0, viewers: [] });
+  const [isLiked, setIsLiked] = useState(false);
+
+  useEffect(() => {
+    setIsLiked(false);
+  }, [channel?.active_stream?.id]);
 
   const loadChannel = useCallback(async () => {
     if (!username) return;
@@ -138,11 +144,36 @@ export default function LiveChannelPage() {
 
         {activeStream && token ? (
           <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-            <AgoraAudiencePlayer
-              key={`${activeStream.id}-${token.channelName}`}
-              token={token}
-              onError={setErrorMessage}
-            />
+            <div className="min-w-0">
+              <AgoraAudiencePlayer
+                key={`${activeStream.id}-${token.channelName}`}
+                token={token}
+                onError={setErrorMessage}
+              />
+
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#252525] bg-[#101010] px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => setIsLiked((current) => !current)}
+                  className={`inline-flex h-9 items-center gap-2 rounded-md px-3 text-xs font-bold uppercase tracking-[0.12em] transition-colors ${
+                    isLiked
+                      ? 'bg-primary/15 text-primary'
+                      : 'text-[#d6d6d6] hover:bg-[#1a1a1a] hover:text-white'
+                  }`}
+                  aria-pressed={isLiked}
+                >
+                  <Heart className={isLiked ? 'fill-current' : undefined} size={16} />
+                  {isLiked ? 'Liked' : 'Like'}
+                </button>
+
+                <span className="h-5 w-px bg-[#303030]" aria-hidden="true" />
+
+                <span className="inline-flex h-9 items-center gap-2 px-2 text-xs font-bold uppercase tracking-[0.12em] text-[#c9c9c9]">
+                  <Eye size={16} className="text-primary" />
+                  {presence.count} {presence.count === 1 ? 'Viewer' : 'Viewers'}
+                </span>
+              </div>
+            </div>
             <aside className="rounded-lg border border-[#252525] bg-[#101010] p-5">
               <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white">
                 Live
