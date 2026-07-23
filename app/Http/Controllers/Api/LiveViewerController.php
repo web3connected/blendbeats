@@ -28,6 +28,35 @@ class LiveViewerController extends Controller
         $viewerHash = $this->viewerHash($attributes['viewer_id']);
         $user = $request->user();
 
+        if ($user) {
+            $viewer = LiveStreamViewer::query()
+                ->where('live_stream_id', $liveStream->id)
+                ->where('user_id', $user->id)
+                ->latest('last_seen_at')
+                ->first();
+
+            if ($viewer) {
+                $viewer->update([
+                    'viewer_hash' => $viewerHash,
+                    'display_name' => $user->name,
+                    'last_seen_at' => now(),
+                ]);
+
+                LiveStreamViewer::query()
+                    ->where('live_stream_id', $liveStream->id)
+                    ->where('user_id', $user->id)
+                    ->where('id', '!=', $viewer->id)
+                    ->delete();
+            } else {
+                LiveStreamViewer::query()->create([
+                    'live_stream_id' => $liveStream->id,
+                    'user_id' => $user->id,
+                    'viewer_hash' => $viewerHash,
+                    'display_name' => $user->name,
+                    'last_seen_at' => now(),
+                ]);
+            }
+        } else {
         LiveStreamViewer::query()->updateOrCreate(
             [
                 'live_stream_id' => $liveStream->id,
@@ -39,6 +68,7 @@ class LiveViewerController extends Controller
                 'last_seen_at' => now(),
             ],
         );
+        }
 
         return response()->json($this->presencePayload($liveStream));
     }
@@ -69,8 +99,13 @@ class LiveViewerController extends Controller
         $viewers = LiveStreamViewer::query()
             ->where('live_stream_id', $liveStream->id)
             ->where('last_seen_at', '>=', $cutoff)
-            ->orderBy('display_name')
-            ->get(['user_id', 'display_name']);
+            ->latest('last_seen_at')
+            ->get(['user_id', 'viewer_hash', 'display_name'])
+            ->unique(fn (LiveStreamViewer $viewer): string => $viewer->user_id
+                ? "user:{$viewer->user_id}"
+                : "guest:{$viewer->viewer_hash}")
+            ->sortBy('display_name')
+            ->values();
 
         return [
             'count' => $viewers->count(),

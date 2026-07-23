@@ -266,6 +266,28 @@ class LiveModuleTest extends TestCase
             ->assertJsonPath('count', 0);
     }
 
+    public function test_live_viewer_presence_counts_an_authenticated_viewer_once_after_a_page_remount(): void
+    {
+        $owner = $this->djUser('dj_plus');
+        $streamId = $this->actingAs($owner)
+            ->postJson('/api/live/start')
+            ->json('stream.id');
+
+        $viewer = User::factory()->create(['name' => 'Single Viewer']);
+
+        $this->actingAs($viewer)
+            ->postJson("/api/live/{$streamId}/viewers", ['viewer_id' => '123e4567-e89b-12d3-a456-426614174000'])
+            ->assertOk()
+            ->assertJsonPath('count', 1);
+
+        $this->postJson("/api/live/{$streamId}/viewers", ['viewer_id' => '123e4567-e89b-12d3-a456-426614174001'])
+            ->assertOk()
+            ->assertJsonPath('count', 1)
+            ->assertJsonPath('viewers.0.name', 'Single Viewer');
+
+        $this->assertDatabaseCount('live_stream_viewers', 1);
+    }
+
     public function test_host_token_requires_stream_owner(): void
     {
         $owner = $this->djUser('dj_plus');
