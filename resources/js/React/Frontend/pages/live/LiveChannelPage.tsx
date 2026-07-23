@@ -6,17 +6,22 @@ import AgoraAudiencePlayer from '@/components/live/AgoraAudiencePlayer';
 import {
   getLiveChannel,
   getLiveToken,
+  heartbeatLiveViewer,
+  leaveLiveViewer,
   type AgoraLiveToken,
   type LiveChannel,
+  type LiveViewerPresence,
 } from '@/lib/live';
 
 export default function LiveChannelPage() {
   const { username } = useParams();
   const activeStreamIdRef = useRef<number | null>(null);
+  const viewerIdRef = useRef(window.crypto.randomUUID());
   const [channel, setChannel] = useState<LiveChannel | null>(null);
   const [token, setToken] = useState<AgoraLiveToken | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [presence, setPresence] = useState<LiveViewerPresence>({ count: 0, viewers: [] });
 
   const loadChannel = useCallback(async () => {
     if (!username) return;
@@ -56,6 +61,35 @@ export default function LiveChannelPage() {
 
     return () => window.clearInterval(intervalId);
   }, [loadChannel]);
+
+  useEffect(() => {
+    const streamId = channel?.active_stream?.id;
+
+    if (!streamId || !token) {
+      setPresence({ count: 0, viewers: [] });
+      return;
+    }
+
+    let cancelled = false;
+
+    const heartbeat = async () => {
+      try {
+        const nextPresence = await heartbeatLiveViewer(streamId, viewerIdRef.current);
+        if (!cancelled) setPresence(nextPresence);
+      } catch {
+        // Viewer presence should never interrupt playback.
+      }
+    };
+
+    void heartbeat();
+    const intervalId = window.setInterval(() => void heartbeat(), 10000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      void leaveLiveViewer(streamId, viewerIdRef.current).catch(() => undefined);
+    };
+  }, [channel?.active_stream?.id, token]);
 
   const title = channel?.title ?? 'Live Channel';
   const activeStream = channel?.active_stream ?? null;
@@ -122,6 +156,26 @@ export default function LiveChannelPage() {
                   Started {new Date(activeStream.started_at).toLocaleString()}
                 </p>
               ) : null}
+              <div className="mt-6 border-t border-[#292929] pt-5">
+                <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-white">
+                  {presence.count} {presence.count === 1 ? 'Viewer' : 'Viewers'} Watching
+                </h3>
+                <div className="mt-3 flex flex-col gap-2">
+                  {presence.viewers.map((viewer) => (
+                    <div
+                      key={`${viewer.user_id ?? 'guest'}-${viewer.name}`}
+                      className="flex items-center gap-2 text-sm text-[#c9c9c9]"
+                    >
+                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                      <span>{viewer.name}</span>
+                      {viewer.is_guest ? <span className="text-xs text-[#777]">Guest</span> : null}
+                    </div>
+                  ))}
+                  {presence.count === 0 ? (
+                    <p className="text-sm text-[#777]">Waiting for viewers.</p>
+                  ) : null}
+                </div>
+              </div>
             </aside>
           </div>
         ) : null}

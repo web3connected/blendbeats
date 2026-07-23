@@ -11,6 +11,15 @@ export interface AgoraLiveToken {
   uid: number;
 }
 
+export interface LiveViewerPresence {
+  count: number;
+  viewers: Array<{
+    user_id: number | null;
+    name: string;
+    is_guest: boolean;
+  }>;
+}
+
 export interface LiveDj {
   id: number | null;
   name: string | null;
@@ -145,6 +154,21 @@ export function getLiveToken(payload: {
   return request('/api/live/token', {
     method: 'POST',
     json: payload,
+  });
+}
+
+export function heartbeatLiveViewer(liveStreamId: number, viewerId: string): Promise<LiveViewerPresence> {
+  return request(`/api/live/${liveStreamId}/viewers`, {
+    method: 'POST',
+    json: { viewer_id: viewerId },
+  });
+}
+
+export function leaveLiveViewer(liveStreamId: number, viewerId: string): Promise<LiveViewerPresence> {
+  return request(`/api/live/${liveStreamId}/viewers`, {
+    method: 'DELETE',
+    json: { viewer_id: viewerId },
+    keepalive: true,
   });
 }
 

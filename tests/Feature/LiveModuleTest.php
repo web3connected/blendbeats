@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\DjProfile;
 use App\Models\LiveChannel;
 use App\Models\LiveStream;
+use App\Models\LiveStreamViewer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -72,6 +73,18 @@ class LiveModuleTest extends TestCase
             'title' => 'Friday Night Blend',
             'status' => LiveStream::STATUS_LIVE,
         ]);
+    }
+
+    public function test_agora_configuration_is_validated_before_a_live_stream_is_created(): void
+    {
+        config(['services.agora.app_certificate' => null]);
+
+        $this->actingAs($this->djUser('dj_plus'))
+            ->postJson('/api/live/start')
+            ->assertServiceUnavailable()
+            ->assertJsonPath('message', 'Agora is not configured correctly.');
+
+        $this->assertDatabaseCount('live_streams', 0);
     }
 
     public function test_free_dj_cannot_start_live_stream(): void
@@ -218,6 +231,39 @@ class LiveModuleTest extends TestCase
 
         $this->assertStringStartsWith('007', $response->json('token'));
         $this->assertStringNotContainsString('abcdef1234567890abcdef1234567890', $response->getContent());
+    }
+
+    public function test_live_viewer_heartbeat_lists_active_viewers_and_prunes_stale_presence(): void
+    {
+        $owner = $this->djUser('dj_plus');
+        $streamId = $this->actingAs($owner)
+            ->postJson('/api/live/start')
+            ->json('stream.id');
+
+        LiveStreamViewer::query()->create([
+            'live_stream_id' => $streamId,
+            'viewer_hash' => str_repeat('a', 64),
+            'display_name' => 'Stale Viewer',
+            'last_seen_at' => now()->subMinute(),
+        ]);
+
+        $viewer = User::factory()->create(['name' => 'Current Viewer']);
+        $viewerId = '123e4567-e89b-12d3-a456-426614174000';
+
+        $this->actingAs($viewer)
+            ->postJson("/api/live/{$streamId}/viewers", ['viewer_id' => $viewerId])
+            ->assertOk()
+            ->assertJsonPath('count', 1)
+            ->assertJsonPath('viewers.0.name', 'Current Viewer')
+            ->assertJsonPath('viewers.0.is_guest', false);
+
+        $this->assertDatabaseMissing('live_stream_viewers', [
+            'display_name' => 'Stale Viewer',
+        ]);
+
+        $this->deleteJson("/api/live/{$streamId}/viewers", ['viewer_id' => $viewerId])
+            ->assertOk()
+            ->assertJsonPath('count', 0);
     }
 
     public function test_host_token_requires_stream_owner(): void

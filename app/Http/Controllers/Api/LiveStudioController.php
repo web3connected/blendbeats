@@ -38,6 +38,9 @@ class LiveStudioController extends Controller
         ]);
 
         try {
+            // Validate Agora before creating a live stream so a configuration
+            // problem cannot leave the DJ with an unusable active session.
+            $agora->assertConfigured();
             $stream = $live->start(
                 $request->user(),
                 $attributes['title'] ?? null,

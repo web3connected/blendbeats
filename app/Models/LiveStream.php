@@ -5,12 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LiveStream extends Model
 {
     use HasFactory;
 
     public const STATUS_LIVE = 'live';
+
     public const STATUS_ENDED = 'ended';
 
     protected $fillable = [
@@ -49,5 +51,10 @@ class LiveStream extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function viewers(): HasMany
+    {
+        return $this->hasMany(LiveStreamViewer::class);
     }
 }

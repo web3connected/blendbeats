@@ -10,11 +10,22 @@ class AgoraService
 {
     public function __construct(
         private readonly AgoraRtcTokenService $tokens,
-    ) {
+    ) {}
+
+    public function assertConfigured(): void
+    {
+        $this->assertCredential(config('services.agora.app_id'), 'Agora App ID');
+        $this->assertCredential(config('services.agora.app_certificate'), 'Agora App Certificate');
+
+        if ((int) config('services.agora.token_ttl', 3600) < 1) {
+            throw new InvalidArgumentException('Agora token TTL must be a positive integer.');
+        }
     }
 
     public function tokenForStream(LiveStream $stream, string $role): array
     {
+        $this->assertConfigured();
+
         if (! in_array($role, ['host', 'audience'], true)) {
             throw new InvalidArgumentException('Unsupported Agora live role.');
         }
@@ -39,5 +50,12 @@ class AgoraService
             ),
             'uid' => $uid,
         ];
+    }
+
+    private function assertCredential(mixed $value, string $label): void
+    {
+        if (! is_string($value) || strlen($value) !== 32 || ! ctype_xdigit($value)) {
+            throw new InvalidArgumentException($label.' must be a 32-character hexadecimal value.');
+        }
     }
 }
