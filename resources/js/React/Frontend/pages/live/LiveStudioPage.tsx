@@ -22,7 +22,7 @@ export default function LiveStudioPage() {
   const [activeStream, setActiveStream] = useState<LiveStream | null>(null);
   const [hostToken, setHostToken] = useState<AgoraLiveToken | null>(null);
   const [title, setTitle] = useState('');
-  const [recordingEnabled, setRecordingEnabled] = useState(false);
+  const [recordingEnabled, setRecordingEnabled] = useState(true);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [limitMessage, setLimitMessage] = useState('');
   const [status, setStatus] = useState('Not connected');
