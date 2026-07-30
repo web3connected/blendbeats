@@ -30,6 +30,17 @@ class LiveService
             ->get();
     }
 
+    public function savedStreams(): Collection
+    {
+        return LiveStream::query()
+            ->with(['liveChannel.user.djProfile', 'user.djProfile'])
+            ->where('status', LiveStream::STATUS_ENDED)
+            ->where('recording_enabled', true)
+            ->whereHas('liveChannel', fn ($query) => $query->where('is_enabled', true))
+            ->latest('ended_at')
+            ->get();
+    }
+
     public function channelBySlug(string $usernameSlug): ?LiveChannel
     {
         return LiveChannel::query()

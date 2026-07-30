@@ -17,6 +17,9 @@ class LiveController extends Controller
             'streams' => $live->activeStreams()
                 ->map(fn ($stream): array => $this->liveStreamPayload($stream))
                 ->values(),
+            'saved_streams' => $live->savedStreams()
+                ->map(fn ($stream): array => $this->liveStreamPayload($stream))
+                ->values(),
         ]);
     }
 

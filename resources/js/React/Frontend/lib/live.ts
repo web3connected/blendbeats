@@ -134,7 +134,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return body as T;
 }
 
-export function getLiveDirectory(): Promise<{ streams: LiveStream[] }> {
+export function getLiveDirectory(): Promise<{ streams: LiveStream[]; saved_streams: LiveStream[] }> {
   return request('/api/live');
 }
 

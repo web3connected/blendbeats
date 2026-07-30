@@ -1,5 +1,5 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { ExternalLink, Radio } from 'lucide-react';
+import { Archive, ExternalLink, Radio } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -7,6 +7,8 @@ import { getLiveDirectory, type LiveStream } from '@/lib/live';
 
 export default function LiveDirectoryPage() {
   const [streams, setStreams] = useState<LiveStream[]>([]);
+  const [savedStreams, setSavedStreams] = useState<LiveStream[]>([]);
+  const [activeTab, setActiveTab] = useState<'live' | 'saved'>('live');
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -17,6 +19,7 @@ export default function LiveDirectoryPage() {
       .then((payload) => {
         if (!mounted) return;
         setStreams(payload.streams);
+        setSavedStreams(payload.saved_streams);
         setErrorMessage('');
       })
       .catch((error) => {
@@ -60,13 +63,44 @@ export default function LiveDirectoryPage() {
           </div>
         ) : null}
 
+        <div className="flex gap-2 border-b border-[#262626]" role="tablist" aria-label="Live stream content">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'live'}
+            onClick={() => setActiveTab('live')}
+            className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold uppercase tracking-wide transition ${
+              activeTab === 'live'
+                ? 'border-primary text-white'
+                : 'border-transparent text-[#9d9d9d] hover:text-white'
+            }`}
+          >
+            <Radio size={16} />
+            Live Streams
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'saved'}
+            onClick={() => setActiveTab('saved')}
+            className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold uppercase tracking-wide transition ${
+              activeTab === 'saved'
+                ? 'border-primary text-white'
+                : 'border-transparent text-[#9d9d9d] hover:text-white'
+            }`}
+          >
+            <Archive size={16} />
+            Saved Streams
+          </button>
+        </div>
+
         {isLoading ? (
           <div className="rounded-lg border border-[#252525] bg-[#101010] p-6 text-sm text-[#c9c9c9]">
             Loading live streams.
           </div>
         ) : null}
 
-        {!isLoading && streams.length === 0 ? (
+        {!isLoading && activeTab === 'live' && streams.length === 0 ? (
           <div className="rounded-lg border border-[#252525] bg-[#101010] p-6">
             <h2 className="text-2xl text-white">No DJs are live right now</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#c9c9c9]">
@@ -75,7 +109,7 @@ export default function LiveDirectoryPage() {
           </div>
         ) : null}
 
-        {streams.length > 0 ? (
+        {activeTab === 'live' && streams.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {streams.map((stream) => {
               const username = stream.channel?.username_slug;
@@ -104,6 +138,39 @@ export default function LiveDirectoryPage() {
                 </Link>
               );
             })}
+          </div>
+        ) : null}
+
+        {!isLoading && activeTab === 'saved' && savedStreams.length === 0 ? (
+          <div className="rounded-lg border border-[#252525] bg-[#101010] p-6">
+            <h2 className="text-2xl text-white">No saved streams yet</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#c9c9c9]">
+              Saved DJ sets will appear here after their live stream ends.
+            </p>
+          </div>
+        ) : null}
+
+        {activeTab === 'saved' && savedStreams.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {savedStreams.map((stream) => (
+              <article key={stream.id} className="rounded-lg border border-[#252525] bg-[#101010] p-5">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <span className="rounded-full bg-[#2c2c2c] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white">
+                    Saved
+                  </span>
+                  <Archive size={16} className="text-[#9d9d9d]" />
+                </div>
+                <h2 className="text-2xl text-white">{stream.title}</h2>
+                <p className="mt-2 text-sm text-[#c9c9c9]">
+                  {stream.dj?.dj_name ?? stream.dj?.name ?? 'BlendBeats DJ'}
+                </p>
+                {stream.ended_at ? (
+                  <p className="mt-4 text-xs uppercase tracking-[0.18em] text-[#8d8d8d]">
+                    Saved {new Date(stream.ended_at).toLocaleDateString()}
+                  </p>
+                ) : null}
+              </article>
+            ))}
           </div>
         ) : null}
       </section>

@@ -41,6 +41,47 @@ class LiveModuleTest extends TestCase
             ->assertSee('id="app"', false);
     }
 
+    public function test_live_directory_lists_active_and_saved_streams_separately(): void
+    {
+        $user = $this->djUser('dj_pro');
+        $channel = $this->liveChannelFor($user);
+
+        $live = LiveStream::query()->create([
+            'live_channel_id' => $channel->id,
+            'user_id' => $user->id,
+            'agora_channel_name' => 'live-directory-active',
+            'title' => 'Currently Live',
+            'status' => LiveStream::STATUS_LIVE,
+            'started_at' => now(),
+        ]);
+        $saved = LiveStream::query()->create([
+            'live_channel_id' => $channel->id,
+            'user_id' => $user->id,
+            'agora_channel_name' => 'live-directory-saved',
+            'title' => 'Saved Set',
+            'status' => LiveStream::STATUS_ENDED,
+            'recording_enabled' => true,
+            'started_at' => now()->subHour(),
+            'ended_at' => now(),
+        ]);
+        LiveStream::query()->create([
+            'live_channel_id' => $channel->id,
+            'user_id' => $user->id,
+            'agora_channel_name' => 'live-directory-not-saved',
+            'title' => 'Unrecorded Set',
+            'status' => LiveStream::STATUS_ENDED,
+            'started_at' => now()->subHours(2),
+            'ended_at' => now()->subHour(),
+        ]);
+
+        $this->getJson('/api/live')
+            ->assertOk()
+            ->assertJsonPath('streams.0.id', $live->id)
+            ->assertJsonPath('saved_streams.0.id', $saved->id)
+            ->assertJsonCount(1, 'streams')
+            ->assertJsonCount(1, 'saved_streams');
+    }
+
     public function test_paid_dj_can_start_live_stream_and_receive_host_token(): void
     {
         $user = $this->djUser('dj_plus');
