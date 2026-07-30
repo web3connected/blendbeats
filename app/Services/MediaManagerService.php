@@ -261,6 +261,20 @@ class MediaManagerService
         }
     }
 
+    public function listMediaFilesForOwner(Model $owner, string $disk = 'public', string $path = '', ?string $collection = null): array
+    {
+        $this->validateDiskAccess($disk, 'view', $owner);
+
+        $files = MediaFile::where('disk', $disk)
+            ->where(fn ($query) => $this->scopeToOwner($query, $owner))
+            ->when($path, fn ($query, $path) => $query->where('path', 'like', $path.'%'))
+            ->when($collection, fn ($query, $collection) => $query->where('collection', $collection))
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return $files->map(fn (MediaFile $file): array => $this->filePayload($file))->toArray();
+    }
+
     public function listMediaFiles(string $disk = 'public', string $path = '', ?string $collection = null): array
     {
         $owner = $this->currentOwner();

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\MediaFile;
+use App\Models\Admin;
 use App\Models\User;
 use App\Models\UserGamificationStat;
 use Database\Seeders\GamificationActionSeeder;
@@ -15,6 +16,49 @@ use Tests\TestCase;
 class DjPortfolioApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_portfolio_listing_only_includes_the_authenticated_users_uploads(): void
+    {
+        Storage::fake('public');
+        $portfolioOwner = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $admin = Admin::query()->create([
+            'name' => 'Signed In Admin',
+            'email' => 'signed-in-admin@example.com',
+            'password' => 'password',
+            'role' => 'super-admin',
+            'is_active' => true,
+        ]);
+
+        $ownedFileId = MediaFile::query()->create([
+            'user_id' => $portfolioOwner->id,
+            'name' => 'my-mix.mp3',
+            'original_name' => 'my-mix.mp3',
+            'disk' => 'public',
+            'path' => 'media/portfolios/portfolio-owner/my-mix.mp3',
+            'mime_type' => 'audio/mpeg',
+            'size' => 128,
+            'collection' => 'dj_media',
+        ])->id;
+        $otherFileId = MediaFile::query()->create([
+            'user_id' => $otherUser->id,
+            'name' => 'someone-else-mix.mp3',
+            'original_name' => 'someone-else-mix.mp3',
+            'disk' => 'public',
+            'path' => 'media/portfolios/other-owner/someone-else-mix.mp3',
+            'mime_type' => 'audio/mpeg',
+            'size' => 128,
+            'collection' => 'dj_media',
+        ])->id;
+
+        $this->actingAs($portfolioOwner)
+            ->actingAs($admin, 'admin')
+            ->getJson('/api/media/files?disk=public&collection=dj_media')
+            ->assertOk()
+            ->assertJsonCount(1, 'files')
+            ->assertJsonPath('files.0.id', $ownedFileId)
+            ->assertJsonMissing(['id' => $otherFileId]);
+    }
 
     public function test_authenticated_user_can_activate_and_manage_portfolio_media(): void
     {

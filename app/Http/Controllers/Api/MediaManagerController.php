@@ -30,12 +30,13 @@ class MediaManagerController extends Controller
         ]);
 
         return response()->json([
-            'files' => $mediaManager->listMediaFiles(
+            'files' => $mediaManager->listMediaFilesForOwner(
+                $request->user('web'),
                 $attributes['disk'] ?? 'public',
                 $attributes['path'] ?? '',
                 $attributes['collection'] ?? null,
             ),
-            'quota' => $quotaService->quotaForOwner($request->user()),
+            'quota' => $quotaService->quotaForOwner($request->user('web')),
         ]);
     }
 
