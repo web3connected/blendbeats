@@ -49,6 +49,7 @@ class AffiliateNotificationTest extends TestCase
         $this->actingAs($referredUser)
             ->postJson('/api/billing/paypal/subscription-approved', [
                 'subscriptionID' => 'I-notification-subscription',
+                'plan_id' => 'test-plan-id',
             ])
             ->assertOk()
             ->assertJsonPath('referral_qualification.status', 'qualified');

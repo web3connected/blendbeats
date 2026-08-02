@@ -32,6 +32,7 @@ class AffiliateMembershipCreditRewardTest extends TestCase
         $this->actingAs($referredUser)
             ->postJson('/api/billing/paypal/subscription-approved', [
                 'subscriptionID' => 'I-membership-credit',
+                'plan_id' => 'test-plan-id',
             ])
             ->assertOk()
             ->assertJsonPath('referral_qualification.status', 'qualified');

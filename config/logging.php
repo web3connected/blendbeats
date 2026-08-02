@@ -73,6 +73,70 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'payments_initialize' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payments/initialize.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'payments_receive' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payments/receive.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'payments_validate' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payments/validate.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'payments_protect' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payments/protect.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'payments_record' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payments/record.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'payments_process' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payments/process.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'payments_respond' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payments/respond.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'payments_system' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payments/system.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

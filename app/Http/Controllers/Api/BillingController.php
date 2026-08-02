@@ -73,10 +73,22 @@ class BillingController extends Controller
 
     public function paypalSubscriptionConfig(): JsonResponse
     {
+        $readiness = PaymentProvider::paypalReadiness();
+
+        if (! $readiness['browser_subscription']['ready']) {
+            throw new \RuntimeException(
+                'PayPal configuration is incomplete for the selected environment. Missing: '
+                .implode(', ', $readiness['browser_subscription']['missing']).'.'
+            );
+        }
+
+        $paypal = PaymentProvider::paypalConfiguration();
+
         return response()->json([
-            'client_id' => config('billing.paypal.client_id'),
-            'plan_id' => config('billing.paypal.plans.dj_plus'),
-            'mode' => config('billing.paypal.mode'),
+            'client_id' => $paypal['client_id'],
+            'plan_id' => $paypal['plans']['dj_plus'],
+            'plans' => $paypal['plans'],
+            'mode' => $paypal['mode'],
         ]);
     }
 
@@ -84,15 +96,24 @@ class BillingController extends Controller
     {
         $validated = $request->validate([
             'subscriptionID' => ['required', 'string', 'max:255'],
+            'plan_id' => ['required', 'string', 'max:255'],
         ]);
 
         $user = $request->user();
+        $paypal = PaymentProvider::paypalConfiguration();
+        $tier = array_search($validated['plan_id'], $paypal['plans'], true);
+
+        if ($tier === false) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'plan_id' => 'The selected PayPal plan is not configured.',
+            ]);
+        }
 
         $user->forceFill([
-            'media_storage_tier' => 'dj_plus',
+            'media_storage_tier' => $tier,
             'billing_provider' => 'paypal',
             'paypal_subscription_id' => $validated['subscriptionID'],
-            'paypal_plan_id' => config('billing.paypal.plans.dj_plus'),
+            'paypal_plan_id' => $validated['plan_id'],
             'paypal_subscription_status' => 'approved',
             'paypal_subscription_approved_at' => now(),
         ])->save();
@@ -102,13 +123,13 @@ class BillingController extends Controller
             provider: 'paypal',
             transactionId: $validated['subscriptionID'],
             source: 'paypal_subscription_approved',
-            planKey: 'dj_plus',
+            planKey: $tier,
             status: 'approved',
         );
 
         return response()->json([
             'message' => 'PayPal subscription approved.',
-            'current_tier' => 'dj_plus',
+            'current_tier' => $tier,
             'paypal_subscription_id' => $validated['subscriptionID'],
             'referral_qualification' => $this->referralQualification->publicQualification($qualification),
         ]);
@@ -170,6 +191,8 @@ class BillingController extends Controller
 
     private function syncProviderModeFromConfig(PaymentProvider $provider): PaymentProvider
     {
+        // Provider mode is synchronized administrative metadata. Laravel
+        // configuration remains authoritative for all external PayPal calls.
         $configuredMode = match ($provider->provider) {
             'paypal' => config('billing.paypal.mode'),
             'stripe' => config('billing.stripe.mode'),

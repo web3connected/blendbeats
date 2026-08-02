@@ -130,6 +130,7 @@ class AffiliateFraudProtectionTest extends TestCase
         $this->actingAs($referredUser)
             ->postJson('/api/billing/paypal/subscription-approved', [
                 'subscriptionID' => 'I-fraud-blocked',
+                'plan_id' => 'test-plan-id',
             ])
             ->assertOk()
             ->assertJsonPath('referral_qualification', null);

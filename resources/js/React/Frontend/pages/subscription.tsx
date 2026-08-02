@@ -24,6 +24,7 @@ export default function SubscriptionPage() {
   const [paypalConfig, setPaypalConfig] = useState<{
     client_id: string;
     plan_id: string;
+    plans: Record<string, string>;
     mode: string;
   } | null>(null);
   const [error, setError] = useState('');
@@ -68,7 +69,7 @@ export default function SubscriptionPage() {
   useEffect(() => {
     if (
       !paypalConfig ||
-      selectedPlan?.key !== 'dj_plus'
+      !selectedPlan || !paypalConfig.plans[selectedPlan.key]
     ) {
       return;
     }
@@ -82,7 +83,7 @@ export default function SubscriptionPage() {
       }
 
       const container = document.getElementById(
-        'paypal-dj-plus-button-container'
+        'paypal-subscription-button-container'
       );
 
       if (!container || container.childElementCount > 0) {
@@ -99,7 +100,7 @@ export default function SubscriptionPage() {
 
         createSubscription: (_data: any, actions: any) => {
           return actions.subscription.create({
-            plan_id: paypalConfig.plan_id,
+            plan_id: paypalConfig.plans[selectedPlan.key],
           });
         },
 
@@ -114,6 +115,7 @@ export default function SubscriptionPage() {
             },
             body: JSON.stringify({
               subscriptionID: data.subscriptionID,
+              plan_id: paypalConfig.plans[selectedPlan.key],
             }),
           });
 
@@ -125,7 +127,7 @@ export default function SubscriptionPage() {
         onError: (err: any) => {
           console.error('PayPal Error', err);
         },
-      }).render('#paypal-dj-plus-button-container');
+      }).render('#paypal-subscription-button-container');
     };
 
     renderButtons();
@@ -285,7 +287,7 @@ export default function SubscriptionPage() {
                     )}
 
                     <div className="mt-7 grid gap-3">
-                      {selectedPlan.key !== 'dj_plus' && (
+                      {!paypalConfig?.plans[selectedPlan.key] && (
                         <button
                           type="button"
                           disabled={!selectedPlan.checkout_enabled || !providerCheckoutReady || selectedPlan.is_current || isCheckoutLoading}
@@ -298,8 +300,8 @@ export default function SubscriptionPage() {
                         </button>
                       )}
 
-                      {selectedPlan.key === 'dj_plus' && (
-                        <div id="paypal-dj-plus-button-container" className="mt-4" />
+                      {paypalConfig?.plans[selectedPlan.key] && (
+                        <div key={selectedPlan.key} id="paypal-subscription-button-container" className="mt-4" />
                       )}
 
                       {status?.has_stripe_customer && (

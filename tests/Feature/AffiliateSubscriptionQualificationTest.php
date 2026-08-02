@@ -31,6 +31,7 @@ class AffiliateSubscriptionQualificationTest extends TestCase
         $this->actingAs($referredUser)
             ->postJson('/api/billing/paypal/subscription-approved', [
                 'subscriptionID' => 'I-qualified-subscription',
+                'plan_id' => 'test-plan-id',
             ])
             ->assertOk()
             ->assertJsonPath('current_tier', 'dj_plus')
@@ -93,6 +94,14 @@ class AffiliateSubscriptionQualificationTest extends TestCase
 
     public function test_paypal_active_webhook_qualifies_pending_referral(): void
     {
+        config([
+            'billing.paypal.mode' => 'sandbox',
+            'billing.paypal.client_id' => 'sandbox-client-id',
+            'billing.paypal.secret' => 'sandbox-secret',
+            'billing.paypal.webhook_id' => 'sandbox-webhook-id',
+            'billing.paypal.plans.dj_plus' => 'sandbox-plan-id',
+        ]);
+
         $this->withoutVite();
 
         $code = $this->createReferralCode('WEBHOOK-QUALIFY');
@@ -138,7 +147,10 @@ class AffiliateSubscriptionQualificationTest extends TestCase
         $code = $this->createReferralCode('ONCE-ONLY');
         $referredUser = $this->registerReferredUser($code->code, 'once-subscriber@example.com');
 
-        $payload = ['subscriptionID' => 'I-once-subscription'];
+        $payload = [
+            'subscriptionID' => 'I-once-subscription',
+            'plan_id' => 'test-plan-id',
+        ];
 
         $this->actingAs($referredUser)
             ->postJson('/api/billing/paypal/subscription-approved', $payload)

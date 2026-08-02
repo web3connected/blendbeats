@@ -94,6 +94,12 @@ class PaymentProvider extends Model
 
     public function settingValueFor(string $field): ?string
     {
+        // PayPal's active deployment is selected exclusively by billing.php.
+        // Database and generic environment fallbacks must not cross environments.
+        if ($this->provider === 'paypal') {
+            return $this->configValueFor($field);
+        }
+
         return $this->configValueFor($field)
             ?? $this->runtimeEnvironmentValueFor($field)
             ?? $this->dotenvFileValueFor($field);
@@ -152,6 +158,10 @@ class PaymentProvider extends Model
 
     public function effectiveValueFor(string $field): ?string
     {
+        if ($this->provider === 'paypal') {
+            return $this->configValueFor($field);
+        }
+
         $databaseValue = $this->{$field} ?? null;
 
         if (filled($databaseValue)) {
@@ -163,12 +173,24 @@ class PaymentProvider extends Model
 
     public function valueSourceFor(string $field): string
     {
+        if ($this->provider === 'paypal') {
+            return filled($this->configValueFor($field)) ? 'configuration' : 'missing';
+        }
+
         if (filled($this->{$field} ?? null)) {
             return 'database';
         }
 
-        if (filled($this->settingValueFor($field))) {
-            return 'env';
+        if (filled($this->configValueFor($field))) {
+            return 'configuration';
+        }
+
+        if (filled($this->runtimeEnvironmentValueFor($field))) {
+            return 'runtime environment';
+        }
+
+        if (filled($this->dotenvFileValueFor($field))) {
+            return '.env';
         }
 
         return 'missing';
@@ -198,5 +220,104 @@ class PaymentProvider extends Model
     public function hasEffectiveWebhookSecret(): bool
     {
         return $this->hasEffectiveValueFor('webhook_secret');
+    }
+
+    /**
+     * Return the canonical, configuration-authoritative PayPal deployment values.
+     *
+     * @return array{mode: string, client_id: ?string, secret: ?string, webhook_id: ?string, plans: array{dj_plus: ?string, dj_pro: ?string, dj_elite: ?string}}
+     */
+    public static function paypalConfiguration(): array
+    {
+        $mode = config('billing.paypal.mode');
+
+        if (! is_string($mode) || ! in_array($mode, ['sandbox', 'live'], true)) {
+            throw new \RuntimeException(
+                'PayPal mode configuration must be either sandbox or live.'
+            );
+        }
+
+        return [
+            'mode' => $mode,
+            'client_id' => static::filledConfigString('billing.paypal.client_id'),
+            'secret' => static::filledConfigString('billing.paypal.secret'),
+            'webhook_id' => static::filledConfigString('billing.paypal.webhook_id'),
+            'plans' => [
+                'dj_plus' => static::filledConfigString('billing.paypal.plans.dj_plus'),
+                'dj_pro' => static::filledConfigString('billing.paypal.plans.dj_pro'),
+                'dj_elite' => static::filledConfigString('billing.paypal.plans.dj_elite'),
+            ],
+        ];
+    }
+
+    /**
+     * Report readiness without returning credentials or PayPal resource IDs.
+     *
+     * @return array<string, mixed>
+     */
+    public static function paypalReadiness(): array
+    {
+        $mode = config('billing.paypal.mode');
+        $modeIsValid = is_string($mode) && in_array($mode, ['sandbox', 'live'], true);
+        $configuration = [
+            'mode' => $modeIsValid ? $mode : null,
+            'client_id' => static::filledConfigString('billing.paypal.client_id'),
+            'secret' => static::filledConfigString('billing.paypal.secret'),
+            'webhook_id' => static::filledConfigString('billing.paypal.webhook_id'),
+            'dj_plus_plan_id' => static::filledConfigString('billing.paypal.plans.dj_plus'),
+            'dj_pro_plan_id' => static::filledConfigString('billing.paypal.plans.dj_pro'),
+            'dj_elite_plan_id' => static::filledConfigString('billing.paypal.plans.dj_elite'),
+        ];
+
+        $missingFor = static function (array $fields) use ($configuration): array {
+            return array_values(array_filter(
+                $fields,
+                fn (string $field): bool => blank($configuration[$field] ?? null),
+            ));
+        };
+
+        $browserMissing = $missingFor([
+            'mode',
+            'client_id',
+            'dj_plus_plan_id',
+            'dj_pro_plan_id',
+            'dj_elite_plan_id',
+        ]);
+        $receiptMissing = $missingFor(['mode', 'webhook_id']);
+        $signatureMissing = $missingFor(['mode', 'client_id', 'secret', 'webhook_id']);
+        $missing = $missingFor([
+            'mode',
+            'client_id',
+            'secret',
+            'dj_plus_plan_id',
+            'dj_pro_plan_id',
+            'dj_elite_plan_id',
+            'webhook_id',
+        ]);
+
+        return [
+            'ready' => $missing === [],
+            'mode' => $configuration['mode'],
+            'missing' => $missing,
+            'browser_subscription' => [
+                'ready' => $browserMissing === [],
+                'missing' => $browserMissing,
+            ],
+            'webhook_receipt' => [
+                'ready' => $receiptMissing === [],
+                'missing' => $receiptMissing,
+            ],
+            'signature_enforcement' => [
+                'ready' => $signatureMissing === [],
+                'missing' => $signatureMissing,
+            ],
+        ];
+    }
+
+    private static function filledConfigString(string $path): ?string
+    {
+        $value = config($path);
+
+        return filled($value) ? (string) $value : null;
     }
 }

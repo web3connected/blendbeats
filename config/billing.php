@@ -2,7 +2,14 @@
 
 $megabyte = 1024 * 1024;
 $gigabyte = 1024 * $megabyte;
-$paypalMode = env('PAYPAL_MODE', 'sandbox');
+$paypalMode = strtolower(trim((string) env('PAYPAL_MODE', 'sandbox')));
+
+if (! in_array($paypalMode, ['sandbox', 'live'], true)) {
+    throw new InvalidArgumentException(
+        'PAYPAL_MODE must be either "sandbox" or "live".'
+    );
+}
+
 $paypalIsSandbox = $paypalMode === 'sandbox';
 
 return [
@@ -12,13 +19,42 @@ return [
 
     'paypal' => [
         'mode' => $paypalMode,
-        'client_id' => $paypalIsSandbox ? env('TEST_PAYPAL_CLIENT_ID', env('PAYPAL_CLIENT_ID')) : env('PAYPAL_CLIENT_ID'),
-        'secret' => $paypalIsSandbox ? env('TEST_PAYPAL_SECRET', env('PAYPAL_SECRET')) : env('PAYPAL_SECRET'),
-        'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
+        // Laravel configuration is authoritative for the active PayPal deployment.
+        // Environment-specific resources never fall back across Sandbox and Live.
+        'client_id' => $paypalIsSandbox ? env('TEST_PAYPAL_CLIENT_ID') : env('PAYPAL_CLIENT_ID'),
+        'secret' => $paypalIsSandbox ? env('TEST_PAYPAL_SECRET') : env('PAYPAL_SECRET'),
+        'webhook_id' => $paypalIsSandbox ? env('TEST_PAYPAL_WEBHOOK_ID') : env('PAYPAL_WEBHOOK_ID'),
+        'enforce_signature' => env(
+            'PAYPAL_ENFORCE_SIGNATURE',
+            false
+        ),
+
+        'enforce_duplicates' => env(
+            'PAYPAL_ENFORCE_DUPLICATES',
+            false
+        ),
+
+        'enforce_replay_protection' => env(
+            'PAYPAL_ENFORCE_REPLAY_PROTECTION',
+            false
+        ),
+
+        'enforce_processing_lock' => env(
+            'PAYPAL_ENFORCE_PROCESSING_LOCK',
+            false
+        ),
+
+        'replay_window_seconds' => env(
+            'PAYPAL_REPLAY_WINDOW_SECONDS',
+            300
+        ),
+
         'webhook_secret' => env('PAYPAL_WEBHOOK_SECRET'),
         'merchant_id' => env('PAYPAL_MERCHANT_ID'),
         'plans' => [
-            'dj_plus' => $paypalIsSandbox ? env('TEST_PAYPAL_PLAN_DJ_PLUS', env('PAYPAL_PLAN_DJ_PLUS')) : env('PAYPAL_PLAN_DJ_PLUS'),
+            'dj_plus' => $paypalIsSandbox ? env('TEST_PAYPAL_PLAN_DJ_PLUS') : env('PAYPAL_PLAN_DJ_PLUS'),
+            'dj_pro' => $paypalIsSandbox ? env('TEST_PAYPAL_PLAN_DJ_PRO') : env('PAYPAL_PLAN_DJ_PRO'),
+            'dj_elite' => $paypalIsSandbox ? env('TEST_PAYPAL_PLAN_DJ_ELITE') : env('PAYPAL_PLAN_DJ_ELITE'),
         ],
     ],
 
