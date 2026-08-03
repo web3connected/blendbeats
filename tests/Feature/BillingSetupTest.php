@@ -9,6 +9,7 @@ use App\Models\PaymentProvider;
 use App\Http\Controllers\Api\PayPalWebhookController;
 use App\Services\AffiliateReferralQualificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Env;
 use Laravel\Cashier\Billable;
 use Tests\TestCase;
@@ -399,6 +400,7 @@ class BillingSetupTest extends TestCase
             'event_type' => 'BILLING.SUBSCRIPTION.ACTIVATED',
             'resource' => [
                 'id' => 'TEST-SUBSCRIPTION-123',
+                'plan_id' => 'sandbox-plus-plan-id',
             ],
         ])->assertOk()
             ->assertJson([
@@ -425,6 +427,7 @@ class BillingSetupTest extends TestCase
             $user->forceFill([
                 'billing_provider' => 'paypal',
                 'paypal_subscription_id' => "I-{$eventType}",
+                'paypal_plan_id' => 'sandbox-plus-plan-id',
                 'paypal_subscription_status' => 'approved',
             ])->save();
 
@@ -432,6 +435,7 @@ class BillingSetupTest extends TestCase
                 'event_type' => $eventType,
                 'resource' => [
                     'id' => "I-{$eventType}",
+                    'plan_id' => 'sandbox-plus-plan-id',
                 ],
             ])->assertOk();
 
@@ -440,6 +444,111 @@ class BillingSetupTest extends TestCase
             $this->assertSame('active', $user->paypal_subscription_status);
             $this->assertSame('dj_plus', $user->media_storage_tier);
         }
+    }
+
+    public function test_paypal_webhook_activation_resolves_each_configured_tier(): void
+    {
+        foreach ([
+            'dj_plus' => 'sandbox-plus-plan-id',
+            'dj_pro' => 'sandbox-pro-plan-id',
+            'dj_elite' => 'sandbox-elite-plan-id',
+        ] as $tier => $planId) {
+            $user = User::factory()->create(['media_storage_tier' => 'free']);
+            $user->forceFill([
+                'billing_provider' => 'paypal',
+                'paypal_subscription_id' => "I-{$tier}",
+                'paypal_plan_id' => $planId,
+                'paypal_subscription_status' => 'approved',
+            ])->save();
+
+            $this->postJson('/api/paypal/webhook', [
+                'event_type' => 'BILLING.SUBSCRIPTION.ACTIVATED',
+                'resource' => [
+                    'id' => "I-{$tier}",
+                    'plan_id' => $planId,
+                ],
+            ])->assertOk();
+
+            $user->refresh();
+            $this->assertSame('active', $user->paypal_subscription_status);
+            $this->assertSame($tier, $user->media_storage_tier);
+            $this->assertSame($planId, $user->paypal_plan_id);
+        }
+    }
+
+    public function test_paypal_webhook_unknown_plan_fails_before_user_update(): void
+    {
+        $user = User::factory()->create(['media_storage_tier' => 'free']);
+        $user->forceFill([
+            'billing_provider' => 'paypal',
+            'paypal_subscription_id' => 'I-unknown-plan',
+            'paypal_plan_id' => 'unknown-plan-id',
+            'paypal_subscription_status' => 'approved',
+        ])->save();
+
+        $this->postJson('/api/paypal/webhook', [
+            'event_type' => 'BILLING.SUBSCRIPTION.ACTIVATED',
+            'resource' => [
+                'id' => 'I-unknown-plan',
+                'plan_id' => 'unknown-plan-id',
+            ],
+        ])->assertStatus(500)->assertExactJson(['received' => false]);
+
+        $this->assertSame('approved', $user->fresh()->paypal_subscription_status);
+        $this->assertSame('free', $user->fresh()->media_storage_tier);
+        $this->assertNull(
+            PayPalWebhookEvent::where('resource_id', 'I-unknown-plan')->firstOrFail()->processed_at
+        );
+    }
+
+    public function test_paypal_webhook_affiliate_receives_resolved_tier(): void
+    {
+        $user = User::factory()->create(['media_storage_tier' => 'free']);
+        $user->forceFill([
+            'billing_provider' => 'paypal',
+            'paypal_subscription_id' => 'I-affiliate-pro',
+            'paypal_plan_id' => 'sandbox-pro-plan-id',
+            'paypal_subscription_status' => 'approved',
+        ])->save();
+
+        $qualification = \Mockery::mock(AffiliateReferralQualificationService::class);
+        $qualification->shouldReceive('qualifySubscription')
+            ->once()
+            ->withArgs(fn (User $qualifiedUser, string $provider, string $transactionId, string $source, string $planKey, string $status): bool =>
+                $qualifiedUser->is($user)
+                && $provider === 'paypal'
+                && $transactionId === 'I-affiliate-pro'
+                && $planKey === 'dj_pro'
+                && $status === 'active'
+            )
+            ->andReturnNull();
+        $this->app->instance(AffiliateReferralQualificationService::class, $qualification);
+
+        $this->postJson('/api/paypal/webhook', [
+            'event_type' => 'BILLING.SUBSCRIPTION.ACTIVATED',
+            'resource' => [
+                'id' => 'I-affiliate-pro',
+                'plan_id' => 'sandbox-pro-plan-id',
+            ],
+        ])->assertOk();
+
+        $this->assertSame('dj_pro', $user->fresh()->media_storage_tier);
+    }
+
+    public function test_paypal_required_headers_come_from_configuration(): void
+    {
+        $controller = new class(app(AffiliateReferralQualificationService::class)) extends PayPalWebhookController
+        {
+            public function headerReference(): array
+            {
+                return $this->getHeaderReference();
+            }
+        };
+
+        $this->assertSame(
+            config('billing.paypal.required_webhook_headers'),
+            $controller->headerReference()['required_headers'],
+        );
     }
 
     public function test_paypal_webhook_terminal_events_set_user_to_free(): void
@@ -506,6 +615,7 @@ class BillingSetupTest extends TestCase
         $user->forceFill([
             'billing_provider' => 'paypal',
             'paypal_subscription_id' => 'I-transaction-rollback',
+            'paypal_plan_id' => 'sandbox-plus-plan-id',
             'paypal_subscription_status' => 'approved',
         ])->save();
 
@@ -519,6 +629,7 @@ class BillingSetupTest extends TestCase
             'event_type' => 'BILLING.SUBSCRIPTION.ACTIVATED',
             'resource' => [
                 'id' => 'I-transaction-rollback',
+                'plan_id' => 'sandbox-plus-plan-id',
             ],
         ])->assertStatus(500)
             ->assertExactJson([
@@ -531,6 +642,104 @@ class BillingSetupTest extends TestCase
         $this->assertSame('approved', $user->paypal_subscription_status);
         $this->assertSame('free', $user->media_storage_tier);
         $this->assertNull($webhookEvent->processed_at);
+    }
+
+    public function test_paypal_initialize_receive_and_validate_write_safe_success_logs(): void
+    {
+        $controller = new class(app(AffiliateReferralQualificationService::class)) extends PayPalWebhookController
+        {
+            public array $capturedLogs = [];
+
+            public function runInitialStages(Request $request): void
+            {
+                $this->request = $request;
+
+                foreach (['initialize', 'receive', 'validate'] as $stage) {
+                    $this->stage = $stage;
+                    $this->{$stage}();
+                }
+            }
+
+            protected function writePaymentLog(string $level, string $message, array $context = []): void
+            {
+                $this->capturedLogs[] = [
+                    'stage' => $this->stage,
+                    'status' => $this->status,
+                    'level' => $level,
+                    'message' => $message,
+                    'context' => $context,
+                ];
+            }
+        };
+
+        $controller->runInitialStages(Request::create(
+            uri: '/api/paypal/webhook',
+            method: 'POST',
+            parameters: [
+                'id' => 'WH-observability',
+                'event_type' => 'BILLING.SUBSCRIPTION.ACTIVATED',
+                'resource' => ['id' => 'I-observability'],
+            ],
+        ));
+
+        $this->assertSame(
+            ['initialize', 'receive', 'validate'],
+            array_column($controller->capturedLogs, 'stage'),
+        );
+        $this->assertSame(
+            ['initialized', 'received', 'validated'],
+            array_column($controller->capturedLogs, 'status'),
+        );
+        $this->assertSame([
+            'PayPal webhook initialization completed',
+            'PayPal webhook delivery received',
+            'PayPal webhook validation completed',
+        ], array_column($controller->capturedLogs, 'message'));
+
+        foreach ($controller->capturedLogs as $log) {
+            $this->assertSame('info', $log['level']);
+            $this->assertArrayNotHasKey('payload', $log['context']);
+            $this->assertArrayNotHasKey('headers', $log['context']);
+            $this->assertArrayNotHasKey('secret', $log['context']);
+            $this->assertArrayNotHasKey('signature', $log['context']);
+        }
+    }
+
+    public function test_paypal_process_reports_attempted_without_qualification_when_no_referral_exists(): void
+    {
+        $user = User::factory()->create(['media_storage_tier' => 'free']);
+        $user->forceFill([
+            'billing_provider' => 'paypal',
+            'paypal_subscription_id' => 'I-observability-affiliate',
+            'paypal_plan_id' => 'sandbox-plus-plan-id',
+            'paypal_subscription_status' => 'approved',
+        ])->save();
+
+        $qualification = \Mockery::mock(AffiliateReferralQualificationService::class);
+        $qualification->shouldReceive('qualifySubscription')->once()->andReturnNull();
+        $controller = new PayPalWebhookController($qualification);
+
+        foreach ([
+            'eventType' => 'BILLING.SUBSCRIPTION.ACTIVATED',
+            'resourceId' => 'I-observability-affiliate',
+            'payload' => ['resource' => ['plan_id' => 'sandbox-plus-plan-id']],
+            'user' => $user,
+            'result' => [],
+        ] as $property => $value) {
+            (new \ReflectionProperty($controller, $property))->setValue($controller, $value);
+        }
+
+        (new \ReflectionMethod($controller, 'processSubscription'))->invoke($controller);
+        $result = (new \ReflectionProperty($controller, 'result'))->getValue($controller);
+
+        $this->assertTrue($result['affiliate_qualification_attempted']);
+        $this->assertFalse($result['affiliate_qualified']);
+        $this->assertTrue($result['user_updated']);
+        $this->assertSame('active', $result['subscription_status']);
+        $this->assertSame('dj_plus', $user->fresh()->media_storage_tier);
+        $this->assertDatabaseCount('affiliate_referrals', 0);
+        $this->assertDatabaseCount('affiliate_referral_events', 0);
+        $this->assertDatabaseCount('affiliate_rewards', 0);
     }
 
     public function test_paypal_webhook_does_not_change_internal_subscriptions(): void

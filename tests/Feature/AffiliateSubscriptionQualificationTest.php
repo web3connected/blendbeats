@@ -17,6 +17,18 @@ class AffiliateSubscriptionQualificationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config([
+            'billing.paypal.enforce_signature' => false,
+            'billing.paypal.enforce_duplicates' => false,
+            'billing.paypal.enforce_replay_protection' => false,
+            'billing.paypal.enforce_processing_lock' => false,
+        ]);
+    }
+
     public function test_paypal_subscription_approval_qualifies_pending_referral(): void
     {
         config([
@@ -109,6 +121,7 @@ class AffiliateSubscriptionQualificationTest extends TestCase
         $referredUser->forceFill([
             'billing_provider' => 'paypal',
             'paypal_subscription_id' => 'I-webhook-subscription',
+            'paypal_plan_id' => 'sandbox-plan-id',
             'paypal_subscription_status' => 'approved',
         ])->save();
 
@@ -116,6 +129,7 @@ class AffiliateSubscriptionQualificationTest extends TestCase
             'event_type' => 'BILLING.SUBSCRIPTION.ACTIVATED',
             'resource' => [
                 'id' => 'I-webhook-subscription',
+                'plan_id' => 'sandbox-plan-id',
             ],
         ])->assertOk();
 

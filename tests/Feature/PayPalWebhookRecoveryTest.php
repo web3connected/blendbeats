@@ -14,6 +14,21 @@ class PayPalWebhookRecoveryTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config([
+            'billing.paypal.mode' => 'sandbox',
+            'billing.paypal.client_id' => 'sandbox-client-id',
+            'billing.paypal.secret' => 'sandbox-secret',
+            'billing.paypal.webhook_id' => 'sandbox-webhook-id',
+            'billing.paypal.plans.dj_plus' => 'sandbox-plus-plan-id',
+            'billing.paypal.plans.dj_pro' => 'sandbox-pro-plan-id',
+            'billing.paypal.plans.dj_elite' => 'sandbox-elite-plan-id',
+        ]);
+    }
+
     public function test_recorded_unprocessed_event_is_recovered_without_creating_another_audit_row(): void
     {
         $user = $this->paypalUser('I-recover-success');
@@ -151,6 +166,7 @@ class PayPalWebhookRecoveryTest extends TestCase
         $user->forceFill([
             'billing_provider' => 'paypal',
             'paypal_subscription_id' => $subscriptionId,
+            'paypal_plan_id' => 'sandbox-plus-plan-id',
             'paypal_subscription_status' => 'approved',
         ])->save();
 
@@ -165,7 +181,10 @@ class PayPalWebhookRecoveryTest extends TestCase
             'payload' => [
                 'id' => 'WH-'.strtoupper(substr(hash('sha256', $eventType.$resourceId), 0, 12)),
                 'event_type' => $eventType,
-                'resource' => ['id' => $resourceId],
+                'resource' => [
+                    'id' => $resourceId,
+                    'plan_id' => 'sandbox-plus-plan-id',
+                ],
             ],
         ]);
     }

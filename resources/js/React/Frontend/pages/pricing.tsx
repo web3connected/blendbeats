@@ -1,18 +1,20 @@
 import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowRight, Bot, BriefcaseBusiness, Check, Loader2, Sparkles, Star, TrendingUp } from 'lucide-react';
+import { ArrowRight, Bot, BriefcaseBusiness, Check, CreditCard, ExternalLink, Loader2, Sparkles, Star, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import HeaderTitle from '@/layouts/HeaderTitle';
-import { BillingApiError, getBillingPlans, type BillingPlan, type PaymentProfile } from '@/lib/billing';
+import { BillingApiError, getBillingPlans, getSubscriptionStatus, openBillingPortal, startCheckout, type BillingPlan, type PaymentProfile, type SubscriptionStatus } from '@/lib/billing';
 
 const promotionGroups = [
+  ['A', 'Highest-visibility premium promotion inventory.'],
+  ['B', 'High-visibility promotion across multiple site locations.'],
+  ['C', 'Standard visibility in major community sections.'],
+  ['D', 'Community visibility for growing DJs.'],
   ['E', 'Entry-level promotion inventory.'],
   ['F', 'Basic promotional access for Free Tier users.'],
 ];
-
-const activePricingPlanKeys = ['free', 'dj_plus'];
 
 const futureFeatures: Array<[LucideIcon, string, string]> = [
   [TrendingUp, 'Analytics Suite', 'Profile views, mix plays, follower growth, and promotion performance.'],
@@ -74,25 +76,119 @@ export default function PricingPage() {
   const { user } = useAuth();
   const [plans, setPlans] = useState<BillingPlan[]>([]);
   const [paymentProfile, setPaymentProfile] = useState<PaymentProfile | null>(null);
+  const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [currentTier, setCurrentTier] = useState('free');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
+  const [isPortalLoading, setIsPortalLoading] = useState(false);
+  const [paypalConfig, setPaypalConfig] = useState<{
+    client_id: string;
+    plan_id: string;
+    plans: Record<string, string>;
+    mode: string;
+  } | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
     setError('');
 
-    getBillingPlans()
-      .then((response) => {
+    Promise.all([getBillingPlans(), user ? getSubscriptionStatus() : Promise.resolve(null)])
+      .then(([response, subscriptionStatus]) => {
         setPlans(response.plans);
-        setPaymentProfile(response.payment_profile);
-        setCurrentTier(response.current_tier);
+        setStatus(subscriptionStatus);
+        setPaymentProfile(subscriptionStatus?.payment_profile ?? response.payment_profile);
+        setCurrentTier(subscriptionStatus?.current_tier ?? response.current_tier);
       })
       .catch((loadError) => {
         setError(loadError instanceof BillingApiError ? loadError.message : 'Unable to load pricing right now.');
       })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    fetch('/api/billing/paypal/subscription-config')
+      .then((response) => response.json())
+      .then(setPaypalConfig)
+      .catch(() => setPaypalConfig(null));
+  }, [user]);
+
+  useEffect(() => {
+    if (!paypalConfig?.client_id || document.getElementById('paypal-sdk')) return;
+
+    const script = document.createElement('script');
+    script.id = 'paypal-sdk';
+    script.src = `https://www.paypal.com/sdk/js?client-id=${paypalConfig.client_id}&vault=true&intent=subscription`;
+    script.async = true;
+    document.body.appendChild(script);
+  }, [paypalConfig]);
+
+  useEffect(() => {
+    if (!paypalConfig || !user || !plans.length) return;
+
+    let cancelled = false;
+    let retryTimer: number | undefined;
+
+    const renderButtons = () => {
+      const paypal = (window as Window & { paypal?: any }).paypal;
+      if (!paypal) {
+        retryTimer = window.setTimeout(renderButtons, 300);
+        return;
+      }
+
+      plans.forEach((plan) => {
+        const paypalPlanId = paypalConfig.plans[plan.key];
+        const container = document.getElementById(`paypal-pricing-${plan.key}`);
+        if (!paypalPlanId || !container || container.childElementCount || plan.is_current || cancelled) return;
+
+        paypal.Buttons({
+          style: { shape: 'rect', color: 'silver', layout: 'horizontal', label: 'subscribe', height: 42 },
+          createSubscription: (_data: unknown, actions: any) => actions.subscription.create({ plan_id: paypalPlanId }),
+          onApprove: async (data: { subscriptionID: string }) => {
+            const response = await fetch('/api/billing/paypal/subscription-approved', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
+              },
+              body: JSON.stringify({ subscriptionID: data.subscriptionID, plan_id: paypalPlanId }),
+            });
+
+            if (!response.ok) throw new Error('PayPal subscription approval could not be saved.');
+            window.location.href = `/payment/success?subscription_id=${encodeURIComponent(data.subscriptionID)}`;
+          },
+          onError: () => setError('PayPal checkout could not be started. Please try again.'),
+        }).render(`#paypal-pricing-${plan.key}`);
+      });
+    };
+
+    renderButtons();
+    return () => {
+      cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+    };
+  }, [paypalConfig, plans, user]);
+
+  const handleCheckout = (plan: BillingPlan) => {
+    setCheckoutPlan(plan.key);
+    setError('');
+    startCheckout(plan.key)
+      .then((url) => { window.location.href = url; })
+      .catch((checkoutError) => setError(checkoutError instanceof BillingApiError ? checkoutError.message : 'Unable to start checkout.'))
+      .finally(() => setCheckoutPlan(null));
+  };
+
+  const handlePortal = () => {
+    setIsPortalLoading(true);
+    setError('');
+    openBillingPortal()
+      .then((url) => { window.location.href = url; })
+      .catch((portalError) => setError(portalError instanceof BillingApiError ? portalError.message : 'Unable to open billing.'))
+      .finally(() => setIsPortalLoading(false));
+  };
 
   const primaryProvider = paymentProfile?.primary_provider;
   const providerName = primaryProvider?.display_name ?? 'Payment Provider';
@@ -100,7 +196,7 @@ export default function PricingPage() {
   const activeProviderLabel = paymentProfile?.active_providers.length
     ? paymentProfile.active_providers.map((provider) => provider.display_name).join(', ')
     : 'None active';
-  const visiblePlans = plans.filter((plan) => activePricingPlanKeys.includes(plan.key));
+  const visiblePlans = plans;
   const currentPlan = visiblePlans.find((plan) => plan.is_current) ?? visiblePlans.find((plan) => plan.key === currentTier);
   const currentPlanStyle = currentPlan ? (tierStyles[currentPlan.key] ?? tierStyles.free) : tierStyles.free;
   const heroStats = currentPlan
@@ -138,15 +234,15 @@ export default function PricingPage() {
                 Grow Free. Upgrade When Ready.
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-7 text-[#c9c9c9] md:text-lg">
-                Every DJ can join, upload mixes, build a profile, use the Lounge, and grow a following for free. Plus adds more storage, enhanced analytics, promotion planning tools, and stronger entry-level promotion access.
+                Every DJ can join, upload mixes, build a profile, use the Lounge, and grow a following for free. Paid memberships add storage, analytics, promotion access, booking tools, and professional growth features.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  to={user ? '/subscription' : '/register'}
+                  to={user ? '#membership-plans' : '/register'}
                   className="inline-flex items-center justify-center gap-3 bg-primary px-7 py-4 text-xs font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-90"
                   style={{ fontFamily: 'var(--font-heading)' }}
                 >
-                  {user ? 'Manage Membership' : 'Create Account'}
+                  {user ? 'View Memberships' : 'Create Account'}
                   <ArrowRight size={16} />
                 </Link>
                 <Link
@@ -212,7 +308,7 @@ export default function PricingPage() {
           </div>
         </section>
 
-        <section className="py-14 md:py-20">
+        <section id="membership-plans" className="scroll-mt-20 py-14 md:py-20">
           <div className="container mx-auto px-4">
             <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div>
@@ -224,7 +320,7 @@ export default function PricingPage() {
                 </h2>
               </div>
               <p className="max-w-xl text-sm leading-6 text-[#aaa]">
-                Free and Plus are the active membership options right now. Current active provider: {activeProviderLabel}.
+                Compare every membership in one place. Prices and features below come directly from the active billing configuration. Provider: {activeProviderLabel}.
               </p>
             </div>
 
@@ -236,8 +332,8 @@ export default function PricingPage() {
 
             {error && <div className="border border-primary/30 bg-primary/10 p-4 text-sm text-primary">{error}</div>}
 
-            {!isLoading && !error && (
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {!isLoading && plans.length > 0 && (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {visiblePlans.map((plan) => {
                   const style = tierStyles[plan.key] ?? tierStyles.free;
 
@@ -281,17 +377,36 @@ export default function PricingPage() {
                       ))}
                     </ul>
 
-                    <Link
-                      to={plan.key === 'dj_plus' ? '/subscription?plan=dj_plus' : user ? `/subscription?plan=${plan.key}` : '/register'}
-                      className={`mt-7 inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-opacity hover:opacity-90 ${style.cta} ${plan.is_current ? 'pointer-events-none opacity-70' : ''}`}
-                      style={{ fontFamily: 'var(--font-heading)' }}
-                    >
-                      {ctaLabel(plan, Boolean(user))}
-                      <ArrowRight size={14} />
-                    </Link>
+                    <div className="mt-7">
+                      {!user ? (
+                        <Link to="/register" className={`inline-flex w-full items-center justify-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-opacity hover:opacity-90 ${style.cta}`} style={{ fontFamily: 'var(--font-heading)' }}>
+                          {ctaLabel(plan, false)} <ArrowRight size={14} />
+                        </Link>
+                      ) : plan.is_current || plan.is_free ? (
+                        <div className={`inline-flex w-full items-center justify-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest opacity-70 ${style.cta}`} style={{ fontFamily: 'var(--font-heading)' }}>
+                          {ctaLabel(plan, true)}
+                        </div>
+                      ) : paypalConfig?.plans[plan.key] ? (
+                        <div id={`paypal-pricing-${plan.key}`} className="min-h-[42px]" />
+                      ) : (
+                        <button type="button" disabled={!plan.checkout_enabled || !primaryProvider?.checkout_ready || checkoutPlan === plan.key} onClick={() => handleCheckout(plan)} className={`inline-flex w-full items-center justify-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${style.cta}`} style={{ fontFamily: 'var(--font-heading)' }}>
+                          {checkoutPlan === plan.key ? <Loader2 className="animate-spin" size={14} /> : <CreditCard size={14} />}
+                          {ctaLabel(plan, true)}
+                        </button>
+                      )}
+                    </div>
                   </article>
                   );
                 })}
+              </div>
+            )}
+
+            {user && status?.has_stripe_customer && (
+              <div className="mt-6 flex justify-end">
+                <button type="button" disabled={isPortalLoading} onClick={handlePortal} className="inline-flex items-center gap-2 border border-[#333] px-5 py-3 text-xs font-bold uppercase tracking-widest text-[#ddd] hover:border-primary hover:text-primary disabled:opacity-50" style={{ fontFamily: 'var(--font-heading)' }}>
+                  {isPortalLoading ? <Loader2 className="animate-spin" size={14} /> : <ExternalLink size={14} />}
+                  Manage Existing Billing
+                </button>
               </div>
             )}
           </div>
@@ -307,7 +422,7 @@ export default function PricingPage() {
                 Advertising Groups
               </h2>
               <p className="mt-4 text-sm leading-6 text-[#aaa]">
-                Featured promotion is optional. Free and Plus currently focus on the basic and entry-level groups.
+                Featured promotion is optional. Membership level determines which placement groups are available, from basic Group F through premium Group A.
               </p>
             </div>
 

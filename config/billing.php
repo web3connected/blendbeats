@@ -24,6 +24,13 @@ return [
         'client_id' => $paypalIsSandbox ? env('TEST_PAYPAL_CLIENT_ID') : env('PAYPAL_CLIENT_ID'),
         'secret' => $paypalIsSandbox ? env('TEST_PAYPAL_SECRET') : env('PAYPAL_SECRET'),
         'webhook_id' => $paypalIsSandbox ? env('TEST_PAYPAL_WEBHOOK_ID') : env('PAYPAL_WEBHOOK_ID'),
+        'required_webhook_headers' => [
+            'PAYPAL-TRANSMISSION-ID',
+            'PAYPAL-TRANSMISSION-TIME',
+            'PAYPAL-TRANSMISSION-SIG',
+            'PAYPAL-CERT-URL',
+            'PAYPAL-AUTH-ALGO',
+        ],
         'enforce_signature' => env(
             'PAYPAL_ENFORCE_SIGNATURE',
             false

@@ -274,6 +274,11 @@ class PayPalWebhookController extends Controller
 
         $this->replayWindowSeconds = $replayWindowSeconds;
         $this->status = 'initialized';
+
+        $this->logStageInfo('PayPal webhook initialization completed', [
+            'paypal_mode' => $this->paypalMode,
+            'signature_enforcement' => $this->shouldEnforceWebhookSignature(),
+        ]);
     }
 
     protected function receive(): void
@@ -294,6 +299,11 @@ class PayPalWebhookController extends Controller
         $this->transmissionTime = $this->request->header('PAYPAL-TRANSMISSION-TIME');
 
         $this->status = 'received';
+
+        $this->logStageInfo('PayPal webhook delivery received', [
+            'payload_present' => $this->payload !== [],
+            'transmission_time_present' => filled($this->transmissionTime),
+        ]);
     }
 
     protected function validate(): void
@@ -341,6 +351,11 @@ class PayPalWebhookController extends Controller
         }
 
         $this->status = 'validated';
+
+        $this->logStageInfo('PayPal webhook validation completed', [
+            'required_fields_validated' => true,
+            'signature_enforcement' => $this->shouldEnforceWebhookSignature(),
+        ]);
     }
 
     protected function validateSignature(): bool
@@ -492,6 +507,7 @@ class PayPalWebhookController extends Controller
         $this->result = [
             'processed' => false,
             'user_updated' => false,
+            'affiliate_qualification_attempted' => false,
             'affiliate_qualified' => false,
             'subscription_status' => null,
             'user_found' => false,
@@ -685,7 +701,9 @@ class PayPalWebhookController extends Controller
         ];
 
         if ($status === 'active') {
-            $updates['media_storage_tier'] = 'dj_plus';
+            [$tier, $planId] = $this->resolveActivatedTier();
+            $updates['media_storage_tier'] = $tier;
+            $updates['paypal_plan_id'] = $planId;
         } elseif ($status !== 'payment_failed') {
             $updates['media_storage_tier'] = 'free';
         }
@@ -696,17 +714,46 @@ class PayPalWebhookController extends Controller
         $this->result['subscription_status'] = $status;
 
         if ($status === 'active') {
-            $this->referralQualification->qualifySubscription(
+            $this->result['affiliate_qualification_attempted'] = true;
+            $qualification = $this->referralQualification->qualifySubscription(
                 user: $this->user,
                 provider: 'paypal',
                 transactionId: $this->resourceId,
                 source: 'paypal_webhook:'.$this->eventType,
-                planKey: 'dj_plus',
+                planKey: $tier,
                 status: $status,
             );
 
-            $this->result['affiliate_qualified'] = true;
+            $this->result['affiliate_qualified'] = $qualification !== null;
         }
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    protected function resolveActivatedTier(): array
+    {
+        $planId = data_get($this->payload, 'resource.plan_id');
+
+        if (! is_string($planId) || $planId === '') {
+            throw new RuntimeException('PayPal activation plan ID is missing.');
+        }
+
+        $plans = PaymentProvider::paypalConfiguration()['plans'];
+        $tier = array_search($planId, $plans, true);
+
+        if (! is_string($tier)) {
+            throw new RuntimeException('PayPal activation plan ID is not configured.');
+        }
+
+        if (
+            filled($this->user?->paypal_plan_id)
+            && ! hash_equals((string) $this->user->paypal_plan_id, $planId)
+        ) {
+            throw new RuntimeException('PayPal activation plan ID does not match the approved subscription.');
+        }
+
+        return [$tier, $planId];
     }
 
     protected function markWebhookEventProcessed(): void
@@ -843,29 +890,15 @@ class PayPalWebhookController extends Controller
 
     protected function getHeaderReference(): array
     {
-        $path = base_path('docs/payments/paypal.php');
+        $requiredHeaders = config('billing.paypal.required_webhook_headers');
 
-        if (! is_file($path)) {
+        if (! is_array($requiredHeaders) || $requiredHeaders === []) {
             throw new RuntimeException(
-                'PayPal header reference file is missing.'
+                'PayPal required webhook headers are not configured.'
             );
         }
 
-        $reference = require $path;
-
-        if (! is_array($reference)) {
-            throw new RuntimeException(
-                'PayPal header reference must return an array.'
-            );
-        }
-
-        if (! isset($reference['required_headers']) || ! is_array($reference['required_headers'])) {
-            throw new RuntimeException(
-                'PayPal header reference must contain a required_headers array.'
-            );
-        }
-
-        return $reference;
+        return ['required_headers' => $requiredHeaders];
     }
 
     protected function shouldEnforceWebhookSignature(): bool
