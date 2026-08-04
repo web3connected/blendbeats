@@ -258,6 +258,21 @@ class BillingSetupTest extends TestCase
             ]);
     }
 
+    public function test_membership_plan_prices_come_from_billing_configuration(): void
+    {
+        $this->getJson('/api/billing/plans')
+            ->assertOk()
+            ->assertJsonPath('plans.1.key', 'dj_plus')
+            ->assertJsonPath('plans.1.price_cents', 999)
+            ->assertJsonPath('plans.1.price_label', '$9.99')
+            ->assertJsonPath('plans.2.key', 'dj_pro')
+            ->assertJsonPath('plans.2.price_cents', 1999)
+            ->assertJsonPath('plans.2.price_label', '$19.99')
+            ->assertJsonPath('plans.3.key', 'dj_elite')
+            ->assertJsonPath('plans.3.price_cents', 3999)
+            ->assertJsonPath('plans.3.price_label', '$39.99');
+    }
+
     public function test_browser_readiness_does_not_require_a_webhook_id(): void
     {
         config(['billing.paypal.webhook_id' => null]);

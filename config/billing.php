@@ -184,8 +184,8 @@ return [
             'dj_elite' => [
                 'name' => 'DJ Elite',
                 'stripe_price_id' => env('STRIPE_PRICE_DJ_ELITE'),
-                'stripe_lookup_key' => env('STRIPE_LOOKUP_DJ_ELITE', 'blendbeats_dj_elite_monthly_4799'),
-                'price_cents' => 4799,
+                'stripe_lookup_key' => env('STRIPE_LOOKUP_DJ_ELITE', 'blendbeats_dj_elite_monthly_3999'),
+                'price_cents' => 3999,
                 'billing_interval' => 'monthly',
                 'storage_bytes' => 25 * $gigabyte,
                 'advertising_groups' => ['A', 'B', 'C', 'D', 'E', 'F'],

@@ -199,6 +199,13 @@ export default function PricingPage() {
   const visiblePlans = plans;
   const currentPlan = visiblePlans.find((plan) => plan.is_current) ?? visiblePlans.find((plan) => plan.key === currentTier);
   const currentPlanStyle = currentPlan ? (tierStyles[currentPlan.key] ?? tierStyles.free) : tierStyles.free;
+  const paidPlans = visiblePlans.filter((plan) => !plan.is_free);
+  const configuredPriceRange = paidPlans.length > 0
+    ? `${paidPlans[0].price_label}-${paidPlans[paidPlans.length - 1].price_label}`
+    : 'Loading';
+  const configuredTierSummary = paidPlans.length > 0
+    ? paidPlans.map((plan) => plan.name.replace(/^DJ\s+/i, '')).join(' + ')
+    : 'Loading';
   const heroStats = currentPlan
     ? [
         [currentPlan.name, 'Current tier'],
@@ -207,8 +214,8 @@ export default function PricingPage() {
         [currentPlan.advertising_groups_label, 'Promotion access'],
       ]
     : [
-        ['Free + Plus', 'Active tiers'],
-        ['$0-$9.99', 'Monthly range'],
+        [configuredTierSummary, 'Paid tiers'],
+        [configuredPriceRange, 'Monthly range'],
         ['E-F', 'Promotion groups'],
         [providerName, `${providerMode} checkout`],
       ];
