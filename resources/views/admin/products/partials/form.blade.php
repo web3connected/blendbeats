@@ -101,10 +101,18 @@
 
 <div class="row">
     <div class="col-md-8">
+        @if ($product->image_url)
+            <div class="mb-3 border bg-dark p-2">
+                <img src="{{ $product->image_url }}" alt="{{ $product->title }}" class="img-fluid w-100" style="max-height: 260px; object-fit: contain;">
+            </div>
+        @endif
         <div class="form-group">
-            <label for="image_url">Image URL</label>
-            <input id="image_url" name="image_url" class="form-control" value="{{ old('image_url', $product->image_url) }}" placeholder="/media/products/example.jpg">
-            <small class="form-text text-muted">Leave blank to use the default product artwork on the frontend.</small>
+            <label for="product_image">{{ $product->exists && $product->image_url ? 'Replace Product Image' : 'Upload Product Image' }}</label>
+            <input id="product_image" name="product_image" type="file" class="form-control-file @error('product_image') is-invalid @enderror" accept="image/jpeg,image/png,image/webp">
+            <small class="form-text text-muted">JPG, PNG, or WebP. Maximum 5 MB. Leave blank while editing to keep the current image.</small>
+            @error('product_image')
+                <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
         </div>
     </div>
     <div class="col-md-2">

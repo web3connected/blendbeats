@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ProductImageService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -71,5 +72,10 @@ class Product extends Model
     {
         return in_array($this->source_type, ['affiliate', 'external_vendor', 'marketplace_partner'], true)
             || in_array($this->fulfillment_type, ['affiliate_redirect', 'vendor_checkout', 'marketplace_partner'], true);
+    }
+
+    public function getImageUrlAttribute(?string $value): ?string
+    {
+        return app(ProductImageService::class)->url($value);
     }
 }

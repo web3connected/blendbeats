@@ -14,7 +14,7 @@
             <h3 class="card-title">Product Details</h3>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ route('admin.products.update', $product) }}">
+            <form method="POST" action="{{ route('admin.products.update', $product) }}" enctype="multipart/form-data">
                 @method('PUT')
                 @include('admin.products.partials.form')
             </form>

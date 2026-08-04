@@ -10,7 +10,7 @@
             <h3 class="card-title">Product Details</h3>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ route('admin.products.store') }}">
+            <form method="POST" action="{{ route('admin.products.store') }}" enctype="multipart/form-data">
                 @include('admin.products.partials.form')
             </form>
         </div>

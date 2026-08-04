@@ -4,14 +4,20 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Services\ProductImageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 class CommerceProductController extends Controller
 {
+    public function __construct(private readonly ProductImageService $images) {}
+
     public function index(Request $request): View
     {
         $products = Product::query()
@@ -43,7 +49,24 @@ class CommerceProductController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $product = Product::query()->create($this->validatedProductData($request));
+        $data = $this->validatedProductData($request);
+        $storedPath = null;
+
+        try {
+            if ($request->hasFile('product_image')) {
+                $storedPath = $this->images->store($request->file('product_image'));
+                $data['image_url'] = $storedPath;
+            }
+
+            $product = DB::transaction(fn (): Product => Product::query()->create($data));
+        } catch (Throwable $exception) {
+            $this->images->deleteManaged($storedPath);
+            Log::error('Admin product creation failed.', ['exception' => $exception::class]);
+
+            return back()->withInput()->withErrors([
+                'product_image' => 'The product could not be saved. Please verify the image and try again.',
+            ]);
+        }
 
         return redirect()
             ->route('admin.products.edit', $product)
@@ -61,7 +84,32 @@ class CommerceProductController extends Controller
 
     public function update(Request $request, Product $product): RedirectResponse
     {
-        $product->update($this->validatedProductData($request, $product));
+        $data = $this->validatedProductData($request, $product);
+        $oldPath = $product->getRawOriginal('image_url');
+        $storedPath = null;
+
+        try {
+            if ($request->hasFile('product_image')) {
+                $storedPath = $this->images->store($request->file('product_image'));
+                $data['image_url'] = $storedPath;
+            }
+
+            DB::transaction(fn () => $product->update($data));
+        } catch (Throwable $exception) {
+            $this->images->deleteManaged($storedPath);
+            Log::error('Admin product update failed.', [
+                'product_id' => $product->id,
+                'exception' => $exception::class,
+            ]);
+
+            return back()->withInput()->withErrors([
+                'product_image' => 'The product could not be updated. The existing image was kept.',
+            ]);
+        }
+
+        if ($storedPath !== null) {
+            $this->images->deleteManaged($oldPath);
+        }
 
         return redirect()
             ->route('admin.products.edit', $product)
@@ -70,7 +118,9 @@ class CommerceProductController extends Controller
 
     public function destroy(Product $product): RedirectResponse
     {
+        $path = $product->getRawOriginal('image_url');
         $product->delete();
+        $this->images->deleteManaged($path);
 
         return redirect()
             ->route('admin.products.index')
@@ -92,7 +142,7 @@ class CommerceProductController extends Controller
             'source_type' => ['required', Rule::in(Product::SOURCE_TYPES)],
             'external_product_url' => ['nullable', 'string', 'max:2048'],
             'affiliate_tracking_url' => ['nullable', 'string', 'max:2048'],
-            'image_url' => ['nullable', 'string', 'max:2048'],
+            'product_image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:'.(int) config('commerce.images.max_kilobytes', 5120)],
             'category' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(['draft', 'active', 'paused', 'archived'])],
             'requires_customization' => ['nullable', 'boolean'],
@@ -117,7 +167,6 @@ class CommerceProductController extends Controller
             'source_type' => $validated['source_type'],
             'external_product_url' => $validated['external_product_url'] ?? null,
             'affiliate_tracking_url' => $validated['affiliate_tracking_url'] ?? null,
-            'image_url' => $validated['image_url'] ?? null,
             'category' => $validated['category'] ?? null,
             'status' => $validated['status'],
             'requires_customization' => $request->boolean('requires_customization'),
