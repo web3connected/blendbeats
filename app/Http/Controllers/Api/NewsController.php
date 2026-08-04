@@ -178,7 +178,10 @@ class NewsController extends Controller
             'is_breaking' => $post->is_breaking,
             'is_featured' => $post->is_featured,
             'importance_level' => $post->importance_level,
-            'featured_image' => $post->featured_image,
+            'featured_image' => array_filter([
+                ...($post->featured_image ?? []),
+                'url' => $post->featured_image_url,
+            ]),
             'seo' => $post->seo,
             'published_at' => $post->published_at?->toISOString(),
             'author' => $post->author ? [

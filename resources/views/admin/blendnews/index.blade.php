@@ -90,16 +90,12 @@
                 </thead>
                 <tbody>
                     @forelse ($posts as $post)
-                        @php
-                            $imagePath = data_get($post->featured_image, 'path');
-                            $imageUrl = $imagePath ? asset('media/'.ltrim($imagePath, '/')) : null;
-                        @endphp
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center">
                                     <div class="mr-3 bg-black border d-flex align-items-center justify-content-center" style="width: 68px; height: 48px;">
-                                        @if ($imageUrl)
-                                            <img src="{{ $imageUrl }}" alt="" style="width: 68px; height: 48px; object-fit: cover;">
+                                        @if ($post->featured_image_url)
+                                            <img src="{{ $post->featured_image_url }}" alt="" style="width: 68px; height: 48px; object-fit: cover;">
                                         @else
                                             <i class="fas fa-image text-muted"></i>
                                         @endif

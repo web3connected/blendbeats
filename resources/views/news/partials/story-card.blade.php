@@ -1,6 +1,5 @@
 @php
-    $image = data_get($post->featured_image, 'url') ?? data_get($post->featured_image, 'path');
-    $imageUrl = $image ? (str_starts_with($image, 'http') ? $image : asset($image)) : null;
+    $imageUrl = $post->featured_image_url;
     $category = $post->primaryCategory ?? $post->categories->first();
     $views = $post->trendingMetric?->views ?? 0;
 @endphp

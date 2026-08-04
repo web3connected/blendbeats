@@ -21,7 +21,7 @@
             </div>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ route('admin.blendnews.update', $post) }}">
+            <form method="POST" action="{{ route('admin.blendnews.update', $post) }}" enctype="multipart/form-data">
                 @method('PUT')
                 @include('admin.blendnews.partials.form')
             </form>

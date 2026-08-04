@@ -6,6 +6,12 @@ $feeds = array_values(array_filter(array_map(
 )));
 
 return [
+    'images' => [
+        'disk' => env('BLENDNEWS_IMAGE_DISK', 'public'),
+        'directory' => 'media/blend-news',
+        'max_kilobytes' => 5120,
+    ],
+
     'rss' => [
         'enabled' => env('BLENDNEWS_RSS_ENABLED', false),
         'feeds' => $feeds,

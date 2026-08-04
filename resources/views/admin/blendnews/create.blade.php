@@ -12,7 +12,7 @@
             </h3>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ route('admin.blendnews.store') }}">
+            <form method="POST" action="{{ route('admin.blendnews.store') }}" enctype="multipart/form-data">
                 @include('admin.blendnews.partials.form')
             </form>
         </div>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\BlendNewsImageService;
 use App\Traits\Rateable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -207,6 +208,13 @@ class Post extends Model
     public function isPublished(): bool
     {
         return $this->status === self::STATUS_PUBLISHED && $this->published_at !== null;
+    }
+
+    public function getFeaturedImageUrlAttribute(): ?string
+    {
+        $path = data_get($this->featured_image, 'url') ?? data_get($this->featured_image, 'path');
+
+        return app(BlendNewsImageService::class)->url($path);
     }
 
     public function incrementViewCount(): NewsTrendingMetric

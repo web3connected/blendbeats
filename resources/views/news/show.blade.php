@@ -1,6 +1,5 @@
 @php
-    $featuredImage = data_get($post->featured_image, 'url') ?? data_get($post->featured_image, 'path');
-    $featuredImageUrl = $featuredImage ? (str_starts_with($featuredImage, 'http') ? $featuredImage : asset($featuredImage)) : null;
+    $featuredImageUrl = $post->featured_image_url;
     $description = $post->excerpt ?: \Illuminate\Support\Str::limit(strip_tags($post->content), 160);
     $category = $post->primaryCategory ?? $post->categories->first();
     $views = $post->trendingMetric?->views ?? 0;

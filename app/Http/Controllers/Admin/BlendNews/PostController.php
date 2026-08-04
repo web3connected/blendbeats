@@ -9,15 +9,21 @@ use App\Models\NewsSource;
 use App\Models\Post;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\BlendNewsImageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 class PostController extends Controller
 {
+    public function __construct(private readonly BlendNewsImageService $images) {}
+
     public function index(Request $request): View
     {
         $posts = Post::query()
@@ -62,8 +68,29 @@ class PostController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $post = Post::query()->create($this->validatedData($request));
-        $this->syncRelations($post, $request);
+        $data = $this->validatedData($request);
+        $storedPath = null;
+
+        try {
+            if ($request->hasFile('featured_image')) {
+                $storedPath = $this->images->store($request->file('featured_image'));
+                $data['featured_image'] = $this->featuredImageData($storedPath, $request, $data['title']);
+            }
+
+            $post = DB::transaction(function () use ($data, $request): Post {
+                $post = Post::query()->create($data);
+                $this->syncRelations($post, $request);
+
+                return $post;
+            });
+        } catch (Throwable $exception) {
+            $this->images->deleteManaged($storedPath);
+            Log::error('Blend News story creation failed.', ['exception' => $exception::class]);
+
+            return back()->withInput()->withErrors([
+                'featured_image' => 'The story could not be saved. Please verify the image and try again.',
+            ]);
+        }
 
         return redirect()
             ->route('admin.blendnews.edit', $post)
@@ -81,8 +108,42 @@ class PostController extends Controller
     {
         abort_unless($blendnews->isNews(), 404);
 
-        $blendnews->update($this->validatedData($request, $blendnews));
-        $this->syncRelations($blendnews, $request);
+        $data = $this->validatedData($request, $blendnews);
+        $oldPath = data_get($blendnews->featured_image, 'path');
+        $storedPath = null;
+
+        try {
+            if ($request->hasFile('featured_image')) {
+                $storedPath = $this->images->store($request->file('featured_image'));
+                $data['featured_image'] = $this->featuredImageData($storedPath, $request, $data['title']);
+            } else {
+                $data['featured_image'] = $this->featuredImageData(
+                    $oldPath,
+                    $request,
+                    $data['title'],
+                    data_get($blendnews->featured_image, 'url'),
+                );
+            }
+
+            DB::transaction(function () use ($blendnews, $data, $request): void {
+                $blendnews->update($data);
+                $this->syncRelations($blendnews, $request);
+            });
+        } catch (Throwable $exception) {
+            $this->images->deleteManaged($storedPath);
+            Log::error('Blend News story update failed.', [
+                'post_id' => $blendnews->id,
+                'exception' => $exception::class,
+            ]);
+
+            return back()->withInput()->withErrors([
+                'featured_image' => 'The story could not be updated. The existing image was kept.',
+            ]);
+        }
+
+        if ($storedPath !== null) {
+            $this->images->deleteManaged($oldPath);
+        }
 
         return redirect()
             ->route('admin.blendnews.edit', $blendnews)
@@ -93,7 +154,9 @@ class PostController extends Controller
     {
         abort_unless($blendnews->isNews(), 404);
 
+        $path = data_get($blendnews->featured_image, 'path');
         $blendnews->delete();
+        $this->images->deleteManaged($path);
 
         return redirect()
             ->route('admin.blendnews.index')
@@ -148,7 +211,7 @@ class PostController extends Controller
             'status' => ['required', Rule::in(array_keys($this->statuses()))],
             'verification_status' => ['required', Rule::in(['unverified', 'pending', 'verified', 'disputed'])],
             'importance_level' => ['required', 'integer', 'min:1', 'max:5'],
-            'featured_image_path' => ['nullable', 'string', 'max:2048'],
+            'featured_image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:'.(int) config('blendnews.images.max_kilobytes', 5120)],
             'featured_image_alt' => ['nullable', 'string', 'max:255'],
             'seo_title' => ['nullable', 'string', 'max:255'],
             'seo_description' => ['nullable', 'string', 'max:500'],
@@ -166,14 +229,6 @@ class PostController extends Controller
             $publishedAt = now();
         }
 
-        $featuredImagePath = trim((string) ($validated['featured_image_path'] ?? ''));
-        $featuredImage = $featuredImagePath !== ''
-            ? [
-                'path' => Str::of($featuredImagePath)->replaceStart('/media/', '')->replaceStart('media/', '')->toString(),
-                'alt' => $validated['featured_image_alt'] ?: $validated['title'],
-            ]
-            : null;
-
         return [
             'author_id' => $validated['author_id'] ?? null,
             'category_id' => $validated['category_id'] ?? Arr::first($validated['categories'] ?? []),
@@ -190,7 +245,7 @@ class PostController extends Controller
             'is_breaking' => $request->boolean('is_breaking'),
             'is_featured' => $request->boolean('is_featured'),
             'importance_level' => (int) $validated['importance_level'],
-            'featured_image' => $featuredImage,
+            'featured_image' => null,
             'seo' => [
                 'title' => $validated['seo_title'] ?? null,
                 'description' => $validated['seo_description'] ?? null,
@@ -200,6 +255,22 @@ class PostController extends Controller
             'approved_at' => $status === Post::STATUS_APPROVED ? now() : $post?->approved_at,
             'archived_at' => $status === Post::STATUS_ARCHIVED ? now() : null,
         ];
+    }
+
+    /**
+     * @return array{path?: string, url?: string, alt: string}|null
+     */
+    private function featuredImageData(?string $path, Request $request, string $title, ?string $url = null): ?array
+    {
+        if (! filled($path) && ! filled($url)) {
+            return null;
+        }
+
+        return array_filter([
+            'path' => $path,
+            'url' => $url,
+            'alt' => $request->input('featured_image_alt') ?: $title,
+        ], fn ($value) => $value !== null && $value !== '');
     }
 
     private function syncRelations(Post $post, Request $request): void

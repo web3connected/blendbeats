@@ -7,7 +7,6 @@
 @endif
 
 @php
-    $featuredImagePath = old('featured_image_path', data_get($post->featured_image, 'path'));
     $featuredImageAlt = old('featured_image_alt', data_get($post->featured_image, 'alt'));
     $selectedCategories = collect(old('categories', $post->exists ? $post->categories->pluck('id')->all() : []))->map(fn ($id) => (int) $id);
     $selectedTags = collect(old('tags', $post->exists ? $post->tags->pluck('id')->all() : []))->map(fn ($id) => (int) $id);
@@ -145,15 +144,18 @@
                 </h3>
             </div>
             <div class="card-body">
-                @if ($featuredImagePath)
+                @if ($post->featured_image_url)
                     <div class="mb-3 border">
-                        <img src="{{ asset('media/'.ltrim($featuredImagePath, '/')) }}" alt="" class="img-fluid w-100" style="max-height: 180px; object-fit: cover;">
+                        <img src="{{ $post->featured_image_url }}" alt="{{ data_get($post->featured_image, 'alt', $post->title) }}" class="img-fluid w-100" style="max-height: 180px; object-fit: cover;">
                     </div>
                 @endif
                 <div class="form-group">
-                    <label for="featured_image_path">Media Path</label>
-                    <input id="featured_image_path" name="featured_image_path" class="form-control" value="{{ $featuredImagePath }}" placeholder="news/story-image.jpg">
-                    <small class="form-text text-muted">Use a path under public media, without the leading /media when possible.</small>
+                    <label for="featured_image">{{ $post->exists && $post->featured_image_url ? 'Replace Image' : 'Upload Image' }}</label>
+                    <input id="featured_image" name="featured_image" type="file" class="form-control-file @error('featured_image') is-invalid @enderror" accept="image/jpeg,image/png,image/webp">
+                    <small class="form-text text-muted">JPG, PNG, or WebP. Maximum 5 MB. Leave blank while editing to keep the current image.</small>
+                    @error('featured_image')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="form-group mb-0">
                     <label for="featured_image_alt">Alt Text</label>
