@@ -32,6 +32,72 @@ class CommerceCartPersistenceTest extends TestCase
         $this->assertDatabaseCount('shopping_carts', 1);
     }
 
+    public function test_adding_same_product_configuration_increases_quantity_on_one_line(): void
+    {
+        $product = $this->product('Quantity Shirt');
+        $token = 'browser-cart-token-quantity-12345';
+        $payload = [
+            'product_id' => $product->id,
+            'quantity' => 1,
+            'selected_options' => ['color' => 'Black', 'size' => 'L'],
+        ];
+
+        $this->withHeader('X-Commerce-Cart-Token', $token)
+            ->postJson('/api/commerce/cart/items', $payload)
+            ->assertCreated()
+            ->assertJsonPath('cart.item_count', 1);
+
+        $this->withHeader('X-Commerce-Cart-Token', $token)
+            ->postJson('/api/commerce/cart/items', [
+                ...$payload,
+                'selected_options' => ['size' => 'L', 'color' => 'Black'],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('cart.item_count', 2)
+            ->assertJsonCount(1, 'cart.items')
+            ->assertJsonPath('cart.items.0.quantity', 2)
+            ->assertJsonPath('cart.items.0.estimated_total_label', '$30.00');
+
+        $this->assertDatabaseCount('shopping_cart_items', 1);
+    }
+
+    public function test_same_product_with_different_options_remains_separate_lines(): void
+    {
+        $product = $this->product('Sized Shirt');
+        $token = 'browser-cart-token-options-12345';
+
+        foreach (['M', 'XL'] as $size) {
+            $this->withHeader('X-Commerce-Cart-Token', $token)
+                ->postJson('/api/commerce/cart/items', [
+                    'product_id' => $product->id,
+                    'selected_options' => ['size' => $size],
+                ])->assertCreated();
+        }
+
+        $this->withHeader('X-Commerce-Cart-Token', $token)
+            ->getJson('/api/commerce/cart')
+            ->assertOk()
+            ->assertJsonCount(2, 'cart.items')
+            ->assertJsonPath('cart.item_count', 2);
+    }
+
+    public function test_existing_duplicate_lines_are_healed_when_cart_is_opened(): void
+    {
+        $product = $this->product('Existing Duplicate');
+        $token = 'browser-cart-token-heal-12345678';
+        $cart = ShoppingCart::query()->create(['session_id' => $token, 'status' => 'active']);
+        $this->cartItem($cart, $product);
+        $this->cartItem($cart, $product);
+
+        $this->withHeader('X-Commerce-Cart-Token', $token)
+            ->getJson('/api/commerce/cart')
+            ->assertOk()
+            ->assertJsonCount(1, 'cart.items')
+            ->assertJsonPath('cart.items.0.quantity', 2);
+
+        $this->assertDatabaseCount('shopping_cart_items', 1);
+    }
+
     public function test_duplicate_browser_carts_are_consolidated_instead_of_hiding_items(): void
     {
         $productA = $this->product('First Product');

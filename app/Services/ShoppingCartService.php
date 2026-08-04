@@ -63,6 +63,8 @@ class ShoppingCartService
                 $cart->forceFill(['session_id' => $sessionId])->save();
             }
 
+            $this->consolidateDuplicateItems($cart);
+
             return $cart;
         });
     }
@@ -74,26 +76,50 @@ class ShoppingCartService
     public function addItem(ShoppingCart $cart, Product $product, int $quantity, array $selectedOptions = [], array $customDesignData = []): ShoppingCartItem
     {
         $unitPrice = $product->currentPriceCents();
+        $quantity = max(1, min(99, $quantity));
 
-        return ShoppingCartItem::query()->create([
-            'shopping_cart_id' => $cart->id,
-            'product_id' => $product->id,
-            'source_type' => $product->source_type,
-            'quantity' => max(1, min(99, $quantity)),
-            'selected_options' => $selectedOptions ?: null,
-            'custom_design_data' => $customDesignData ?: null,
-            'unit_price_cents' => $unitPrice,
-            'estimated_total_cents' => $unitPrice * max(1, min(99, $quantity)),
-            'vendor_name' => $product->vendor_name,
-            'external_checkout_required' => $product->requiresExternalCheckout(),
-            'affiliate_tracking_url' => $product->affiliate_tracking_url ?: $product->external_product_url,
-            'fulfillment_type' => $product->fulfillment_type,
-            'metadata' => [
-                'product_title' => $product->title,
-                'commission_rate' => $product->commission_rate,
-                'requires_customization' => $product->requires_customization,
-            ],
-        ]);
+        return DB::transaction(function () use ($cart, $product, $quantity, $selectedOptions, $customDesignData, $unitPrice): ShoppingCartItem {
+            $matchingItems = ShoppingCartItem::query()
+                ->where('shopping_cart_id', $cart->id)
+                ->where('product_id', $product->id)
+                ->lockForUpdate()
+                ->get()
+                ->filter(fn (ShoppingCartItem $item): bool => $this->sameConfiguration($item, $selectedOptions, $customDesignData));
+
+            $item = $matchingItems->shift();
+
+            if ($item) {
+                $newQuantity = min(99, (int) $item->quantity + $matchingItems->sum('quantity') + $quantity);
+                ShoppingCartItem::query()->whereKey($matchingItems->pluck('id'))->delete();
+                $item->forceFill([
+                    'quantity' => $newQuantity,
+                    'unit_price_cents' => $unitPrice,
+                    'estimated_total_cents' => $unitPrice * $newQuantity,
+                ])->save();
+
+                return $item->refresh();
+            }
+
+            return ShoppingCartItem::query()->create([
+                'shopping_cart_id' => $cart->id,
+                'product_id' => $product->id,
+                'source_type' => $product->source_type,
+                'quantity' => $quantity,
+                'selected_options' => $selectedOptions ?: null,
+                'custom_design_data' => $customDesignData ?: null,
+                'unit_price_cents' => $unitPrice,
+                'estimated_total_cents' => $unitPrice * $quantity,
+                'vendor_name' => $product->vendor_name,
+                'external_checkout_required' => $product->requiresExternalCheckout(),
+                'affiliate_tracking_url' => $product->affiliate_tracking_url ?: $product->external_product_url,
+                'fulfillment_type' => $product->fulfillment_type,
+                'metadata' => [
+                    'product_title' => $product->title,
+                    'commission_rate' => $product->commission_rate,
+                    'requires_customization' => $product->requires_customization,
+                ],
+            ]);
+        });
     }
 
     public function updateQuantity(ShoppingCartItem $item, int $quantity): ShoppingCartItem
@@ -195,5 +221,61 @@ class ShoppingCartService
     public function money(int $cents): string
     {
         return '$'.number_format($cents / 100, 2);
+    }
+
+    private function consolidateDuplicateItems(ShoppingCart $cart): void
+    {
+        $items = $cart->items()->lockForUpdate()->orderBy('id')->get();
+
+        foreach ($items->groupBy(fn (ShoppingCartItem $item): string => $this->lineSignature(
+            (int) $item->product_id,
+            $item->selected_options ?? [],
+            $item->custom_design_data ?? [],
+        )) as $matchingItems) {
+            if ($matchingItems->count() < 2) {
+                continue;
+            }
+
+            $item = $matchingItems->shift();
+            $quantity = min(99, (int) $item->quantity + $matchingItems->sum('quantity'));
+            $item->forceFill([
+                'quantity' => $quantity,
+                'estimated_total_cents' => $item->unit_price_cents * $quantity,
+            ])->save();
+            ShoppingCartItem::query()->whereKey($matchingItems->pluck('id'))->delete();
+        }
+    }
+
+    /** @param array<string, mixed> $selectedOptions @param array<string, mixed> $customDesignData */
+    private function sameConfiguration(ShoppingCartItem $item, array $selectedOptions, array $customDesignData): bool
+    {
+        return $this->lineSignature((int) $item->product_id, $item->selected_options ?? [], $item->custom_design_data ?? [])
+            === $this->lineSignature((int) $item->product_id, $selectedOptions, $customDesignData);
+    }
+
+    /** @param array<string, mixed> $selectedOptions @param array<string, mixed> $customDesignData */
+    private function lineSignature(int $productId, array $selectedOptions, array $customDesignData): string
+    {
+        return hash('sha256', json_encode([
+            'product_id' => $productId,
+            'selected_options' => $this->sortRecursively($selectedOptions),
+            'custom_design_data' => $this->sortRecursively($customDesignData),
+        ], JSON_THROW_ON_ERROR));
+    }
+
+    private function sortRecursively(array $value): array
+    {
+        foreach ($value as &$item) {
+            if (is_array($item)) {
+                $item = $this->sortRecursively($item);
+            }
+        }
+        unset($item);
+
+        if (! array_is_list($value)) {
+            ksort($value);
+        }
+
+        return $value;
     }
 }
