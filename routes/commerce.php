@@ -12,4 +12,6 @@ Route::prefix('commerce')
         Route::patch('cart/items/{item}', [CommerceController::class, 'updateCartItem'])->name('cart.items.update');
         Route::delete('cart/items/{item}', [CommerceController::class, 'removeCartItem'])->name('cart.items.destroy');
         Route::get('checkout/summary', [CommerceController::class, 'checkoutSummary'])->name('checkout.summary');
+        Route::post('checkout/paypal', [CommerceController::class, 'startPayPalCheckout'])->name('checkout.paypal.start');
+        Route::post('checkout/paypal/capture', [CommerceController::class, 'capturePayPalCheckout'])->name('checkout.paypal.capture');
     });

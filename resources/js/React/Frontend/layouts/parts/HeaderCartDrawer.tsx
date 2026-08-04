@@ -17,6 +17,7 @@ import {
   CommerceCart,
   fetchCommerceCart,
   removeCommerceCartItem,
+  startCommercePayPalCheckout,
   updateCommerceCartItem,
 } from '@/lib/commerce';
 
@@ -25,6 +26,7 @@ export default function HeaderCartDrawer() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [busyItem, setBusyItem] = useState<number | null>(null);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [error, setError] = useState('');
 
   const refreshCart = () => {
@@ -72,6 +74,19 @@ export default function HeaderCartDrawer() {
       setError(cartError instanceof Error ? cartError.message : 'Cart could not be updated.');
     } finally {
       setBusyItem(null);
+    }
+  }
+
+  async function checkoutPlatformItems() {
+    setIsCheckingOut(true);
+    setError('');
+
+    try {
+      const checkout = await startCommercePayPalCheckout();
+      window.location.href = checkout.approval_url;
+    } catch (checkoutError) {
+      setError(checkoutError instanceof Error ? checkoutError.message : 'PayPal checkout could not be started.');
+      setIsCheckingOut(false);
     }
   }
 
@@ -261,11 +276,11 @@ export default function HeaderCartDrawer() {
                 </div>
                 <div className="flex items-center justify-between text-[#777777]">
                   <span>Shipping / partner fees</span>
-                  <span>Calculated by route</span>
+                  <span>Not included in subtotal</span>
                 </div>
                 <div className="flex items-center justify-between text-[#777777]">
                   <span>Taxes</span>
-                  <span>Calculated at checkout</span>
+                  <span>Not included in subtotal</span>
                 </div>
               </div>
 
@@ -280,18 +295,19 @@ export default function HeaderCartDrawer() {
                 </a>
                 <button
                   type="button"
+                  onClick={checkoutPlatformItems}
                   className="flex h-12 items-center justify-center gap-2 bg-primary text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50"
                   style={{ fontFamily: 'var(--font-heading)' }}
-                  disabled={!cart || cart.items.length === 0}
+                  disabled={!cart || internalItemCount === 0 || isCheckingOut}
                 >
-                  <CreditCard size={15} />
-                  Checkout Preview
+                  {isCheckingOut ? <Loader2 className="animate-spin" size={15} /> : <CreditCard size={15} />}
+                  Pay Platform Items
                 </button>
               </div>
 
               {cart && cart.items.length > 0 && (
                 <p className="mt-3 text-xs leading-5 text-[#888888]">
-                  Internal products stay on BlendBeats. Affiliate and vendor products open the partner checkout route.
+                  Platform products use PayPal checkout. Affiliate and vendor products open the partner checkout route separately.
                 </p>
               )}
             </div>

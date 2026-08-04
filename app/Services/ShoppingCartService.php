@@ -7,38 +7,64 @@ use App\Models\ShoppingCart;
 use App\Models\ShoppingCartItem;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ShoppingCartService
 {
     public function activeCart(?User $user, ?string $sessionId): ShoppingCart
     {
-        $query = ShoppingCart::query()->where('status', 'active');
+        return DB::transaction(function () use ($user, $sessionId): ShoppingCart {
+            $identityCarts = collect();
 
-        if ($user) {
-            $cart = (clone $query)->where('user_id', $user->id)->latest()->first();
-
-            if ($cart) {
-                return $cart;
+            if ($sessionId) {
+                $identityCarts = ShoppingCart::query()
+                    ->where('status', 'active')
+                    ->where('session_id', $sessionId)
+                    ->lockForUpdate()
+                    ->orderByDesc('id')
+                    ->get();
             }
-        }
 
-        if ($sessionId) {
-            $cart = (clone $query)->where('session_id', $sessionId)->latest()->first();
+            $cart = $identityCarts->shift();
 
-            if ($cart) {
-                if ($user && ! $cart->user_id) {
-                    $cart->forceFill(['user_id' => $user->id])->save();
-                }
-
-                return $cart;
+            foreach ($identityCarts as $duplicate) {
+                $duplicate->items()->update(['shopping_cart_id' => $cart->id]);
+                $duplicate->delete();
             }
-        }
 
-        return ShoppingCart::query()->create([
-            'user_id' => $user?->id,
-            'session_id' => $sessionId,
-            'status' => 'active',
-        ]);
+            $userCart = $user
+                ? ShoppingCart::query()
+                    ->where('status', 'active')
+                    ->where('user_id', $user->id)
+                    ->lockForUpdate()
+                    ->orderByDesc('id')
+                    ->first()
+                : null;
+
+            if ($cart && $userCart && $cart->isNot($userCart)) {
+                $cart->items()->update(['shopping_cart_id' => $userCart->id]);
+                $cart->delete();
+                $cart = $userCart;
+            } elseif (! $cart && $userCart) {
+                $cart = $userCart;
+            }
+
+            if (! $cart) {
+                $cart = ShoppingCart::query()->create([
+                    'user_id' => $user?->id,
+                    'session_id' => $sessionId,
+                    'status' => 'active',
+                ]);
+            } elseif ($user && ! $cart->user_id) {
+                $cart->forceFill(['user_id' => $user->id])->save();
+            }
+
+            if ($sessionId && $cart->session_id !== $sessionId) {
+                $cart->forceFill(['session_id' => $sessionId])->save();
+            }
+
+            return $cart;
+        });
     }
 
     /**

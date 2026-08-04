@@ -4,6 +4,7 @@ import { Loader2, Plus, ShoppingBag } from 'lucide-react';
 import HeaderTitle from '@/layouts/HeaderTitle';
 import {
   addCommerceCartItem,
+  captureCommercePayPalCheckout,
   CommerceProduct,
   fetchCommerceProducts,
 } from '@/lib/commerce';
@@ -65,6 +66,7 @@ export default function MerchPage() {
   const [loading, setLoading] = useState(true);
   const [busyProduct, setBusyProduct] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -75,6 +77,32 @@ export default function MerchPage() {
       })
       .catch(() => setError('Commerce data could not be loaded.'))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentState = params.get('commerce_payment');
+    const orderId = params.get('token');
+
+    if (paymentState === 'cancelled') {
+      setError('PayPal checkout was cancelled. Your cart has not changed.');
+      window.history.replaceState({}, '', '/merch');
+      return;
+    }
+
+    if (paymentState !== 'paypal-return' || !orderId) return;
+
+    setLoading(true);
+    captureCommercePayPalCheckout(orderId)
+      .then((result) => {
+        setError(null);
+        setSuccess(result.message);
+      })
+      .catch((captureError) => setError(captureError instanceof Error ? captureError.message : 'PayPal payment could not be confirmed.'))
+      .finally(() => {
+        setLoading(false);
+        window.history.replaceState({}, '', '/merch');
+      });
   }, []);
 
   const stats = useMemo(() => {
@@ -153,6 +181,7 @@ export default function MerchPage() {
               </div>
 
               {error && <div className="mb-5 border border-primary bg-primary/10 p-4 text-sm text-white">{error}</div>}
+              {success && <div className="mb-5 border border-green-500/50 bg-green-500/10 p-4 text-sm text-green-100">{success}</div>}
 
               {loading ? (
                 <div className="flex min-h-72 items-center justify-center border border-[#292929] bg-[#101010]">

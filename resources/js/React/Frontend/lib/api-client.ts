@@ -4,6 +4,8 @@ type RequestOptions = RequestInit & {
   params?: Record<string, string | number | boolean | undefined | null>;
 };
 
+let fallbackCommerceCartToken: string | null = null;
+
 function buildUrl(path: string, params?: RequestOptions['params']) {
   const normalizedPath = path.startsWith('/api/') ? path.replace(/^\/api/, '') : path;
   const url = new URL(`${API_BASE}${normalizedPath}`, window.location.origin);
@@ -17,14 +19,44 @@ function buildUrl(path: string, params?: RequestOptions['params']) {
   return url.pathname + url.search;
 }
 
+function commerceCartToken(path: string) {
+  if (!path.includes('/commerce/')) return null;
+
+  const key = 'blendbeats-commerce-cart-token';
+  let token: string | null = null;
+
+  try {
+    token = window.localStorage.getItem(key);
+  } catch {
+    token = fallbackCommerceCartToken;
+  }
+
+  if (!token) {
+    token = typeof window.crypto?.randomUUID === 'function'
+      ? window.crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    fallbackCommerceCartToken = token;
+
+    try {
+      window.localStorage.setItem(key, token);
+    } catch {
+      // The in-memory token still keeps the cart stable for this page session.
+    }
+  }
+
+  return token;
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<{ data: T }> {
   const isFormData = options.body instanceof FormData;
+  const cartToken = commerceCartToken(path);
   const response = await fetch(buildUrl(path, options.params), {
     credentials: 'include',
     ...options,
     headers: {
       Accept: 'application/json',
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(cartToken ? { 'X-Commerce-Cart-Token': cartToken } : {}),
       ...options.headers,
     },
   });

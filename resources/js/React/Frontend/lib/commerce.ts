@@ -94,6 +94,19 @@ export async function removeCommerceCartItem(itemId: number) {
   return response.data.cart;
 }
 
+export async function startCommercePayPalCheckout() {
+  const response = await apiClient.post<{ approval_url: string; order_id: string }>('/commerce/checkout/paypal');
+  return response.data;
+}
+
+export async function captureCommercePayPalCheckout(orderId: string) {
+  const response = await apiClient.post<{ cart: CommerceCart; message: string }>('/commerce/checkout/paypal/capture', {
+    order_id: orderId,
+  });
+  notifyCommerceCartUpdated(response.data.cart);
+  return response.data;
+}
+
 function notifyCommerceCartUpdated(cart: CommerceCart) {
   window.dispatchEvent(new CustomEvent('commerce-cart-updated', { detail: cart }));
 }
