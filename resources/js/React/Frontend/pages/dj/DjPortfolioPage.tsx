@@ -39,6 +39,7 @@ import {
   deleteMediaFile,
   listMediaLibrary,
   MediaManagerApiError,
+  mediaManagerErrorMessage,
   type MediaFileRecord,
   type MediaStorageQuota,
   linkInstagramMediaFile,
@@ -512,15 +513,7 @@ export default function DjPortfolioPage() {
         closeUploadModal();
       })
       .catch((uploadError) => {
-        const validationMessage =
-          uploadError instanceof MediaManagerApiError ? Object.values(uploadError.errors)[0]?.[0] : null;
-
-        setError(
-          validationMessage ||
-            (uploadError instanceof MediaManagerApiError
-              ? uploadError.message
-              : 'Unable to upload media right now.'),
-        );
+        setError(mediaManagerErrorMessage(uploadError, 'Unable to upload media right now.'));
       })
       .finally(() => setIsUploading(false));
   };
@@ -1172,6 +1165,7 @@ export default function DjPortfolioPage() {
                       {uploadDurationSeconds ? ` | ${Math.floor(uploadDurationSeconds / 60)}:${Math.floor(uploadDurationSeconds % 60).toString().padStart(2, '0')}` : ''}
                     </span>
                   )}
+                  <span className="text-xs text-[#666666]">Maximum media file size: 50 MB.</span>
                 </label>
               )}
 
@@ -1189,6 +1183,7 @@ export default function DjPortfolioPage() {
                     Selected cover: {uploadCoverFile.name}
                   </span>
                 )}
+                <span className="text-xs text-[#666666]">Maximum cover image size: 10 MB.</span>
               </label>
 
               <div className="grid gap-4 sm:grid-cols-2">

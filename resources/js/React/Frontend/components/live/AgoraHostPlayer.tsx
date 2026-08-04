@@ -13,6 +13,7 @@ import {
 } from 'react';
 
 import type { AgoraLiveToken } from '@/lib/live';
+import { isBrowserSecureContext, secureMediaContextMessage } from '@/lib/secure-context';
 
 export interface AgoraHostPlayerHandle {
   leave: () => Promise<void>;
@@ -70,6 +71,10 @@ const AgoraHostPlayer = forwardRef<AgoraHostPlayerHandle, AgoraHostPlayerProps>(
       async function connect() {
         try {
           updateStatus('Connecting');
+
+          if (!isBrowserSecureContext()) {
+            throw new Error(secureMediaContextMessage('Live camera and microphone access'));
+          }
 
           const client = AgoraRTC.createClient({ codec: 'vp8', mode: 'live' });
           clientRef.current = client;

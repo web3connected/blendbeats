@@ -51,7 +51,7 @@ const settingsCards = [
   {
     title: 'Security',
     description: 'Control passwords, sessions, account access, and future security tools.',
-    href: '/account/settings',
+    href: '/account/security',
     icon: Lock,
   },
   {

@@ -1,5 +1,8 @@
 import apiClient from '@/lib/api-client';
 
+export const MAX_MEDIA_UPLOAD_BYTES = 50 * 1024 * 1024;
+export const MAX_COVER_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 export type MediaFileRecord = {
   id: number;
   name: string;
@@ -92,14 +95,70 @@ function toMediaManagerError(error: unknown): never {
   if (error instanceof Error && 'response' in error) {
     const response = error.response as { status?: number; data?: { message?: string; errors?: Record<string, string[]> } };
 
+    const status = response.status || 500;
+    const fallbackMessage = status === 401
+      ? 'Your session has expired. Please sign in again and retry the upload.'
+      : status === 413
+        ? 'This upload is too large for the server. Media files must be 50 MB or smaller.'
+        : status === 422
+          ? 'Please correct the highlighted upload details and try again.'
+          : status >= 500
+            ? 'The upload service encountered a problem. Please try again in a few minutes.'
+            : 'The media request could not be completed.';
+
     throw new MediaManagerApiError(
-      response.data?.message || 'Media manager is not available right now.',
-      response.status || 500,
+      response.data?.message || fallbackMessage,
+      status,
       response.data?.errors || {},
     );
   }
 
+  if (error instanceof TypeError) {
+    throw new MediaManagerApiError(
+      'The upload could not reach BlendBeats. Check your internet connection and try again.',
+      0,
+    );
+  }
+
   throw error;
+}
+
+export function mediaManagerErrorMessage(error: unknown, fallback = 'Unable to complete the media request.'): string {
+  if (!(error instanceof MediaManagerApiError)) return fallback;
+
+  return Object.values(error.errors).flat().find(Boolean) || error.message || fallback;
+}
+
+function assertUploadSizes(file: File, coverImage?: File | null): void {
+  if (file.size > MAX_MEDIA_UPLOAD_BYTES) {
+    throw new MediaManagerApiError(
+      `“${file.name}” is too large (${formatFileSize(file.size)}). Media files must be 50 MB or smaller.`,
+      422,
+      { file: ['Choose a media file that is 50 MB or smaller.'] },
+    );
+  }
+
+  if (coverImage && coverImage.size > MAX_COVER_UPLOAD_BYTES) {
+    throw new MediaManagerApiError(
+      `“${coverImage.name}” is too large (${formatFileSize(coverImage.size)}). Cover images must be 10 MB or smaller.`,
+      422,
+      { cover_image: ['Choose a cover image that is 10 MB or smaller.'] },
+    );
+  }
+}
+
+function assertCoverSize(coverImage?: File | null): void {
+  if (coverImage && coverImage.size > MAX_COVER_UPLOAD_BYTES) {
+    throw new MediaManagerApiError(
+      `“${coverImage.name}” is too large (${formatFileSize(coverImage.size)}). Cover images must be 10 MB or smaller.`,
+      422,
+      { cover_image: ['Choose a cover image that is 10 MB or smaller.'] },
+    );
+  }
+}
+
+function formatFileSize(bytes: number): string {
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 export async function listMediaLibrary(collection?: string): Promise<MediaFilesResponse> {
@@ -122,6 +181,7 @@ export async function uploadMediaFile(
   collection = 'dj_media',
   details?: MediaUploadDetails,
 ): Promise<MediaUploadResponse> {
+  assertUploadSizes(file, details?.coverImage);
   const formData = new FormData();
   formData.append('file', file);
   formData.append('disk', 'public');
@@ -152,6 +212,7 @@ export async function linkYoutubeMediaFile(
   collection = 'dj_media',
   details: MediaUploadDetails & { externalUrl: string },
 ): Promise<MediaUploadResponse> {
+  assertCoverSize(details.coverImage);
   const formData = new FormData();
   formData.append('external_url', details.externalUrl);
   formData.append('source_type', 'youtube');
@@ -183,6 +244,7 @@ export async function linkInstagramMediaFile(
   collection = 'dj_media',
   details: MediaUploadDetails & { externalUrl: string },
 ): Promise<MediaUploadResponse> {
+  assertCoverSize(details.coverImage);
   const formData = new FormData();
   formData.append('external_url', details.externalUrl);
   formData.append('source_type', 'instagram');
@@ -220,6 +282,7 @@ export async function updateMediaFile(
   details: Partial<MediaUploadDetails>,
 ): Promise<MediaUpdateResponse> {
   try {
+    assertCoverSize(details.coverImage);
     if (details.coverImage) {
       const formData = new FormData();
 

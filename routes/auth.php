@@ -10,6 +10,7 @@ Route::prefix('auth')
         Route::post('login', [UserAuthController::class, 'login'])->name('login');
         Route::get('me', [UserAuthController::class, 'me'])->name('me');
         Route::patch('account', [UserAuthController::class, 'updateAccount'])->middleware('public.auth')->name('account.update');
+        Route::patch('password', [UserAuthController::class, 'updatePassword'])->middleware('public.auth')->name('password.update');
         Route::post('logout', [UserAuthController::class, 'logout'])->name('logout');
         Route::post('forgot-password', [UserAuthController::class, 'forgotPassword'])->name('forgot-password');
         Route::post('reset-password', [UserAuthController::class, 'resetPassword'])->name('reset-password');

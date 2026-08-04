@@ -243,6 +243,30 @@ class UserAuthController extends Controller
         ]);
     }
 
+    public function updatePassword(Request $request): JsonResponse
+    {
+        $attributes = $request->validate([
+            'current_password' => ['required', 'string', 'current_password:web'],
+            'password' => ['required', 'confirmed', PasswordRule::min(8)],
+        ]);
+
+        /** @var User $user */
+        $user = Auth::guard('web')->user();
+        abort_unless($user, 401);
+
+        $user->forceFill([
+            'password' => Hash::make($attributes['password']),
+            'remember_token' => Str::random(60),
+        ])->save();
+
+        $request->session()->regenerate();
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Your password has been updated.',
+        ]);
+    }
+
     public function updateAvatar(Request $request): JsonResponse
     {
         $attributes = $request->validate([

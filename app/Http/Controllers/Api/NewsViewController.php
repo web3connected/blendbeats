@@ -22,7 +22,13 @@ class NewsViewController extends Controller
                 'categories:id,name,slug',
                 'tags:id,name,slug',
                 'newsSource:id,name,slug',
-                'trendingMetric:id,post_id,views,comments_count,engagement_score',
+                'trendingMetric' => fn ($query) => $query->select([
+                    'news_trending_metrics.id',
+                    'news_trending_metrics.post_id',
+                    'news_trending_metrics.views',
+                    'news_trending_metrics.comments_count',
+                    'news_trending_metrics.engagement_score',
+                ]),
             ])
             ->when($request->filled('category'), function ($query) use ($request): void {
                 $query->whereHas('categories', fn ($categoryQuery) => $categoryQuery->where('slug', $request->string('category')));
@@ -67,7 +73,13 @@ class NewsViewController extends Controller
                 'categories:id,name,slug',
                 'tags:id,name,slug',
                 'newsSource:id,name,slug',
-                'trendingMetric:id,post_id,views,comments_count,engagement_score',
+                'trendingMetric' => fn ($query) => $query->select([
+                    'news_trending_metrics.id',
+                    'news_trending_metrics.post_id',
+                    'news_trending_metrics.views',
+                    'news_trending_metrics.comments_count',
+                    'news_trending_metrics.engagement_score',
+                ]),
             ])
             ->orderByDesc('is_breaking')
             ->orderByDesc('published_at')
@@ -94,7 +106,13 @@ class NewsViewController extends Controller
             'tags:id,name,slug',
             'newsSource:id,name,slug,url,source_type',
             'newsEvent:id,title,slug,event_type,status',
-            'trendingMetric:id,post_id,views,comments_count,engagement_score',
+            'trendingMetric' => fn ($query) => $query->select([
+                'news_trending_metrics.id',
+                'news_trending_metrics.post_id',
+                'news_trending_metrics.views',
+                'news_trending_metrics.comments_count',
+                'news_trending_metrics.engagement_score',
+            ]),
             'approvedComments' => fn ($query) => $query
                 ->whereNull('parent_id')
                 ->with([

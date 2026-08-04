@@ -30,10 +30,26 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<{
   });
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data: unknown = null;
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { message: text.trim().startsWith('<') ? '' : text.trim() };
+    }
+  }
 
   if (!response.ok) {
-    const error = new Error(data?.message || 'Request failed.') as Error & {
+    const responseData = data as { message?: string } | null;
+    const statusMessage = response.status === 401
+      ? 'Your session has expired. Please sign in again and retry the upload.'
+      : response.status === 413
+        ? 'The selected file is larger than the server allows.'
+        : response.status >= 500
+          ? 'The server could not complete the request. Please try again in a few minutes.'
+          : 'Request failed.';
+    const error = new Error(responseData?.message || statusMessage) as Error & {
       response?: { status: number; data: unknown };
     };
     error.response = { status: response.status, data };

@@ -184,4 +184,36 @@ class AuthFrontendApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('user.email', 'reset-login@example.com');
     }
+
+    public function test_authenticated_user_can_change_password_with_current_password(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('old-password123')]);
+
+        $this->actingAs($user)
+            ->patchJson('/api/auth/password', [
+                'current_password' => 'old-password123',
+                'password' => 'new-password123',
+                'password_confirmation' => 'new-password123',
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertTrue(Hash::check('new-password123', $user->fresh()->password));
+    }
+
+    public function test_password_change_rejects_incorrect_current_password(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('old-password123')]);
+
+        $this->actingAs($user)
+            ->patchJson('/api/auth/password', [
+                'current_password' => 'incorrect-password',
+                'password' => 'new-password123',
+                'password_confirmation' => 'new-password123',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('current_password');
+
+        $this->assertTrue(Hash::check('old-password123', $user->fresh()->password));
+    }
 }

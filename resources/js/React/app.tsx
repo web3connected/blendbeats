@@ -21,6 +21,7 @@ import PaymentMethodsPage from './Frontend/pages/auth/PaymentMethodsPage';
 import RegisterPage from './Frontend/pages/auth/RegisterPage';
 import ResetPasswordPage from './Frontend/pages/auth/ResetPasswordPage';
 import SettingsPage from './Frontend/pages/auth/SettingsPage';
+import SecurityPage from './Frontend/pages/auth/SecurityPage';
 import StoragePage from './Frontend/pages/auth/StoragePage';
 import SupportDocPage from './Frontend/pages/auth/SupportDocPage';
 import SupportPage from './Frontend/pages/auth/SupportPage';
@@ -119,6 +120,7 @@ createRoot(rootElement).render(
                 <Route path="/account/payment-methods" element={<PaymentMethodsPage />} />
                 <Route path="/account/notifications" element={<NotificationsPage />} />
                 <Route path="/account/settings" element={<SettingsPage />} />
+                <Route path="/account/security" element={<SecurityPage />} />
                 <Route path="/account/storage" element={<StoragePage />} />
                 <Route path="/account/docs" element={<DocumentationCenterPage />} />
                 <Route path="/account/docs/:slug" element={<DocumentationArticlePage />} />

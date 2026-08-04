@@ -56,3 +56,13 @@ export async function saveAccountAvatar(payload: SaveAccountAvatarPayload): Prom
 
   return response.data.user;
 }
+
+export async function changeAccountPassword(payload: {
+  current_password: string;
+  password: string;
+  password_confirmation: string;
+}): Promise<string> {
+  const response = await apiClient.patch<{ ok: boolean; message: string }>('/auth/password', payload);
+
+  return response.data.message;
+}

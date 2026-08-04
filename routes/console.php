@@ -18,3 +18,9 @@ Artisan::command('featured-ads:sync-notifications', function () {
 Schedule::command('featured-ads:sync-notifications')->everyFifteenMinutes();
 Schedule::command('subscriptions:expire-comped')->daily();
 Schedule::command('affiliate:expire-membership-credits')->daily();
+
+if (config('blendnews.rss.enabled')) {
+    Schedule::command('blendnews:rss-import')
+        ->cron((string) config('blendnews.rss.schedule', '*/30 * * * *'))
+        ->withoutOverlapping();
+}

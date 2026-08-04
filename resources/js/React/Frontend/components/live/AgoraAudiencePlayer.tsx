@@ -7,6 +7,7 @@ import { Volume2, VolumeX } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { AgoraLiveToken } from '@/lib/live';
+import { isBrowserSecureContext, secureMediaContextMessage } from '@/lib/secure-context';
 
 interface AgoraAudiencePlayerProps {
   token: AgoraLiveToken;
@@ -77,6 +78,11 @@ export default function AgoraAudiencePlayer({ token, onError }: AgoraAudiencePla
     async function connect() {
       try {
         setStatus('Connecting');
+
+        if (!isBrowserSecureContext()) {
+          throw new Error(secureMediaContextMessage('Live streaming'));
+        }
+
         AgoraRTC.onAutoplayFailed = () => setAutoplayBlocked(true);
 
         const client = AgoraRTC.createClient({ codec: 'vp8', mode: 'live' });

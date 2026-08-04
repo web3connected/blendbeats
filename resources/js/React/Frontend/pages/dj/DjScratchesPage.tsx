@@ -29,7 +29,7 @@ import {
   deleteMediaFile,
   linkInstagramMediaFile,
   linkYoutubeMediaFile,
-  MediaManagerApiError,
+  mediaManagerErrorMessage,
   uploadMediaFile,
 } from '@/lib/media-manager';
 
@@ -285,15 +285,7 @@ function UploadModal({
 
       onUploaded();
     } catch (uploadError) {
-      const validationMessage =
-        uploadError instanceof MediaManagerApiError ? Object.values(uploadError.errors)[0]?.[0] : null;
-
-      setLocalError(
-        validationMessage ||
-          (uploadError instanceof MediaManagerApiError
-            ? uploadError.message
-            : 'Unable to upload scratch routine video right now.'),
-      );
+      setLocalError(mediaManagerErrorMessage(uploadError, 'Unable to upload scratch routine video right now.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -365,7 +357,7 @@ function UploadModal({
                   ? 'Reading duration'
                   : videoFile
                     ? `${videoFile.name} | ${formatDuration(durationSeconds)}`
-                    : 'Video only | 5:00 max'}
+                    : 'Video only | 5:00 max | 50 MB max'}
               </span>
               <span className="text-xs text-[#666666]">
                 Monthly limit: Free 3, Plus 50, Pro 150, Elite unlimited.
@@ -416,6 +408,7 @@ function UploadModal({
               style={{ fontFamily: 'var(--font-heading)' }}
             />
             {coverFile && <span className="text-xs text-[#888888]">Selected cover: {coverFile.name}</span>}
+            <span className="text-xs text-[#666666]">Maximum cover image size: 10 MB.</span>
           </label>
 
           <div className="grid gap-4 sm:grid-cols-2">
