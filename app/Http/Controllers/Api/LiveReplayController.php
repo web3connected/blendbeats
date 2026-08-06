@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LiveStream;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class LiveReplayController extends Controller
 {
@@ -17,8 +18,19 @@ class LiveReplayController extends Controller
         $this->ensureReplay($liveStream);
         $liveStream->load(['liveChannel', 'user.djProfile', 'comments.user'])->loadCount('likes');
 
+        $stream = $this->liveStreamPayload($liveStream);
+        $recordingPath = $liveStream->recording_storage_path;
+        $recordingAvailable = is_string($recordingPath)
+            && $recordingPath !== ''
+            && Storage::disk('public')->exists($recordingPath);
+
+        $stream['recording_available'] = $recordingAvailable;
+        $stream['recording_url'] = $recordingAvailable
+            ? Storage::disk('public')->url($recordingPath)
+            : null;
+
         return response()->json([
-            'stream' => $this->liveStreamPayload($liveStream),
+            'stream' => $stream,
             'liked' => $request->user() ? $liveStream->likes()->where('user_id', $request->user()->id)->exists() : false,
             'comments' => $liveStream->comments->map(fn ($comment): array => [
                 'id' => $comment->id,

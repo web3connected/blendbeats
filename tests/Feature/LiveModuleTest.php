@@ -8,6 +8,7 @@ use App\Models\LiveStream;
 use App\Models\LiveStreamViewer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class LiveModuleTest extends TestCase
@@ -80,6 +81,37 @@ class LiveModuleTest extends TestCase
             ->assertJsonPath('saved_streams.0.id', $saved->id)
             ->assertJsonCount(1, 'streams')
             ->assertJsonCount(1, 'saved_streams');
+    }
+
+    public function test_replay_reports_whether_its_recording_file_really_exists(): void
+    {
+        Storage::fake('public');
+        $user = $this->djUser('dj_pro');
+        $channel = $this->liveChannelFor($user);
+        $stream = LiveStream::query()->create([
+            'live_channel_id' => $channel->id,
+            'user_id' => $user->id,
+            'agora_channel_name' => 'saved-replay',
+            'title' => 'Saved Replay',
+            'status' => LiveStream::STATUS_ENDED,
+            'recording_enabled' => true,
+            'recording_status' => 'ready',
+            'recording_storage_path' => 'live-replays/1/replay.webm',
+            'started_at' => now()->subHour(),
+            'ended_at' => now(),
+        ]);
+
+        $this->getJson("/api/live/replays/{$stream->id}")
+            ->assertOk()
+            ->assertJsonPath('stream.recording_available', false)
+            ->assertJsonPath('stream.recording_url', null);
+
+        Storage::disk('public')->put($stream->recording_storage_path, 'video bytes');
+
+        $this->getJson("/api/live/replays/{$stream->id}")
+            ->assertOk()
+            ->assertJsonPath('stream.recording_available', true)
+            ->assertJsonPath('stream.recording_url', Storage::disk('public')->url($stream->recording_storage_path));
     }
 
     public function test_paid_dj_can_start_live_stream_and_receive_host_token(): void

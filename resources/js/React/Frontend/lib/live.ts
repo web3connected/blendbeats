@@ -42,6 +42,8 @@ export interface LiveStream {
   recording_started_at: string | null;
   recording_ended_at: string | null;
   recording_storage_path: string | null;
+  recording_available?: boolean;
+  recording_url?: string | null;
   views_count: number;
   likes_count: number;
   channel?: {

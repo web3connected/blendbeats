@@ -1,5 +1,5 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Eye, Heart, MessageCircle, Play, Share2, Volume2 } from 'lucide-react';
+import { AlertTriangle, Eye, Heart, MessageCircle, Play, Share2 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
@@ -13,12 +13,6 @@ import {
   type LiveStream,
 } from '@/lib/live';
 
-function videoUrl(path: string | null): string | null {
-  if (!path) return null;
-  if (/^https?:\/\//i.test(path)) return path;
-  return `/storage/${path.replace(/^\/?(?:public\/|storage\/)?/, '')}`;
-}
-
 export default function LiveReplayPage() {
   const { id } = useParams();
   const replayId = Number(id);
@@ -26,6 +20,7 @@ export default function LiveReplayPage() {
   const [suggested, setSuggested] = useState<LiveStream[]>([]);
   const [comment, setComment] = useState('');
   const [message, setMessage] = useState('');
+  const [playbackFailed, setPlaybackFailed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const viewed = useRef<number | null>(null);
 
@@ -33,6 +28,7 @@ export default function LiveReplayPage() {
     let mounted = true;
     setReplay(null);
     setMessage('');
+    setPlaybackFailed(false);
 
     Promise.all([getLiveReplay(replayId), getLiveDirectory()])
       .then(([payload, directory]) => {
@@ -52,7 +48,9 @@ export default function LiveReplayPage() {
     return () => { mounted = false; };
   }, [replayId]);
 
-  const source = useMemo(() => videoUrl(replay?.stream.recording_storage_path ?? null), [replay]);
+  const source = useMemo(() => (
+    replay?.stream.recording_available ? replay.stream.recording_url ?? null : null
+  ), [replay]);
 
   async function handleLike() {
     try {
@@ -102,17 +100,27 @@ export default function LiveReplayPage() {
       <section className="mx-auto grid w-full max-w-7xl gap-7 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="min-w-0">
           <div className="aspect-video overflow-hidden rounded-lg border border-[#282828] bg-black">
-            {source ? (
-              <video src={source} controls playsInline className="h-full w-full object-contain" />
+            {source && !playbackFailed ? (
+              <video
+                key={source}
+                src={source}
+                controls
+                playsInline
+                preload="metadata"
+                onError={() => setPlaybackFailed(true)}
+                className="h-full w-full object-contain"
+              />
             ) : (
-              <div className="relative flex h-full flex-col items-center justify-center gap-3 bg-[radial-gradient(circle_at_center,#242424,#080808_65%)] px-6 pb-14 text-center">
-                <p className="font-bold uppercase tracking-[0.18em]">Replay unavailable</p>
-                <p className="max-w-md text-sm text-[#aaa]">This older saved stream does not contain a recording file. New saved streams will record and play here automatically.</p>
-                <div className="absolute inset-x-0 bottom-0 flex h-12 items-center gap-4 border-t border-white/10 bg-black/80 px-4 text-[#666]" aria-label="Video controls unavailable">
-                  <Play size={20} fill="currentColor" /><Volume2 size={21} />
-                  <div className="h-1 flex-1 rounded-full bg-[#444]" />
-                  <span className="text-xs tabular-nums">0:00 / 0:00</span>
-                </div>
+              <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 bg-[radial-gradient(circle_at_center,#242424,#080808_65%)] px-6 text-center">
+                <AlertTriangle size={44} className="text-primary" aria-hidden="true" />
+                <p className="font-bold uppercase tracking-[0.18em]">
+                  {playbackFailed ? 'Video could not be loaded' : 'Video is missing'}
+                </p>
+                <p className="max-w-md text-sm leading-6 text-[#aaa]">
+                  {playbackFailed
+                    ? 'The recording exists, but your browser could not play it. Please refresh the page or try another browser.'
+                    : 'The recording file for this saved stream is not available.'}
+                </p>
               </div>
             )}
           </div>
