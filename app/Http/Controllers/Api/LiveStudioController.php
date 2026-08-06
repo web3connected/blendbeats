@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Concerns\SerializesLiveStreams;
 use App\Http\Controllers\Controller;
+use App\Models\LiveStream;
 use App\Services\Live\AgoraService;
 use App\Services\Live\LiveService;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -69,5 +70,27 @@ class LiveStudioController extends Controller
             'ended' => (bool) $stream,
             'stream' => $stream ? $this->liveStreamPayload($stream) : null,
         ]);
+    }
+
+    public function recording(Request $request, LiveStream $liveStream): JsonResponse
+    {
+        abort_unless($liveStream->user_id === $request->user()->id && $liveStream->recording_enabled, 403);
+
+        $request->validate([
+            'recording' => ['required', 'file', 'mimetypes:video/webm,video/mp4,application/octet-stream', 'max:1048576'],
+        ]);
+
+        $extension = $request->file('recording')->guessExtension() ?: 'webm';
+        $path = $request->file('recording')->storeAs('live-replays/'.$liveStream->id, 'replay.'.$extension, 'public');
+        abort_unless($path, 500, 'Unable to save the replay recording.');
+
+        $liveStream->forceFill([
+            'recording_storage_path' => $path,
+            'recording_status' => 'ready',
+            'recording_started_at' => $liveStream->recording_started_at ?: $liveStream->started_at,
+            'recording_ended_at' => now(),
+        ])->save();
+
+        return response()->json(['stream' => $this->liveStreamPayload($liveStream->refresh())]);
     }
 }

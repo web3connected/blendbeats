@@ -13,6 +13,7 @@ import {
   type AgoraLiveToken,
   type LiveStream,
   type LiveStudioState,
+  uploadLiveRecording,
 } from '@/lib/live';
 
 export default function LiveStudioPage() {
@@ -62,7 +63,14 @@ export default function LiveStudioPage() {
     setErrorMessage('');
 
     try {
+      const recording = activeStream?.recording_enabled
+        ? await hostPlayerRef.current?.stopRecording()
+        : null;
       await hostPlayerRef.current?.leave();
+      if (recording && activeStream) {
+        setStatus('Saving replay');
+        await uploadLiveRecording(activeStream.id, recording);
+      }
       await endLive();
       setHostToken(null);
       setActiveStream(null);
@@ -75,7 +83,7 @@ export default function LiveStudioPage() {
     } finally {
       setIsBusy(false);
     }
-  }, [loadStudio]);
+  }, [activeStream, loadStudio]);
 
   useEffect(() => {
     if (!activeStream?.started_at || activeStream.max_duration_minutes === null) {
@@ -273,7 +281,7 @@ export default function LiveStudioPage() {
                 />
                 <span>
                   <span className="block font-semibold text-white">Save this live stream to my account</span>
-                  <span className="mt-1 block text-[#9d9d9d]">Recording storage is prepared for this plan. Cloud recording will be connected in a later milestone.</span>
+                  <span className="mt-1 block text-[#9d9d9d]">Records your camera and microphone, then saves the replay when you end the stream.</span>
                 </span>
               </label>
             ) : null}
@@ -329,6 +337,7 @@ export default function LiveStudioPage() {
             ref={hostPlayerRef}
             key={`${activeStream.id}-${hostToken.channelName}`}
             token={hostToken}
+            record={activeStream.recording_enabled}
             onError={setErrorMessage}
             onStatusChange={setStatus}
           />

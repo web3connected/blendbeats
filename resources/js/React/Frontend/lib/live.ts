@@ -221,3 +221,9 @@ export function endLive(): Promise<{ ended: boolean; stream: LiveStream | null }
     method: 'POST',
   });
 }
+
+export async function uploadLiveRecording(liveStreamId: number, recording: Blob): Promise<{ stream: LiveStream }> {
+  const data = new FormData();
+  data.append('recording', recording, recording.type.includes('mp4') ? 'replay.mp4' : 'replay.webm');
+  return request(`/api/live/${liveStreamId}/recording`, { method: 'POST', body: data });
+}

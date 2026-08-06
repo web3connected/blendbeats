@@ -23,6 +23,10 @@ Route::prefix('live')
         Route::post('end', [LiveStudioController::class, 'end'])
             ->middleware('public.auth')
             ->name('end');
+        Route::post('{liveStream}/recording', [LiveStudioController::class, 'recording'])
+            ->middleware('public.auth')
+            ->whereNumber('liveStream')
+            ->name('recording.store');
         Route::post('token', [LiveTokenController::class, 'store'])->name('token.store');
         Route::get('replays/{liveStream}', [LiveReplayController::class, 'show'])->whereNumber('liveStream')->name('replays.show');
         Route::post('replays/{liveStream}/view', [LiveReplayController::class, 'view'])->whereNumber('liveStream')->name('replays.view');

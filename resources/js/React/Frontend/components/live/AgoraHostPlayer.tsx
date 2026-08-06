@@ -17,20 +17,24 @@ import { isBrowserSecureContext, secureMediaContextMessage } from '@/lib/secure-
 
 export interface AgoraHostPlayerHandle {
   leave: () => Promise<void>;
+  stopRecording: () => Promise<Blob | null>;
 }
 
 interface AgoraHostPlayerProps {
   token: AgoraLiveToken;
   onError?: (message: string) => void;
   onStatusChange?: (status: string) => void;
+  record?: boolean;
 }
 
 const AgoraHostPlayer = forwardRef<AgoraHostPlayerHandle, AgoraHostPlayerProps>(
-  ({ token, onError, onStatusChange }, ref) => {
+  ({ token, onError, onStatusChange, record = false }, ref) => {
     const clientRef = useRef<IAgoraRTCClient | null>(null);
     const localTracksRef = useRef<[IMicrophoneAudioTrack, ICameraVideoTrack] | null>(null);
     const videoRef = useRef<HTMLDivElement | null>(null);
     const [status, setStatus] = useState('Connecting');
+    const recorderRef = useRef<MediaRecorder | null>(null);
+    const recordingChunksRef = useRef<Blob[]>([]);
 
     const updateStatus = useCallback(
       (nextStatus: string) => {
@@ -63,7 +67,22 @@ const AgoraHostPlayer = forwardRef<AgoraHostPlayerHandle, AgoraHostPlayerProps>(
       updateStatus('Not connected');
     }, [updateStatus]);
 
-    useImperativeHandle(ref, () => ({ leave }), [leave]);
+    const stopRecording = useCallback(async (): Promise<Blob | null> => {
+      const recorder = recorderRef.current;
+      if (!recorder) return null;
+      if (recorder.state !== 'inactive') {
+        await new Promise<void>((resolve) => {
+          recorder.addEventListener('stop', () => resolve(), { once: true });
+          recorder.stop();
+        });
+      }
+      recorderRef.current = null;
+      const chunks = recordingChunksRef.current;
+      recordingChunksRef.current = [];
+      return chunks.length ? new Blob(chunks, { type: recorder.mimeType || 'video/webm' }) : null;
+    }, []);
+
+    useImperativeHandle(ref, () => ({ leave, stopRecording }), [leave, stopRecording]);
 
     useEffect(() => {
       let cancelled = false;
@@ -119,6 +138,21 @@ const AgoraHostPlayer = forwardRef<AgoraHostPlayerHandle, AgoraHostPlayerProps>(
           videoContainer.replaceChildren();
           tracks[1].play(videoContainer, { fit: 'cover' });
           await client.publish(tracks);
+          if (record && typeof MediaRecorder !== 'undefined') {
+            const mediaStream = new MediaStream([
+              tracks[1].getMediaStreamTrack(),
+              tracks[0].getMediaStreamTrack(),
+            ]);
+            const preferredType = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
+              .find((type) => MediaRecorder.isTypeSupported(type));
+            const recorder = new MediaRecorder(mediaStream, preferredType ? { mimeType: preferredType } : undefined);
+            recordingChunksRef.current = [];
+            recorder.addEventListener('dataavailable', (event) => {
+              if (event.data.size > 0) recordingChunksRef.current.push(event.data);
+            });
+            recorder.start(1000);
+            recorderRef.current = recorder;
+          }
           updateStatus('Connected');
         } catch (error) {
           await leave();
@@ -133,7 +167,7 @@ const AgoraHostPlayer = forwardRef<AgoraHostPlayerHandle, AgoraHostPlayerProps>(
         cancelled = true;
         void leave();
       };
-    }, [leave, onError, token.appId, token.channelName, token.token, token.uid, updateStatus]);
+    }, [leave, onError, record, token.appId, token.channelName, token.token, token.uid, updateStatus]);
 
     return (
       <div className="rounded-lg border border-[#252525] bg-[#101010] p-4">

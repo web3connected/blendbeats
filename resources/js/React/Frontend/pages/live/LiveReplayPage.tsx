@@ -1,5 +1,5 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Eye, Heart, MessageCircle, Play, Share2 } from 'lucide-react';
+import { Eye, Heart, MessageCircle, Play, Share2, Volume2 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
@@ -105,10 +105,14 @@ export default function LiveReplayPage() {
             {source ? (
               <video src={source} controls playsInline className="h-full w-full object-contain" />
             ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-3 bg-[radial-gradient(circle_at_center,#242424,#080808_65%)] px-6 text-center">
-                <span className="rounded-full bg-primary p-5"><Play size={28} fill="currentColor" /></span>
-                <p className="font-bold uppercase tracking-[0.18em]">Replay is being processed</p>
-                <p className="max-w-md text-sm text-[#aaa]">The saved stream page is ready. Video playback will appear here as soon as its recording file is available.</p>
+              <div className="relative flex h-full flex-col items-center justify-center gap-3 bg-[radial-gradient(circle_at_center,#242424,#080808_65%)] px-6 pb-14 text-center">
+                <p className="font-bold uppercase tracking-[0.18em]">Replay unavailable</p>
+                <p className="max-w-md text-sm text-[#aaa]">This older saved stream does not contain a recording file. New saved streams will record and play here automatically.</p>
+                <div className="absolute inset-x-0 bottom-0 flex h-12 items-center gap-4 border-t border-white/10 bg-black/80 px-4 text-[#666]" aria-label="Video controls unavailable">
+                  <Play size={20} fill="currentColor" /><Volume2 size={21} />
+                  <div className="h-1 flex-1 rounded-full bg-[#444]" />
+                  <span className="text-xs tabular-nums">0:00 / 0:00</span>
+                </div>
               </div>
             )}
           </div>
