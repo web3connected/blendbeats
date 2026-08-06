@@ -29,6 +29,7 @@ class LiveStream extends Model
         'recording_started_at',
         'recording_ended_at',
         'recording_storage_path',
+        'views_count',
     ];
 
     protected function casts(): array
@@ -40,6 +41,7 @@ class LiveStream extends Model
             'recording_enabled' => 'boolean',
             'recording_started_at' => 'datetime',
             'recording_ended_at' => 'datetime',
+            'views_count' => 'integer',
         ];
     }
 
@@ -56,5 +58,15 @@ class LiveStream extends Model
     public function viewers(): HasMany
     {
         return $this->hasMany(LiveStreamViewer::class);
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(LiveStreamComment::class);
+    }
+
+    public function likes(): HasMany
+    {
+        return $this->hasMany(LiveStreamLike::class);
     }
 }

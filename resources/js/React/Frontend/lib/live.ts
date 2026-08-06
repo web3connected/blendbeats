@@ -42,6 +42,8 @@ export interface LiveStream {
   recording_started_at: string | null;
   recording_ended_at: string | null;
   recording_storage_path: string | null;
+  views_count: number;
+  likes_count: number;
   channel?: {
     id: number;
     username_slug: string;
@@ -140,6 +142,35 @@ export function getLiveDirectory(): Promise<{ streams: LiveStream[]; saved_strea
 
 export function getLiveChannel(usernameSlug: string): Promise<{ channel: LiveChannel }> {
   return request(`/api/live/${encodeURIComponent(usernameSlug)}`);
+}
+
+export interface LiveReplayComment {
+  id: number;
+  body: string;
+  created_at: string;
+  user: { id: number; name: string };
+}
+
+export interface LiveReplayPayload {
+  stream: LiveStream;
+  liked: boolean;
+  comments: LiveReplayComment[];
+}
+
+export function getLiveReplay(id: number): Promise<LiveReplayPayload> {
+  return request(`/api/live/replays/${id}`);
+}
+
+export function recordLiveReplayView(id: number): Promise<{ views_count: number }> {
+  return request(`/api/live/replays/${id}/view`, { method: 'POST' });
+}
+
+export function toggleLiveReplayLike(id: number): Promise<{ liked: boolean; likes_count: number }> {
+  return request(`/api/live/replays/${id}/like`, { method: 'POST' });
+}
+
+export function addLiveReplayComment(id: number, body: string): Promise<{ comment: LiveReplayComment }> {
+  return request(`/api/live/replays/${id}/comments`, { method: 'POST', json: { body } });
 }
 
 export function getLiveStudio(): Promise<LiveStudioState> {

@@ -153,12 +153,12 @@ export default function LiveDirectoryPage() {
         {activeTab === 'saved' && savedStreams.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {savedStreams.map((stream) => (
-              <article key={stream.id} className="rounded-lg border border-[#252525] bg-[#101010] p-5">
+              <Link key={stream.id} to={`/live/replay/${stream.id}`} className="group rounded-lg border border-[#252525] bg-[#101010] p-5 transition hover:border-primary">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <span className="rounded-full bg-[#2c2c2c] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white">
                     Saved
                   </span>
-                  <Archive size={16} className="text-[#9d9d9d]" />
+                  <ExternalLink size={16} className="text-[#9d9d9d] transition group-hover:text-white" />
                 </div>
                 <h2 className="text-2xl text-white">{stream.title}</h2>
                 <p className="mt-2 text-sm text-[#c9c9c9]">
@@ -169,7 +169,7 @@ export default function LiveDirectoryPage() {
                     Saved {new Date(stream.ended_at).toLocaleDateString()}
                   </p>
                 ) : null}
-              </article>
+              </Link>
             ))}
           </div>
         ) : null}

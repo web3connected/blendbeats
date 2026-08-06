@@ -45,6 +45,8 @@ trait SerializesLiveStreams
             'recording_started_at' => $stream->recording_started_at?->toIso8601String(),
             'recording_ended_at' => $stream->recording_ended_at?->toIso8601String(),
             'recording_storage_path' => $stream->recording_storage_path,
+            'views_count' => (int) $stream->views_count,
+            'likes_count' => isset($stream->likes_count) ? (int) $stream->likes_count : $stream->likes()->count(),
             'channel' => $stream->relationLoaded('liveChannel') && $stream->liveChannel
                 ? [
                     'id' => $stream->liveChannel->id,

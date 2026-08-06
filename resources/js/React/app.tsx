@@ -47,6 +47,7 @@ import MerchPage from './Frontend/pages/merch';
 import MixesPage from './Frontend/pages/mixes';
 import LiveChannelPage from './Frontend/pages/live/LiveChannelPage';
 import LiveDirectoryPage from './Frontend/pages/live/LiveDirectoryPage';
+import LiveReplayPage from './Frontend/pages/live/LiveReplayPage';
 import LiveStudioPage from './Frontend/pages/live/LiveStudioPage';
 import PricingPage from './Frontend/pages/pricing';
 import DjLoungePage from './Frontend/pages/social/DjLoungePage';
@@ -81,6 +82,7 @@ createRoot(rootElement).render(
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/affiliate" element={<AffiliateProgramPage />} />
                 <Route path="/live" element={<LiveDirectoryPage />} />
+                <Route path="/live/replay/:id" element={<LiveReplayPage />} />
                 <Route path="/live/:username" element={<LiveChannelPage />} />
                 <Route path="/dashboard/live" element={<LiveStudioPage />} />
                 <Route path="/subscription" element={<SubscriptionPage />} />
