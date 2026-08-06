@@ -392,6 +392,11 @@ return [
                     'icon' => 'fas fa-fw fa-calendar-check',
                 ],
                 [
+                    'text' => 'Live Videos',
+                    'url' => 'admin/admincenter/livevideos',
+                    'icon' => 'fas fa-fw fa-video',
+                ],
+                [
                     'text' => 'Payment Providers',
                     'url' => 'admin/admincenter/paymentproviders',
                     'icon' => 'fas fa-fw fa-credit-card',

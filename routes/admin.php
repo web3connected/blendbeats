@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\CommerceCartController;
 use App\Http\Controllers\Admin\CommerceProductController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DjBookingAdminController;
+use App\Http\Controllers\Admin\LiveVideoAdminController;
 use App\Http\Controllers\Admin\ResourcePlaceholderController;
 use App\Http\Controllers\Admin\SiteAnalyticsController;
 use App\Http\Controllers\Admin\UserController;
@@ -121,6 +122,10 @@ Route::middleware('admin.auth')->group(function (): void {
         ->name('admincenter.user-activity.index');
     Route::get('admincenter/djbookings', [DjBookingAdminController::class, 'index'])
         ->name('admincenter.dj-bookings.index');
+    Route::get('admincenter/livevideos', [LiveVideoAdminController::class, 'index'])
+        ->name('admincenter.live-videos.index');
+    Route::delete('admincenter/livevideos/{liveStream}', [LiveVideoAdminController::class, 'destroy'])
+        ->name('admincenter.live-videos.destroy');
 
     Route::get('admincenter/affiliates', [AffiliateManagementController::class, 'affiliates'])
         ->middleware('permission:affiliates.view,admin')
