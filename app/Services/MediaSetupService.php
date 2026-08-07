@@ -26,6 +26,9 @@ class MediaSetupService
                 $tier = config("media_storage.tier_aliases.{$tier}", $tier);
                 $tierConfig = config("billing.subscription.tiers.{$tier}")
                     ?? config('billing.subscription.tiers.'.config('billing.subscription.free_tier', 'free'));
+                $storageLimitBytes = $owner instanceof User
+                    ? app(MembershipTierService::class)->storageBytesFor($owner)
+                    : (int) ($tierConfig['services']['storage']['max_storage_bytes'] ?? $tierConfig['storage_bytes']);
 
                 $mediaAccount = MediaAccount::create([
                     ...$this->ownerColumns($owner),
@@ -33,7 +36,7 @@ class MediaSetupService
                     'disk' => 'public',
                     'root_path' => "media/accounts/{$slug}",
                     'storage_tier' => $tier,
-                    'storage_limit_bytes' => (int) $tierConfig['storage_bytes'],
+                    'storage_limit_bytes' => $storageLimitBytes,
                     'storage_used_bytes' => 0,
                     'status' => 'active',
                     'activated_at' => now(),

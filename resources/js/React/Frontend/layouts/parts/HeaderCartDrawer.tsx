@@ -296,12 +296,13 @@ export default function HeaderCartDrawer() {
                 <button
                   type="button"
                   onClick={checkoutPlatformItems}
+                  aria-label="Checkout platform items with PayPal"
                   className="flex h-12 items-center justify-center gap-2 bg-primary text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50"
                   style={{ fontFamily: 'var(--font-heading)' }}
                   disabled={!cart || internalItemCount === 0 || isCheckingOut}
                 >
                   {isCheckingOut ? <Loader2 className="animate-spin" size={15} /> : <CreditCard size={15} />}
-                  Pay Platform Items
+                  <span className="whitespace-nowrap">Checkout</span>
                 </button>
               </div>
 

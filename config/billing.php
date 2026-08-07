@@ -1,7 +1,7 @@
 <?php
 
-$megabyte = 1024 * 1024;
-$gigabyte = 1024 * $megabyte;
+$membership = require __DIR__.'/membership.php';
+$membershipTiers = $membership['tiers'];
 $paypalMode = strtolower(trim((string) env('PAYPAL_MODE', 'sandbox')));
 
 if (! in_array($paypalMode, ['sandbox', 'live'], true)) {
@@ -114,15 +114,16 @@ return [
 
     'subscription' => [
         'default_type' => 'dj_membership',
-        'free_tier' => 'free',
+        'free_tier' => $membership['default_tier'],
         'tiers' => [
             'free' => [
-                'name' => 'Free',
+                'name' => $membershipTiers['free']['name'],
                 'stripe_price_id' => null,
                 'price_cents' => 0,
                 'billing_interval' => 'forever',
-                'storage_bytes' => 500 * $megabyte,
-                'advertising_groups' => ['F'],
+                'storage_bytes' => $membershipTiers['free']['services']['storage']['max_storage_bytes'],
+                'advertising_groups' => $membershipTiers['free']['services']['advertising']['groups'],
+                'services' => $membershipTiers['free']['services'],
                 'purpose' => 'Allows DJs to fully participate in the BlendBeats ecosystem without any required subscription.',
                 'features' => [
                     'DJ Profile',
@@ -138,13 +139,14 @@ return [
                 'future_features' => [],
             ],
             'dj_plus' => [
-                'name' => 'DJ Plus',
+                'name' => $membershipTiers['dj_plus']['name'],
                 'stripe_price_id' => env('STRIPE_PRICE_DJ_PLUS'),
                 'stripe_lookup_key' => env('STRIPE_LOOKUP_DJ_PLUS', 'blendbeats_dj_plus_monthly_999'),
                 'price_cents' => 999,
                 'billing_interval' => 'monthly',
-                'storage_bytes' => 3 * $gigabyte,
-                'advertising_groups' => ['E', 'F'],
+                'storage_bytes' => $membershipTiers['dj_plus']['services']['storage']['max_storage_bytes'],
+                'advertising_groups' => $membershipTiers['dj_plus']['services']['advertising']['groups'],
+                'services' => $membershipTiers['dj_plus']['services'],
                 'purpose' => 'Adds extra growth tools for DJs who are ready to promote more consistently.',
                 'features' => [
                     'Everything in Free',
@@ -159,13 +161,14 @@ return [
                 ],
             ],
             'dj_pro' => [
-                'name' => 'DJ Pro',
+                'name' => $membershipTiers['dj_pro']['name'],
                 'stripe_price_id' => env('STRIPE_PRICE_DJ_PRO'),
                 'stripe_lookup_key' => env('STRIPE_LOOKUP_DJ_PRO', 'blendbeats_dj_pro_monthly_1999'),
                 'price_cents' => 1999,
                 'billing_interval' => 'monthly',
-                'storage_bytes' => 10 * $gigabyte,
-                'advertising_groups' => ['C', 'D', 'E', 'F'],
+                'storage_bytes' => $membershipTiers['dj_pro']['services']['storage']['max_storage_bytes'],
+                'advertising_groups' => $membershipTiers['dj_pro']['services']['advertising']['groups'],
+                'services' => $membershipTiers['dj_pro']['services'],
                 'purpose' => 'Supports active DJs with stronger discovery, analytics, and booking growth tools.',
                 'features' => [
                     'Everything in DJ Plus',
@@ -182,13 +185,14 @@ return [
                 ],
             ],
             'dj_elite' => [
-                'name' => 'DJ Elite',
+                'name' => $membershipTiers['dj_elite']['name'],
                 'stripe_price_id' => env('STRIPE_PRICE_DJ_ELITE'),
                 'stripe_lookup_key' => env('STRIPE_LOOKUP_DJ_ELITE', 'blendbeats_dj_elite_monthly_3999'),
                 'price_cents' => 3999,
                 'billing_interval' => 'monthly',
-                'storage_bytes' => 25 * $gigabyte,
-                'advertising_groups' => ['A', 'B', 'C', 'D', 'E', 'F'],
+                'storage_bytes' => $membershipTiers['dj_elite']['services']['storage']['max_storage_bytes'],
+                'advertising_groups' => $membershipTiers['dj_elite']['services']['advertising']['groups'],
+                'services' => $membershipTiers['dj_elite']['services'],
                 'purpose' => 'Premium growth tier for DJs building a professional DJ brand and booking pipeline.',
                 'features' => [
                     'Everything in DJ Pro',

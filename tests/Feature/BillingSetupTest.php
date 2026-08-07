@@ -58,11 +58,19 @@ class BillingSetupTest extends TestCase
         $this->assertArrayHasKey('dj_pro', $tiers);
         $this->assertArrayHasKey('dj_elite', $tiers);
         $this->assertSame('test', config('billing.stripe.mode'));
-        $this->assertSame(500 * 1024 * 1024, $tiers['free']['storage_bytes']);
+        $this->assertSame(1 * 1024 * 1024 * 1024, $tiers['free']['services']['storage']['max_storage_bytes']);
+        $this->assertSame(5 * 1024 * 1024 * 1024, $tiers['dj_plus']['services']['storage']['max_storage_bytes']);
+        $this->assertSame(15 * 1024 * 1024 * 1024, $tiers['dj_pro']['services']['storage']['max_storage_bytes']);
+        $this->assertSame(30 * 1024 * 1024 * 1024, $tiers['dj_elite']['services']['storage']['max_storage_bytes']);
+        $this->assertSame($tiers['free']['services']['storage']['max_storage_bytes'], $tiers['free']['storage_bytes']);
         $this->assertSame(['F'], $tiers['free']['advertising_groups']);
         $this->assertSame(['E', 'F'], $tiers['dj_plus']['advertising_groups']);
         $this->assertSame(['C', 'D', 'E', 'F'], $tiers['dj_pro']['advertising_groups']);
         $this->assertSame(['A', 'B', 'C', 'D', 'E', 'F'], $tiers['dj_elite']['advertising_groups']);
+        $this->assertSame('minimal', $tiers['free']['services']['advertising']['level']);
+        $this->assertSame('basic', $tiers['dj_plus']['services']['advertising']['level']);
+        $this->assertTrue($tiers['free']['services']['community']['site_participation']);
+        $this->assertTrue($tiers['free']['services']['community']['battle_voting']);
         $this->assertContains('AI Booking Assistant', $tiers['dj_elite']['future_features']);
     }
 

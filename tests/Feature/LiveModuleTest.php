@@ -8,6 +8,7 @@ use App\Models\LiveStream;
 use App\Models\LiveStreamViewer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -25,6 +26,13 @@ class LiveModuleTest extends TestCase
             'services.agora.project_name' => 'BlendBeat Live',
             'services.agora.token_ttl' => 3600,
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
     }
 
     public function test_live_browser_routes_load_react_shell(): void
@@ -160,22 +168,22 @@ class LiveModuleTest extends TestCase
         $this->assertDatabaseCount('live_streams', 0);
     }
 
-    public function test_free_dj_cannot_start_live_stream(): void
+    public function test_free_dj_can_start_limited_live_stream(): void
     {
         $user = $this->djUser('free');
 
         $this->actingAs($user)
             ->postJson('/api/live/start')
-            ->assertForbidden()
-            ->assertJsonPath('message', 'Only paid DJ accounts can go live.');
-
-        $this->assertDatabaseCount('live_streams', 0);
+            ->assertCreated()
+            ->assertJsonPath('stream.max_duration_minutes', 15)
+            ->assertJsonPath('stream.recording_enabled', false);
     }
 
     public function test_plus_user_is_blocked_after_monthly_stream_limit(): void
     {
+        Carbon::setTestNow('2026-08-28 12:00:00');
         $user = $this->djUser('dj_plus');
-        $this->createMonthlyStreams($user, 20);
+        $this->createMonthlyStreams($user, 15);
 
         $this->actingAs($user)
             ->postJson('/api/live/start')
@@ -213,8 +221,9 @@ class LiveModuleTest extends TestCase
 
     public function test_pro_user_is_blocked_after_monthly_stream_limit(): void
     {
+        Carbon::setTestNow('2026-08-28 12:00:00');
         $user = $this->djUser('dj_pro');
-        $this->createMonthlyStreams($user, 50);
+        $this->createMonthlyStreams($user, 30);
 
         $this->actingAs($user)
             ->postJson('/api/live/start')
@@ -222,17 +231,16 @@ class LiveModuleTest extends TestCase
             ->assertJsonPath('message', 'You have reached your monthly live stream limit for your plan.');
     }
 
-    public function test_elite_user_has_unlimited_count_duration_and_recording(): void
+    public function test_elite_user_gets_two_hours_and_recording(): void
     {
         $user = $this->djUser('dj_elite');
-        $this->createMonthlyStreams($user, 75);
 
         $this->actingAs($user)
             ->postJson('/api/live/start', [
                 'recording_enabled' => true,
             ])
             ->assertCreated()
-            ->assertJsonPath('stream.max_duration_minutes', null)
+            ->assertJsonPath('stream.max_duration_minutes', 120)
             ->assertJsonPath('stream.recording_enabled', true)
             ->assertJsonPath('stream.recording_status', 'requested');
     }
@@ -506,4 +514,5 @@ class LiveModuleTest extends TestCase
             ]);
         }
     }
+
 }

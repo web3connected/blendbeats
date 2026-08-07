@@ -70,6 +70,7 @@ export interface LiveStudioState {
     tier: string;
     can_go_live: boolean;
     max_stream_minutes: number | null;
+    weekly_stream_limit: number | null;
     monthly_stream_limit: number | null;
     can_record_live_streams: boolean;
   };

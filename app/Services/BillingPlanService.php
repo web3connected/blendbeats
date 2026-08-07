@@ -129,7 +129,9 @@ class BillingPlanService
 
     private function planPayload(string $key, array $tier, ?User $user): array
     {
-        $storageBytes = (int) ($tier['storage_bytes'] ?? 0);
+        $services = $tier['services'] ?? [];
+        $storageBytes = (int) ($services['storage']['max_storage_bytes'] ?? $tier['storage_bytes'] ?? 0);
+        $advertisingGroups = $services['advertising']['groups'] ?? $tier['advertising_groups'] ?? [];
         $priceCents = (int) ($tier['price_cents'] ?? 0);
         $isFree = $key === $this->freeTier();
 
@@ -139,10 +141,11 @@ class BillingPlanService
             'purpose' => $tier['purpose'] ?? null,
             'features' => array_values($tier['features'] ?? []),
             'future_features' => array_values($tier['future_features'] ?? []),
+            'services' => $services,
             'storage_bytes' => $storageBytes,
             'storage_label' => $this->formatBytes($storageBytes),
-            'advertising_groups' => array_values($tier['advertising_groups'] ?? []),
-            'advertising_groups_label' => $this->groupsLabel($tier['advertising_groups'] ?? []),
+            'advertising_groups' => array_values($advertisingGroups),
+            'advertising_groups_label' => $this->groupsLabel($advertisingGroups),
             'is_free' => $isFree,
             'is_current' => ($user?->media_storage_tier ?: $this->freeTier()) === $key,
             'price_cents' => $priceCents,
